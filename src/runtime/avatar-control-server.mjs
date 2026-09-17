@@ -95,7 +95,8 @@ export function createAvatarControlServer({
         })
       }
       if (req.method === 'POST' && url.pathname === '/sessions') {
-        const session = await manager.start()
+        const options = await readJson(req)
+        const session = await manager.start(options)
         return writeJson(res, 201, session)
       }
       const textId = sessionPath(url.pathname, '/text')
