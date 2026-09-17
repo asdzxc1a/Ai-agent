@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#09090a" />
-  <meta name="description" content="Arcana SalesOS — realtime sales intelligence for high-trust concierge conversations." />
+  <meta name="description" content="Arcana SalesOS — native GPT-Live voice with a DeepSeek sales brain." />
   <title>Arcana SalesOS</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
@@ -35,8 +35,8 @@
       <p>Position Arcana as the trusted European production arm for Monaco, London, Paris and high-complexity international events — with confidence, discretion and zero unnecessary pressure.</p>
     </div>
     <div class="mission-facts" aria-label="Mission facts">
-      <div class="mission-fact"><span>Primary outcome</span><strong>Receive the next event brief</strong></div>
-      <div class="mission-fact"><span>Conversation style</span><strong>Luxury · warm · precise</strong></div>
+      <div class="mission-fact"><span>Voice</span><strong>GPT‑Live · native WebRTC</strong></div>
+      <div class="mission-fact"><span>Sales brain</span><strong>DeepSeek · SalesOS / DOGA</strong></div>
     </div>
   </section>
 
@@ -47,11 +47,11 @@
           <div class="live-chip" id="liveChip" data-live="false"><span class="status-dot" aria-hidden="true"></span><span id="liveLabel">Ready</span></div>
           <div class="timer-chip" id="callTimer">00:00</div>
         </div>
-        <div id="stage" aria-label="LiveAvatar stage">
+        <div id="stage" aria-label="GPT-Live voice stage">
           <div class="stage-placeholder" id="stagePlaceholder">
             <div class="avatar-orbit" aria-hidden="true"><span class="avatar-monogram">A</span></div>
-            <h2>Ready for the conversation.</h2>
-            <p>Start a live call to connect GPT‑Live, the SalesOS decision layer and your HeyGen avatar.</p>
+            <h2>Voice intelligence, before the avatar.</h2>
+            <p>GPT‑Live handles the natural voice conversation. SalesOS delegates commercial decisions to DeepSeek. HeyGen can be connected later without changing the sales brain.</p>
           </div>
           <div id="state" class="stage-status" aria-live="polite">System ready</div>
         </div>
@@ -60,7 +60,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/></svg>
             <span id="micLabel">Start mic</span>
           </button>
-          <button id="interrupt" class="btn btn-danger btn-icon">
+          <button id="interrupt" class="btn btn-danger btn-icon" title="Native GPT-Live supports natural barge-in; this manual control is used by the future avatar transport.">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 8h8v8H8z"/></svg>
             Pause response
           </button>
@@ -68,11 +68,11 @@
         </div>
       </div>
 
-      <section class="card composer" aria-label="Text input">
-        <div class="composer-top"><span>Text into the live room</span><span>Useful for rehearsal and testing</span></div>
-        <textarea id="prompt" aria-label="Message to buyer" placeholder="Type what the buyer says…">We already have two event partners in Monaco and we're happy with them. Why should we add you?</textarea>
+      <section class="card composer" aria-label="Text rehearsal">
+        <div class="composer-top"><span>Text rehearsal</span><span>Voice-first native mode uses the microphone</span></div>
+        <textarea id="prompt" aria-label="Message to buyer" placeholder="Text rehearsal is available in the legacy transport.">We already have two event partners in Monaco and we're happy with them. Why should we add you?</textarea>
         <div class="composer-footer">
-          <span class="composer-hint">Enter to send · Shift + Enter for a new line</span>
+          <span class="composer-hint">For the native GPT‑Live test, speak naturally and interrupt whenever you want.</span>
           <button id="send" class="btn btn-primary">Send message</button>
         </div>
       </section>
@@ -84,7 +84,7 @@
         </article>
         <article class="card transcript-card">
           <div class="speaker agent">Arcana</div>
-          <div id="assistantTranscript" class="transcript empty">The salesperson's final spoken response will appear here.</div>
+          <div id="assistantTranscript" class="transcript empty">The salesperson's spoken response will appear here.</div>
         </article>
       </section>
     </section>
@@ -114,21 +114,21 @@
         <div class="card-header">
           <div><div class="card-title">Evidence in play</div><div class="card-kicker">Only server-owned commercial truth</div></div>
         </div>
-        <div id="salesVisual" class="sales-visual visual-empty">Recommendations, pricing, comparisons and proof will appear here when SalesOS uses them.</div>
+        <div id="salesVisual" class="sales-visual visual-empty">Recommendations, commercial structures and proof appear here only when SalesOS selects verified evidence.</div>
       </section>
 
       <details class="card system-card">
         <summary><span>System health</span><span>Realtime proof</span></summary>
         <div class="metrics">
-          <div class="metric"><strong id="audioChunks">0</strong><span>avatar audio chunks</span></div>
+          <div class="metric"><strong id="audioChunks">0</strong><span>server audio chunks</span></div>
           <div class="metric"><strong id="delegations">0</strong><span>sales decisions</span></div>
-          <div class="metric"><strong id="toolCalls">0</strong><span>tool calls</span></div>
+          <div class="metric"><strong id="toolCalls">0</strong><span>delegations / tools</span></div>
           <div class="metric"><strong id="visualArtifacts">0</strong><span>evidence artifacts</span></div>
           <div class="metric"><strong id="interruptions">0</strong><span>interruptions</span></div>
         </div>
       </details>
 
-      <div class="privacy-note">SalesOS stores structured state, strategy, outcomes and selected realtime events. Raw PCM and hidden chain-of-thought are excluded from the learning stream.</div>
+      <div class="privacy-note">The OpenAI and DeepSeek API keys stay on the server. SalesOS stores structured state, strategy, outcomes and selected transcript events; raw microphone audio and hidden chain-of-thought are excluded from the learning stream.</div>
     </aside>
   </main>
 </div>
