@@ -1,4 +1,5 @@
 import { applyStatePatch } from '../domain/sales-state.mjs'
+import { extractDeterministicSalesFacts } from '../domain/fact-extractor.mjs'
 import { selectSalesOutline } from '../strategy/doga.mjs'
 
 function clean(value) {
@@ -70,13 +71,22 @@ export class SalesBackendAdapter {
     // original foundation tests. Qwen's actual contract uses `id`.
     const taskId = clean(work?.id ?? work?.taskId)
     const ownerId = clean(work?.ownerId)
-    const input = clean(
+    const instruction = clean(
       work?.instruction
       || work?.objective
       || work?.originalRequest
       || work?.message,
     )
-    if (!taskId || !ownerId || !input) {
+    // Structured Gateway fields are trusted adapter context. For deterministic
+    // buyer-fact extraction prefer the original objective/message over any
+    // backend-oriented instruction synthesized by an orchestration layer.
+    const buyerTurn = clean(
+      work?.objective
+      || work?.originalRequest
+      || work?.message
+      || instruction,
+    )
+    if (!taskId || !ownerId || !instruction) {
       throw new Error('BackendPort submit requires task id, owner and input')
     }
     if (this.#active.has(taskId)) {
@@ -86,11 +96,7 @@ export class SalesBackendAdapter {
     await this.start()
 
     const controller = new AbortController()
-    const record = {
-      taskId,
-      ownerId,
-      controller,
-    }
+    const record = { taskId, ownerId, controller }
     this.#active.set(taskId, record)
 
     let detachExternalAbort = null
@@ -130,12 +136,17 @@ export class SalesBackendAdapter {
     try {
       const sessionId = clean(work?.sessionId) || ownerId
       const state = this.sessions.ensure(sessionId)
-      const strategy = selectSalesOutline(state, input)
+      const deterministicPatch = extractDeterministicSalesFacts(buyerTurn)
+      const observedState = applyStatePatch(state, deterministicPatch, {
+        incrementTurn: false,
+      })
+      const strategy = selectSalesOutline(observedState, buyerTurn)
 
       const decision = await Promise.race([
         this.reasoner.decide({
-          state,
-          turn: input,
+          state: observedState,
+          turn: buyerTurn,
+          backendInstruction: instruction,
           strategy,
           catalog: this.catalog,
           signal: controller.signal,
@@ -147,7 +158,12 @@ export class SalesBackendAdapter {
         throw controller.signal.reason || cancellationError(taskId)
       }
 
-      const nextState = applyStatePatch(state, decision.statePatch ?? {})
+      // Model-proposed state is applied first; explicit facts found in the
+      // buyer's own turn are then re-applied so a model cannot overwrite them.
+      const reasonedState = applyStatePatch(state, decision.statePatch ?? {})
+      const nextState = applyStatePatch(reasonedState, deterministicPatch, {
+        incrementTurn: false,
+      })
       this.sessions.set(sessionId, nextState)
 
       this.#emit({
@@ -175,8 +191,6 @@ export class SalesBackendAdapter {
         })
       }
 
-      // BackendPort final outcomes intentionally contain only frontend-safe
-      // factual content and artifacts. Internal sales state stays server-side.
       return {
         content: clean(decision.content),
         artifacts,
@@ -195,12 +209,10 @@ export class SalesBackendAdapter {
         status: this.#started && !this.#closed ? 'ready' : 'stopped',
       }
     }
-
     const record = this.#active.get(id)
     if (!record || (ownerId && clean(ownerId) !== record.ownerId)) {
       return { taskId: id, state: 'not_found' }
     }
-
     return {
       taskId: id,
       state: 'working',
