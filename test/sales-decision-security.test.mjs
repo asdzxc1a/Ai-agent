@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  canonicalizeSalesVisual,
   InMemorySalesSessionStore,
   ProductCatalog,
   SalesBackendAdapter,
@@ -71,6 +72,53 @@ test('model cannot overwrite protected sales state or invent product-card facts'
   assert.notEqual(visual.props.name, 'Fake Enterprise')
   assert.equal(visual.props.priceMonthly, null)
   assert.doesNotMatch(visual.props.features.join(' '), /discount/i)
+})
+
+test('pricing visual ignores model-authored price and hydrates catalog truth', () => {
+  const catalog = new ProductCatalog()
+  const visual = canonicalizeSalesVisual({
+    type: 'pricing',
+    productId: 'pro',
+    props: {
+      productId: 'pro',
+      priceMonthly: 1,
+      discountPercent: 99,
+      name: 'Almost Free Pro',
+    },
+  }, catalog)
+
+  assert.equal(visual.type, 'pricing')
+  assert.deepEqual(visual.props.product, catalog.get('pro'))
+  assert.equal(visual.props.product.priceMonthly, 299)
+  assert.equal('discountPercent' in visual.props, false)
+})
+
+test('comparison visual accepts only valid product IDs and hydrates canonical products', () => {
+  const catalog = new ProductCatalog()
+  const visual = canonicalizeSalesVisual({
+    type: 'comparison',
+    productIds: ['starter', 'enterprise', 'invented-plan', 'starter'],
+    props: {
+      products: [{ id: 'starter', priceMonthly: 1 }],
+      headline: 'Fake comparison',
+    },
+  }, catalog)
+
+  assert.equal(visual.type, 'comparison')
+  assert.deepEqual(
+    visual.props.products.map(product => product.id),
+    ['starter', 'enterprise'],
+  )
+  assert.equal(visual.props.products[0].priceMonthly, 99)
+  assert.equal(visual.props.products[1].priceMonthly, null)
+})
+
+test('comparison visual is dropped when fewer than two valid products remain', () => {
+  const catalog = new ProductCatalog()
+  assert.equal(canonicalizeSalesVisual({
+    type: 'comparison',
+    productIds: ['enterprise', 'invented-plan'],
+  }, catalog), null)
 })
 
 test('unknown model-authored visual types are dropped until a structured hydrator exists', async () => {
