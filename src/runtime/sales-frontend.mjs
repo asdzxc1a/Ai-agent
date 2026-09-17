@@ -3,7 +3,7 @@ export const SALES_SPAWN_THINKING_DESCRIPTION = [
   'Delegate product or plan recommendations, feature/integration/security claims, pricing or discount questions, competitor comparisons, qualification, objections, ROI, case studies, implementation fit, purchase timing, and concrete next-step/deal actions.',
   'Also delegate when the buyer states high-confidence deal facts such as team size, required integrations, budget/timeline constraints, current solution, or objections so the server-owned sales state is updated.',
   'Do not delegate greetings, casual acknowledgements, simple requests to repeat or clarify what was just said, or natural delivery of a backend result that has already arrived.',
-  'The backend owns commercial truth and deal state. Never invent pricing, discounts, product capabilities, customer facts, case-study claims, ROI numbers, or competitor claims in the realtime frontend.',
+  'The backend owns commercial truth and deal state. Never invent pricing, discounts, product capabilities, customer facts, case-study claims, ROI numbers, competitor claims, confirmations, or action execution results in the realtime frontend.',
 ].join(' ')
 
 export function liveSalesPreflight(env = process.env) {
@@ -30,6 +30,13 @@ export function liveSalesPreflight(env = process.env) {
     warnings.push('QWEN_AUDIO_AGENT_IDENTITY_MODE=personal shares one Qwen voice owner; use browser mode for concurrent website buyers')
   } else if (!hasPersistentIdentitySecret) {
     warnings.push('QWEN_AUDIO_AGENT_AUTH_SECRET is unset; the launcher will generate a process-local signing secret (fine for local/single-process tests, not multi-instance production)')
+  }
+
+  const actionExecutionMode = String(env.SALES_ACTION_EXECUTION_MODE || 'disabled').trim().toLowerCase()
+  if (!['disabled', 'sandbox'].includes(actionExecutionMode)) {
+    errors.push(`Unsupported SALES_ACTION_EXECUTION_MODE: ${actionExecutionMode}`)
+  } else if (actionExecutionMode === 'sandbox') {
+    warnings.push('SALES_ACTION_EXECUTION_MODE=sandbox executes only local fake action tools. It must not be mistaken for real calendar/CRM/email completion.')
   }
 
   const hasConfiguredProducts = Boolean(String(env.SALES_PRODUCTS_JSON || env.SALES_PRODUCTS_PATH || '').trim())
@@ -61,6 +68,7 @@ export function liveSalesPreflight(env = process.env) {
     configuration: {
       provider: provider || null,
       reasonerMode,
+      actionExecutionMode,
       identityMode,
       hasPersistentIdentitySecret,
       hasConfiguredProducts,
