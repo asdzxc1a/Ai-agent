@@ -119,18 +119,50 @@ function canonicalComparison(rawVisual, catalog) {
   }
 }
 
-export function canonicalizeSalesVisual(rawVisual, catalog) {
+function canonicalCaseStudy(rawVisual, caseStudies) {
+  if (!caseStudies?.get) return null
+  const props = visualProps(rawVisual)
+  const caseStudyId = cleanText(
+    props.caseStudyId ?? props.id ?? rawVisual?.caseStudyId,
+    120,
+  )
+  if (!caseStudyId) return null
+  const caseStudy = caseStudies.get(caseStudyId)
+  if (!caseStudy) return null
+  return {
+    type: 'case_study',
+    props: { caseStudy },
+  }
+}
+
+function canonicalRoi(rawVisual, { catalog, roiCalculator, state } = {}) {
+  if (!catalog?.get || !roiCalculator?.calculate || !state) return null
+  const productId = requestedProductId(rawVisual)
+  if (!productId) return null
+  const product = catalog.get(productId)
+  if (!product) return null
+  const estimate = roiCalculator.calculate({ state, product })
+  if (!estimate) return null
+  return {
+    type: 'roi',
+    props: estimate,
+  }
+}
+
+export function canonicalizeSalesVisual(rawVisual, resources = {}) {
   if (!rawVisual || typeof rawVisual !== 'object' || Array.isArray(rawVisual)) return null
   const type = cleanText(rawVisual.type, 80)
-  if (type === 'product_card') return canonicalProductCard(rawVisual, catalog)
-  if (type === 'pricing') return canonicalPricing(rawVisual, catalog)
-  if (type === 'comparison') return canonicalComparison(rawVisual, catalog)
+  if (type === 'product_card') return canonicalProductCard(rawVisual, resources.catalog)
+  if (type === 'pricing') return canonicalPricing(rawVisual, resources.catalog)
+  if (type === 'comparison') return canonicalComparison(rawVisual, resources.catalog)
+  if (type === 'case_study') return canonicalCaseStudy(rawVisual, resources.caseStudies)
+  if (type === 'roi') return canonicalRoi(rawVisual, resources)
   // Future visual types need their own structured data source/hydrator before
   // becoming frontend-authoritative. Unknown model-authored visuals are dropped.
   return null
 }
 
-export function canonicalizeSalesDecision(raw = {}, { catalog } = {}) {
+export function canonicalizeSalesDecision(raw = {}, resources = {}) {
   const decision = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
   const confidenceValue = Number(decision.confidence)
   const confidence = Number.isFinite(confidenceValue)
@@ -139,7 +171,7 @@ export function canonicalizeSalesDecision(raw = {}, { catalog } = {}) {
   return {
     statePatch: sanitizeSalesStatePatch(decision.statePatch),
     content: cleanText(decision.content, 4_000) || '',
-    visual: canonicalizeSalesVisual(decision.visual, catalog),
+    visual: canonicalizeSalesVisual(decision.visual, resources),
     confidence,
   }
 }
