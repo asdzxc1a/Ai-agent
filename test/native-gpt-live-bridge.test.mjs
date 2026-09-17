@@ -35,12 +35,16 @@ test('native GPT-Live creates WebRTC session and routes client delegation throug
   FakeSocket.instances = []
   const fetchCalls = []
   const backendCalls = []
+  const realtimeEvents = []
   const bridge = new NativeGptLiveBridge({
     backend: {
       async submit(work) {
         backendCalls.push(work)
         return { content: 'Position us as a complementary Monaco resource and ask where current coverage becomes difficult.', artifacts: [] }
       },
+    },
+    harness: {
+      recordRealtimeEvent(input) { realtimeEvents.push(input) },
     },
     openaiApiKey: 'openai-test-key',
     salesSessionId: 'sales-live-test',
@@ -64,6 +68,7 @@ test('native GPT-Live creates WebRTC session and routes client delegation throug
   assert.equal(fetchCalls[0].url, 'https://api.openai.com/v1/live/sessions')
   assert.equal(fetchCalls[0].body.session.model, 'gpt-live-1')
   assert.equal(fetchCalls[0].body.session.delegation.type, 'client')
+  assert.deepEqual(fetchCalls[0].body.session.client.data_channel.allowed_client_events, [])
   assert.equal(fetchCalls[0].body.transport.sdp, 'offer-sdp')
   assert.equal(fetchCalls[0].options.headers.authorization, 'Bearer openai-test-key')
 
@@ -89,9 +94,25 @@ test('native GPT-Live creates WebRTC session and routes client delegation throug
   assert.equal(backendCalls[0].objective, 'We already have partners in Monaco.')
   assert.ok(socket.sent.some(event => event.type === 'session.thinking.append' && event.delegation_id === 'dlg_1'))
   assert.ok(socket.sent.some(event => event.type === 'session.commentary.append' && event.delegation_id === 'dlg_1'))
+  assert.ok(realtimeEvents.some(item => item.event.role === 'user' && item.event.content === 'We already have partners in Monaco.'))
+
+  socket.emit('message', JSON.stringify({
+    type: 'session.output_transcript.delta',
+    delta: "I wouldn't suggest replacing anyone you're happy with.",
+    start_ms: 1000,
+    end_ms: 1800,
+  }))
+  socket.emit('message', JSON.stringify({
+    type: 'session.delegation.created',
+    delegation: { id: 'dlg_2', target: 'client', type: 'delegation' },
+    offset_ms: 2000,
+  }))
+  await new Promise(resolve => setTimeout(resolve, 60))
+  assert.ok(realtimeEvents.some(item => item.event.role === 'assistant' && /wouldn't suggest replacing/.test(item.event.content)))
 
   const status = bridge.getStatus()
-  assert.equal(status.metrics.delegations, 1)
+  assert.equal(status.metrics.delegations, 2)
   assert.equal(status.metrics.lastUserTranscript, 'We already have partners in Monaco.')
+  assert.match(status.metrics.lastAssistantTranscript, /wouldn't suggest replacing/)
   await bridge.close()
 })
