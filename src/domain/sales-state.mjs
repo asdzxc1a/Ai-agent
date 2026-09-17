@@ -35,7 +35,7 @@ export function createSalesState(seed = {}) {
 
 function unique(values) { return [...new Set(values.filter(Boolean))] }
 
-export function applyStatePatch(state, patch = {}) {
+export function applyStatePatch(state, patch = {}, { incrementTurn = true } = {}) {
   if (patch.conversationStage && !SALES_STAGES.includes(patch.conversationStage)) {
     throw new Error(`Invalid sales stage: ${patch.conversationStage}`)
   }
@@ -48,7 +48,7 @@ export function applyStatePatch(state, patch = {}) {
     if (key in patch) next[key] = patch[key]
   }
   if (patch.consent) next.consent = { ...next.consent, ...patch.consent }
-  next.turnCount = state.turnCount + 1
+  next.turnCount = state.turnCount + (incrementTurn ? 1 : 0)
   next.updatedAt = new Date().toISOString()
   return next
 }
