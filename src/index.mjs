@@ -1,4 +1,5 @@
 export { createSalesState, applyStatePatch, SALES_STAGES } from './domain/sales-state.mjs'
+export { extractDeterministicSalesFacts } from './domain/fact-extractor.mjs'
 export { InMemorySalesSessionStore } from './runtime/session-store.mjs'
 export { ProductCatalog } from './tools/product-catalog.mjs'
 export { selectSalesOutline } from './strategy/doga.mjs'
