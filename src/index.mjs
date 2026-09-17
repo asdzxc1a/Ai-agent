@@ -23,6 +23,10 @@ export {
   createSandboxActionToolRegistry,
   sanitizeActionReceipt,
 } from './actions/action-executor.mjs'
+export {
+  SALES_ACTION_EXECUTION_MODES,
+  createActionExecutionRuntime,
+} from './actions/action-execution-runtime.mjs'
 export { InMemoryTrajectoryStore } from './harness/trajectory-store.mjs'
 export { InMemoryExperienceBank } from './harness/experience-bank.mjs'
 export { SalesOSHarness } from './harness/sales-os-harness.mjs'
