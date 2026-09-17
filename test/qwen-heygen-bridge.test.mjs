@@ -29,11 +29,12 @@ class FakeSink {
   async close() { this.closed = true }
 }
 
-test('QwenHeyGenBridge tees Qwen audio to HeyGen and sends playback receipts', async () => {
+test('QwenHeyGenBridge tees Qwen audio to HeyGen, routes text, and exposes safe metrics', async () => {
   const stopped = []
   const liveAvatarClient = {
     startSession: async () => ({
       sessionId: 'live-1',
+      avatarId: 'avatar-1',
       livekitUrl: 'wss://livekit.example',
       livekitClientToken: 'token',
       wsUrl: 'wss://media.example',
@@ -60,14 +61,31 @@ test('QwenHeyGenBridge tees Qwen audio to HeyGen and sends playback receipts', a
   assert.ok(gatewayClient.sent.some(event => (
     event.type === GatewayClientProtocolEvent.INPUT_AUDIO_APPEND && event.audio === 'mic-audio'
   )))
+  assert.equal(bridge.sendText('Which plan fits 45 sales reps with SSO?'), true)
+  assert.ok(gatewayClient.sent.some(event => (
+    event.type === GatewayClientEvent.INPUT_MESSAGE && /45 sales reps/.test(event.text)
+  )))
 
+  gatewayClient.emit({ type: GatewayServerEvent.RESPONSE_STARTED, responseId: 'response-1' })
+  gatewayClient.emit({
+    type: GatewayServerEvent.TOOL_CALL,
+    callId: 'call-1',
+    name: 'spawn_thinking',
+    surface: 'frontend',
+    status: 'completed',
+  })
+  gatewayClient.emit({
+    type: GatewayServerEvent.TRANSCRIPT_FINAL,
+    role: 'assistant',
+    content: 'Enterprise is the fit because SSO is required.',
+  })
   gatewayClient.emit({
     type: GatewayServerEvent.AUDIO_DELTA,
     responseId: 'response-1',
     sampleRate: 24000,
-    audio: 'assistant-audio',
+    audio: Buffer.from('pcm').toString('base64'),
   })
-  assert.deepEqual(sink.writes, ['assistant-audio'])
+  assert.equal(sink.writes.length, 1)
   assert.ok(gatewayClient.sent.some(event => (
     event.type === GatewayClientEvent.PLAYBACK_STARTED && event.responseId === 'response-1'
   )))
@@ -79,6 +97,18 @@ test('QwenHeyGenBridge tees Qwen audio to HeyGen and sends playback receipts', a
 
   gatewayClient.emit({ type: GatewayServerEvent.RESPONSE_INTERRUPTED, responseId: 'response-2' })
   assert.equal(sink.interrupts, 1)
+
+  const status = bridge.getStatus()
+  assert.equal(status.started, true)
+  assert.equal(status.avatarId, 'avatar-1')
+  assert.equal(status.metrics.responsesStarted, 1)
+  assert.equal(status.metrics.audioChunks, 1)
+  assert.equal(status.metrics.audioBytes, 3)
+  assert.equal(status.metrics.spawnThinkingCalls, 1)
+  assert.equal(status.metrics.toolCalls, 1)
+  assert.equal(status.metrics.assistantTranscriptFinals, 1)
+  assert.match(status.metrics.lastAssistantTranscript, /Enterprise/)
+  assert.equal(status.metrics.interruptions, 1)
 
   await bridge.close()
   assert.equal(gatewayClient.stopped, true)
@@ -104,5 +134,6 @@ test('QwenHeyGenBridge rejects non-24k output instead of desynchronizing HeyGen'
   gatewayClient.emit({ type: GatewayServerEvent.AUDIO_DELTA, responseId: 'r', sampleRate: 16000, audio: 'bad' })
   assert.equal(sink.writes.length, 0)
   assert.match(errors[0].message, /24 kHz/)
+  assert.equal(bridge.getStatus().metrics.audioChunks, 0)
   await bridge.close()
 })
