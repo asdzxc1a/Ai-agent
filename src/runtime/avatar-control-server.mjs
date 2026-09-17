@@ -10,6 +10,8 @@ const STATIC_FILES = new Map([
   ['/app.js', { path: resolve(ROOT, 'web/app.js'), type: 'text/javascript; charset=utf-8' }],
   ['/mic.js', { path: resolve(ROOT, 'web/mic.js'), type: 'text/javascript; charset=utf-8' }],
   ['/sales-visual.js', { path: resolve(ROOT, 'web/sales-visual.js'), type: 'text/javascript; charset=utf-8' }],
+  ['/sales-intelligence.js', { path: resolve(ROOT, 'web/sales-intelligence.js'), type: 'text/javascript; charset=utf-8' }],
+  ['/styles.css', { path: resolve(ROOT, 'web/styles.css'), type: 'text/css; charset=utf-8' }],
   ['/vendor/livekit-client.esm.mjs', {
     path: resolve(ROOT, 'node_modules/livekit-client/dist/livekit-client.esm.mjs'),
     type: 'text/javascript; charset=utf-8',
@@ -57,6 +59,7 @@ export function createAvatarControlServer({
   manager,
   host = '127.0.0.1',
   port = 8788,
+  configuration = {},
   log = () => {},
 } = {}) {
   if (!manager) throw new TypeError('manager is required')
@@ -68,7 +71,11 @@ export function createAvatarControlServer({
       const staticEntry = req.method === 'GET' ? STATIC_FILES.get(url.pathname) : null
       if (staticEntry) return await writeStatic(res, staticEntry)
       if (req.method === 'GET' && url.pathname === '/health') {
-        return writeJson(res, 200, { ok: true, sessions: manager.sessions?.size ?? null })
+        return writeJson(res, 200, {
+          ok: true,
+          sessions: manager.sessions?.size ?? null,
+          configuration: typeof configuration === 'function' ? configuration() : configuration,
+        })
       }
       if (req.method === 'POST' && url.pathname === '/sessions') {
         const session = await manager.start()
