@@ -1,3 +1,5 @@
+import { SalesBackendWorkRuntime } from './sales-backend-runtime.mjs'
+
 /**
  * Public integration seam for Qwen Audio Agent.
  *
@@ -16,9 +18,12 @@ export async function createQwenSalesGateway({
   const agent = sdk.createBackendAgentHost(backend, {
     name: 'Sales backend',
   })
+  const backendRuntime = applicationOptions.backendRuntime
+    || new SalesBackendWorkRuntime({ backend: agent })
 
   return gateway.createGatewayApplication({
     agent,
     ...applicationOptions,
+    backendRuntime,
   })
 }
