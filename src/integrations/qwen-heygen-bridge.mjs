@@ -185,6 +185,13 @@ export class QwenHeyGenBridge {
     })
   }
 
+  sendText(text) {
+    if (!this.client) throw new Error('QwenHeyGenBridge is not started')
+    const content = String(text || '').trim()
+    if (!content) return false
+    return this.client.send({ type: GatewayClientEvent.TEXT_MESSAGE, text: content })
+  }
+
   interrupt() {
     if (!this.client) return false
     this.audioSink?.interrupt()
