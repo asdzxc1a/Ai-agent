@@ -3,110 +3,136 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sales Avatar Test Console</title>
-  <style>
-    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background:#0c0d10; color:#f4f4f5; }
-    * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; background:radial-gradient(circle at 20% 0%,#1c2333 0,#0c0d10 38%); }
-    main { width:min(1180px,calc(100% - 32px)); margin:0 auto; padding:28px 0 48px; }
-    header { display:flex; gap:18px; align-items:end; justify-content:space-between; margin-bottom:20px; }
-    h1 { font-size:clamp(24px,4vw,42px); line-height:1; margin:0; letter-spacing:-.04em; }
-    .sub { color:#a1a1aa; max-width:680px; margin-top:10px; }
-    .grid { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(300px,.8fr); gap:18px; }
-    .card { background:rgba(24,24,27,.85); border:1px solid #2f3036; border-radius:18px; overflow:hidden; box-shadow:0 18px 60px rgba(0,0,0,.22); }
-    #stage { min-height:520px; display:grid; place-items:center; position:relative; background:linear-gradient(150deg,#151820,#090a0c); }
-    #stage::before { content:'LiveAvatar video'; color:#52525b; font-size:14px; position:absolute; }
-    .avatar-video { width:100%; height:100%; min-height:520px; object-fit:cover; position:relative; z-index:2; background:#09090b; }
-    .avatar-audio { display:none; }
-    .panel { padding:18px; }
-    .stack { display:grid; gap:14px; }
-    .row { display:flex; gap:10px; flex-wrap:wrap; }
-    button { border:0; border-radius:11px; padding:11px 14px; font:inherit; font-weight:650; cursor:pointer; background:#f4f4f5; color:#111113; }
-    button.secondary { background:#292a31; color:#f4f4f5; }
-    button.danger { background:#4a1f25; color:#ffd8dc; }
-    button:disabled { opacity:.38; cursor:not-allowed; }
-    textarea { width:100%; min-height:92px; resize:vertical; border-radius:12px; border:1px solid #34353d; background:#111216; color:#f4f4f5; padding:12px; font:inherit; outline:none; }
-    textarea:focus { border-color:#70717c; }
-    .label { font-size:12px; font-weight:700; color:#8c8d97; text-transform:uppercase; letter-spacing:.08em; margin-bottom:7px; }
-    #state { padding:10px 12px; border-radius:10px; background:#17181d; color:#b8b9c1; font-size:13px; }
-    #state[data-kind='ok'] { color:#b7f7d0; background:#11251a; }
-    #state[data-kind='warn'] { color:#ffe3a6; background:#2b2110; }
-    #state[data-kind='error'] { color:#ffc1c6; background:#31151a; }
-    .metrics { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-    .metric { background:#121318; border:1px solid #292a31; border-radius:12px; padding:12px; }
-    .metric strong { display:block; font-size:24px; }
-    .metric span { color:#858690; font-size:12px; }
-    .transcript { min-height:62px; padding:11px 12px; border-radius:11px; background:#101115; border:1px solid #282930; color:#d4d4d8; font-size:14px; white-space:pre-wrap; }
-    .meter { height:8px; border-radius:999px; background:#25262d; overflow:hidden; }
-    #meterBar { height:100%; width:2%; background:#d4d4d8; transition:width 70ms linear; }
-    .note { color:#777985; font-size:12px; line-height:1.5; }
-    .sales-visual { min-height:112px; border:1px solid #34353d; background:linear-gradient(145deg,#141821,#0f1014); border-radius:14px; padding:14px; }
-    .visual-empty { color:#656771; font-size:13px; display:grid; place-items:center; }
-    .product-name { font-size:20px; font-weight:750; letter-spacing:-.02em; }
-    .product-price { margin-top:5px; color:#b7f7d0; font-size:14px; }
-    .product-features { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
-    .feature-pill { font-size:12px; border:1px solid #343b47; color:#cbd5e1; background:#151a22; padding:5px 8px; border-radius:999px; }
-    .visual-type { color:#777985; font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:5px; }
-    .visual-json { color:#c5c7ce; font:12px/1.5 ui-monospace, monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
-    @media (max-width:850px) { .grid{grid-template-columns:1fr;} #stage,.avatar-video{min-height:360px;} header{align-items:start;flex-direction:column;} }
-  </style>
+  <meta name="theme-color" content="#09090a" />
+  <meta name="description" content="Arcana SalesOS — realtime sales intelligence for high-trust concierge conversations." />
+  <title>Arcana SalesOS</title>
+  <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-<main>
-  <header>
-    <div>
-      <h1>Sales Avatar Test Console</h1>
-      <div class="sub">Local validation harness for Qwen Audio Agent → sales backend → GPT‑Live → HeyGen LiveAvatar. This is intentionally not the final sales UI.</div>
-    </div>
-    <div class="row">
-      <button id="start">Start paid session</button>
-      <button id="stop" class="secondary">Stop</button>
+<div class="ambient ambient-one" aria-hidden="true"></div>
+<div class="ambient ambient-two" aria-hidden="true"></div>
+
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Arcana SalesOS home">
+      <span class="brand-mark" aria-hidden="true">A</span>
+      <span class="brand-copy"><strong>ARCANA</strong><span>SalesOS</span></span>
+    </a>
+    <div class="topbar-actions">
+      <div class="system-pill" id="backendStatus" data-kind="" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="backendStatusText">Checking system</span>
+      </div>
+      <button id="start" class="btn btn-primary">Start live call</button>
+      <button id="stop" class="btn btn-ghost">End</button>
     </div>
   </header>
 
-  <section class="grid">
-    <div class="card" id="stage"></div>
-    <aside class="stack">
-      <div class="card panel stack">
-        <div id="state">Stopped</div>
-        <div>
-          <div class="label">Text test</div>
-          <textarea id="prompt">We have 45 sales reps and need Salesforce and SSO. Which plan fits us and why?</textarea>
+  <section class="mission" aria-labelledby="missionTitle">
+    <div>
+      <span class="eyebrow">Active mission · Dubai concierge partnership</span>
+      <h1 id="missionTitle">Earn the next relevant brief.</h1>
+      <p>Position Arcana as the trusted European production arm for Monaco, London, Paris and high-complexity international events — with confidence, discretion and zero unnecessary pressure.</p>
+    </div>
+    <div class="mission-facts" aria-label="Mission facts">
+      <div class="mission-fact"><span>Primary outcome</span><strong>Receive the next event brief</strong></div>
+      <div class="mission-fact"><span>Conversation style</span><strong>Luxury · warm · precise</strong></div>
+    </div>
+  </section>
+
+  <main class="workspace">
+    <section class="column" aria-label="Live conversation">
+      <div class="card stage-card">
+        <div class="stage-toolbar">
+          <div class="live-chip" id="liveChip" data-live="false"><span class="status-dot" aria-hidden="true"></span><span id="liveLabel">Ready</span></div>
+          <div class="timer-chip" id="callTimer">00:00</div>
         </div>
-        <div class="row">
-          <button id="send">Send</button>
-          <button id="mic" class="secondary">Start mic</button>
-          <button id="interrupt" class="danger">Interrupt</button>
+        <div id="stage" aria-label="LiveAvatar stage">
+          <div class="stage-placeholder" id="stagePlaceholder">
+            <div class="avatar-orbit" aria-hidden="true"><span class="avatar-monogram">A</span></div>
+            <h2>Ready for the conversation.</h2>
+            <p>Start a live call to connect GPT‑Live, the SalesOS decision layer and your HeyGen avatar.</p>
+          </div>
+          <div id="state" class="stage-status" aria-live="polite">System ready</div>
         </div>
-        <div class="meter"><div id="meterBar"></div></div>
-        <div class="note">Mic audio is downsampled to mono PCM16 at 24 kHz and sent directly to the server-side Qwen voice session. Echo cancellation stays enabled because the avatar speaks from the same device.</div>
+        <div class="call-bar">
+          <button id="mic" class="btn btn-ghost btn-icon" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/></svg>
+            <span id="micLabel">Start mic</span>
+          </button>
+          <button id="interrupt" class="btn btn-danger btn-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 8h8v8H8z"/></svg>
+            Pause response
+          </button>
+          <div class="level-meter" aria-label="Microphone input level"><div id="meterBar"></div></div>
+        </div>
       </div>
 
-      <div class="card panel stack">
-        <div class="label">Runtime proof</div>
+      <section class="card composer" aria-label="Text input">
+        <div class="composer-top"><span>Text into the live room</span><span>Useful for rehearsal and testing</span></div>
+        <textarea id="prompt" aria-label="Message to buyer" placeholder="Type what the buyer says…">We already have two event partners in Monaco and we're happy with them. Why should we add you?</textarea>
+        <div class="composer-footer">
+          <span class="composer-hint">Enter to send · Shift + Enter for a new line</span>
+          <button id="send" class="btn btn-primary">Send message</button>
+        </div>
+      </section>
+
+      <section class="transcript-grid" aria-label="Conversation transcript">
+        <article class="card transcript-card">
+          <div class="speaker">Buyer</div>
+          <div id="userTranscript" class="transcript empty">Waiting for the buyer…</div>
+        </article>
+        <article class="card transcript-card">
+          <div class="speaker agent">Arcana</div>
+          <div id="assistantTranscript" class="transcript empty">The salesperson's final spoken response will appear here.</div>
+        </article>
+      </section>
+    </section>
+
+    <aside class="column intelligence-column" aria-label="Sales intelligence">
+      <section class="card intelligence-card">
+        <div class="card-header">
+          <div><div class="card-title">Live sales intelligence</div><div class="card-kicker">Structured policy, not hidden reasoning</div></div>
+          <span class="os-badge">SalesOS</span>
+        </div>
+        <div class="intel-stats">
+          <div class="intel-stat"><span>Stage</span><strong id="intelStage">Connect</strong></div>
+          <div class="intel-stat"><span>Confidence</span><strong id="intelConfidence">—</strong></div>
+        </div>
+        <div class="intel-section">
+          <div class="intel-label">Next objective</div>
+          <div id="intelObjective">Listen first. Understand the buyer before making a recommendation.</div>
+        </div>
+        <div class="intel-section">
+          <div class="intel-label">Buyer signals</div>
+          <ul class="signal-list" id="buyerSignals"><li class="signal-empty">Signals appear as the conversation develops.</li></ul>
+        </div>
+        <div class="intel-section learning-line"><span>Learning events captured</span><strong id="learningEvents">0</strong></div>
+      </section>
+
+      <section class="card card-pad">
+        <div class="card-header">
+          <div><div class="card-title">Evidence in play</div><div class="card-kicker">Only server-owned commercial truth</div></div>
+        </div>
+        <div id="salesVisual" class="sales-visual visual-empty">Recommendations, pricing, comparisons and proof will appear here when SalesOS uses them.</div>
+      </section>
+
+      <details class="card system-card">
+        <summary><span>System health</span><span>Realtime proof</span></summary>
         <div class="metrics">
-          <div class="metric"><strong id="audioChunks">0</strong><span>HeyGen audio chunks</span></div>
-          <div class="metric"><strong id="delegations">0</strong><span>sales delegations</span></div>
+          <div class="metric"><strong id="audioChunks">0</strong><span>avatar audio chunks</span></div>
+          <div class="metric"><strong id="delegations">0</strong><span>sales decisions</span></div>
           <div class="metric"><strong id="toolCalls">0</strong><span>tool calls</span></div>
-          <div class="metric"><strong id="visualArtifacts">0</strong><span>sales visuals</span></div>
+          <div class="metric"><strong id="visualArtifacts">0</strong><span>evidence artifacts</span></div>
           <div class="metric"><strong id="interruptions">0</strong><span>interruptions</span></div>
         </div>
-        <div>
-          <div class="label">Sales visual</div>
-          <div id="salesVisual" class="sales-visual visual-empty">Waiting for a backend product/recommendation artifact…</div>
-        </div>
-        <div>
-          <div class="label">Buyer</div>
-          <div id="userTranscript" class="transcript">—</div>
-        </div>
-        <div>
-          <div class="label">Salesperson</div>
-          <div id="assistantTranscript" class="transcript">—</div>
-        </div>
-      </div>
+      </details>
+
+      <div class="privacy-note">SalesOS stores structured state, strategy, outcomes and selected realtime events. Raw PCM and hidden chain-of-thought are excluded from the learning stream.</div>
     </aside>
-  </section>
-</main>
+  </main>
+</div>
+
 <script type="module" src="/app.js"></script>
 </body>
 </html>
