@@ -4,9 +4,7 @@ import { createSalesVisualArtifact } from '../domain/sales-artifacts.mjs'
 import { canonicalizeSalesDecision } from '../domain/sales-decision.mjs'
 import { selectSalesOutline } from '../strategy/doga.mjs'
 
-function clean(value) {
-  return String(value || '').trim()
-}
+function clean(value) { return String(value || '').trim() }
 
 function cancellationError(taskId) {
   const error = new Error(`Task ${taskId} was cancelled`)
@@ -32,22 +30,27 @@ function caseStudyIdsFromVisual(visual) {
   return visual.props?.caseStudy?.id ? [visual.props.caseStudy.id] : []
 }
 
-/**
- * Protocol-neutral sales backend that implements Qwen Audio Agent's BackendPort.
- * Sales truth remains server-owned; the reasoner only proposes decisions.
- */
 export class SalesBackendAdapter {
   #started = false
   #closed = false
   #active = new Map()
   #subscribers = new Set()
 
-  constructor({ reasoner, sessions, catalog, caseStudies = null, roiCalculator = null, harness = null }) {
+  constructor({
+    reasoner,
+    sessions,
+    catalog,
+    caseStudies = null,
+    roiCalculator = null,
+    actionProposals = null,
+    harness = null,
+  }) {
     this.reasoner = reasoner
     this.sessions = sessions
     this.catalog = catalog
     this.caseStudies = caseStudies
     this.roiCalculator = roiCalculator
+    this.actionProposals = actionProposals
     this.harness = harness
   }
 
@@ -57,12 +60,7 @@ export class SalesBackendAdapter {
       enabled: true,
       protocol: 'sales-backend',
       label: 'Sales Backend',
-      capabilities: {
-        cancel: true,
-        authorization: false,
-        interactiveInput: false,
-        taskUpdates: 'activity',
-      },
+      capabilities: { cancel: true, authorization: false, interactiveInput: false, taskUpdates: 'activity' },
     }
   }
 
@@ -73,16 +71,39 @@ export class SalesBackendAdapter {
   }
 
   async health() {
-    return {
-      ok: this.#started && !this.#closed,
-      status: this.#started && !this.#closed ? 'ready' : 'stopped',
-    }
+    return { ok: this.#started && !this.#closed, status: this.#started && !this.#closed ? 'ready' : 'stopped' }
   }
 
   #emit(event) {
     for (const listener of this.#subscribers) {
       try { listener(event) } catch {}
     }
+  }
+
+  #attachActionProposal(decision, { sessionId, taskId } = {}) {
+    if (decision?.visual?.type !== 'next_step' || !this.actionProposals?.create) return null
+    const props = decision.visual.props || {}
+    const proposal = this.actionProposals.create({
+      sessionId,
+      taskId,
+      kind: props.kind,
+      label: props.label,
+      description: props.description,
+    })
+    decision.visual = {
+      type: 'next_step',
+      props: {
+        kind: proposal.kind,
+        label: proposal.label,
+        description: proposal.description,
+        proposalId: proposal.id,
+        status: proposal.status,
+        requiresConfirmation: true,
+        executed: false,
+      },
+    }
+    this.harness?.recordActionLifecycle?.({ sessionId, type: 'sales.action.proposed', proposal })
+    return proposal
   }
 
   async submit(work, { signal } = {}) {
@@ -145,19 +166,17 @@ export class SalesBackendAdapter {
         roiCalculator: this.roiCalculator,
         state: observedState,
       })
+      const actionProposal = this.#attachActionProposal(decision, { sessionId, taskId })
 
       if (controller.signal.aborted) throw controller.signal.reason || cancellationError(taskId)
 
       const reasonedState = applyStatePatch(state, decision.statePatch ?? {})
       const nextState = applyStatePatch(reasonedState, deterministicPatch, { incrementTurn: false })
       const shownProductIds = productIdsFromVisual(decision.visual)
-      if (shownProductIds.length) {
-        nextState.productsShown = [...new Set([...(nextState.productsShown || []), ...shownProductIds])]
-      }
+      if (shownProductIds.length) nextState.productsShown = [...new Set([...(nextState.productsShown || []), ...shownProductIds])]
       const shownCaseStudyIds = caseStudyIdsFromVisual(decision.visual)
-      if (shownCaseStudyIds.length) {
-        nextState.caseStudiesShown = [...new Set([...(nextState.caseStudiesShown || []), ...shownCaseStudyIds])]
-      }
+      if (shownCaseStudyIds.length) nextState.caseStudiesShown = [...new Set([...(nextState.caseStudiesShown || []), ...shownCaseStudyIds])]
+      if (actionProposal) nextState.nextStep = actionProposal.kind
       this.sessions.set(sessionId, nextState)
 
       this.#emit({ type: 'backend.activity', taskId, ownerId, activity: { id: 'sales-decision', kind: 'plan', status: 'completed', label: 'Sales decision' } })
