@@ -39,6 +39,7 @@ function actionEnvelope(proposal = {}) {
     cancelledAt: clean(proposal.cancelledAt) || null,
     executedAt: clean(proposal.executedAt) || null,
     failedAt: clean(proposal.failedAt) || null,
+    receipt: proposal.receipt ? clone(proposal.receipt) : null,
     error: clean(proposal.error) || null,
   }
 }
