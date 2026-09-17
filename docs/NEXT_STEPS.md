@@ -49,24 +49,23 @@ Live acceptance:
 - repeated barge-in tests must clear buffered avatar audio immediately.
 - reconnect test must recover without replaying abandoned speech.
 
-## Gate D — sales visuals 🟡 first artifact complete
+## Gate D — sales visuals 🟡 canonical product/pricing/comparison path implemented
 
 Completed:
 - standard Gateway artifact MIME contract: `application/vnd.sales-avatar.visual+json`.
-- `product_card` is re-hydrated from structured catalog truth before display.
-- the artifact survives the real Qwen backend runtime.
+- product, pricing, and comparison visuals are re-hydrated from structured catalog truth before display.
+- canonical sales artifacts survive the real Qwen backend runtime.
 - the headless bridge extracts/deduplicates visual artifacts.
-- browser test console renders `product_card` next to the avatar.
+- browser test console renders canonical visuals next to the avatar.
 - renderer escapes untrusted display strings.
+- products shown are tracked in server-owned sales state across canonical visual types.
 
 Next visual types:
-- `comparison`
-- `pricing`
 - `case_study`
 - `roi`
 - `next_step`
 
-Each new type must have its own structured hydrator/data source before it becomes frontend-authoritative. Unknown model-authored visual types are currently dropped by the backend.
+Each new type must have its own structured hydrator/data source before it becomes frontend-authoritative. Unknown model-authored visual types are dropped by the backend.
 
 ## Gate E — real hidden supervisor 🟡 adapter and security boundary complete
 
@@ -75,7 +74,7 @@ Completed before live model use:
 - model selection is environment/config only.
 - canonical decision layer strips model authority over lead/account IDs, consent, session identity, and transaction state.
 - deterministic buyer facts override conflicting reasoner proposals.
-- `product_card` pricing/features/name are rebuilt from structured catalog truth, so a model cannot invent them.
+- product/pricing/comparison facts are rebuilt from structured catalog truth, so a model cannot invent them.
 
 Live-model acceptance:
 1. Start with a low-cost hosted supervisor after Gate B/C transport passes.
@@ -112,10 +111,58 @@ Then add writes behind explicit user confirmation:
 
 Use sandbox/test CRM before production credentials.
 
-## Gate H — evaluation loop
+## Gate H — SalesOS learning/evaluation loop 🟡 harness complete, evaluator next
 
-Once live calls work:
-- add SalesLLM / CustomerLM simulation harness.
-- every production failure becomes a permanent regression case.
-- score state extraction, tool correctness, factuality, sales-stage progression, objection handling, next-step quality, latency, and conversion outcomes.
-- only fine-tune a Qwen-sized sales model after enough successful/failed trajectories exist to justify it.
+Implemented:
+- shared `SalesOSHarness` observes both backend policy decisions and selected realtime events without becoming another user-facing agent.
+- append-only `salesos.event.v1` trajectory records capture buyer turn, deterministic facts, observed state, DOGA strategy, canonical decision, resulting state, transcripts, tool calls, and interruptions.
+- raw PCM is excluded from the learning stream.
+- no hidden chain-of-thought is persisted.
+- `salesos.reward.v1` preserves separate reward components instead of collapsing everything to conversion.
+- factuality and compliance are hard gates: a failed trajectory is ineligible for training even if commercial outcome is good.
+- `salesos.experience.v1` supports explicit promotion of reusable state → strategy → outcome experiences.
+- `salesos.learning-bundle.v1` exports trajectory + rewards + promoted experiences per session.
+- learning bundles remain available after the LiveAvatar renderer is stopped.
+- local control endpoints can inspect a bundle and attach reward/experience annotations.
+
+Next evaluation work:
+1. Persist trajectories/rewards/experiences in Postgres/object storage instead of process memory.
+2. Add deterministic factuality/tool validators before model judges.
+3. Add SalesLLM / CustomerLM simulation environments and Dubai-concierge-specific SalesBench scenarios.
+4. Add evaluator calibration against human labels; do not trust an LLM judge until agreement is measured.
+5. Every production failure becomes a permanent regression case.
+6. Score state extraction, tool correctness, factuality, sales-stage progression, objection handling, information gain, next-step quality, latency, interruption handling, and eventual business outcome.
+
+## Gate I — fast experience-learning loop
+
+After Gate H scoring is calibrated:
+- branch difficult real states into multiple candidate strategies offline.
+- roll each branch forward against CustomerLM / simulator ensembles.
+- compare strategies within the same state instead of rewarding raw eloquence.
+- promote only gated high-value experiences into the Experience Bank.
+- retrieve relevant prior experiences into DOGA at runtime.
+- keep this loop weight-free first; it is the analogue of Youtu-style training-free experience learning.
+
+Acceptance:
+- experience retrieval measurably improves frozen SalesBench without increasing factuality/compliance failures.
+- experience growth is bounded, deduplicated, and auditable.
+
+## Gate J — counterfactual/replay training data
+
+Build training workers outside the realtime process:
+- counterfactual branch generator
+- RLSTA-style latent-capability miner: long-dialogue failure + compressed-state success → premium training example
+- SPEAR-style replay sampler for high-value successful sub-trajectories
+- hard-negative sampler for unsupported claims, excessive pressure, repetition, and bad next-step choices
+
+The output remains framework-neutral training data derived from `salesos.learning-bundle.v1`.
+
+## Gate K — model training
+
+Only after enough gated trajectories exist:
+1. Train a small clean SFT/LoRA baseline.
+2. Run direct-RL and SFT→RL as separate controlled experiments.
+3. Use the same frozen SalesBench and customer simulator ensemble for every checkpoint.
+4. Reject any checkpoint that gains conversion while losing factuality/compliance or increasing excessive pressure.
+5. Integrate AReaL / GRPO / another trainer behind an exporter/adapter; never make the realtime app depend directly on a training framework.
+6. Consider distilling the learned sales policy into a smaller model before attempting expensive adaptation of a very large foundation model.
