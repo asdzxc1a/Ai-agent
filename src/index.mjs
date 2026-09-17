@@ -51,3 +51,4 @@ export {
 export { LiveAvatarClient, LiveAvatarApiError, createLiveAvatarClientFromEnv } from './integrations/liveavatar-client.mjs'
 export { HeyGenAudioSink } from './integrations/heygen-audio-sink.mjs'
 export { QwenHeyGenBridge } from './integrations/qwen-heygen-bridge.mjs'
+export { NativeGptLiveBridge } from './integrations/native-gpt-live-bridge.mjs'
