@@ -2,13 +2,26 @@ import { randomUUID } from 'node:crypto'
 import { createLiveAvatarClientFromEnv } from '../integrations/liveavatar-client.mjs'
 import { QwenHeyGenBridge } from '../integrations/qwen-heygen-bridge.mjs'
 
+function executionDisabledError() {
+  const error = new Error('Sales action execution is disabled')
+  error.code = 'ACTION_EXECUTION_DISABLED'
+  return error
+}
+
 export class AvatarSessionManager {
-  constructor({ createBridge, maxSessions = 8, harness = null, actionProposals = null } = {}) {
+  constructor({
+    createBridge,
+    maxSessions = 8,
+    harness = null,
+    actionProposals = null,
+    actionExecutor = null,
+  } = {}) {
     if (typeof createBridge !== 'function') throw new TypeError('createBridge is required')
     this.createBridge = createBridge
     this.maxSessions = maxSessions
     this.harness = harness
     this.actionProposals = actionProposals
+    this.actionExecutor = actionExecutor
     this.sessions = new Map()
     this.learningSessions = new Map()
   }
@@ -49,6 +62,7 @@ export class AvatarSessionManager {
       inputSampleRate: record.started.inputSampleRate,
       bridge: typeof record.bridge.getStatus === 'function' ? record.bridge.getStatus() : { started: true },
       pendingActions: this.actions(id)?.filter(action => action.status === 'pending').length ?? 0,
+      actionExecutionEnabled: Boolean(this.actionExecutor),
     }
   }
 
@@ -92,6 +106,19 @@ export class AvatarSessionManager {
     return proposal
   }
 
+  async executeAction(id, proposalId) {
+    const sessionId = this.resolveLearningSessionId(id)
+    if (!sessionId) throw new Error(`Unknown action session: ${id}`)
+    if (!this.actionExecutor?.execute) throw executionDisabledError()
+    return this.actionExecutor.execute(proposalId, {
+      sessionId,
+      context: {
+        avatarSessionId: id,
+        gatewaySessionId: sessionId,
+      },
+    })
+  }
+
   sendAudio(id, base64Pcm16) {
     const record = this.sessions.get(id)
     if (!record) throw new Error(`Unknown avatar session: ${id}`)
@@ -130,6 +157,7 @@ export function createAvatarSessionManagerFromEnv({
   bridgeOptions = {},
   harness = null,
   actionProposals = null,
+  actionExecutor = null,
 } = {}) {
   if (!gatewayOrigin) throw new TypeError('gatewayOrigin is required')
   const liveAvatarClient = createLiveAvatarClientFromEnv(env)
@@ -137,6 +165,7 @@ export function createAvatarSessionManagerFromEnv({
     maxSessions: Number(env.SALES_AVATAR_MAX_SESSIONS || 8),
     harness,
     actionProposals,
+    actionExecutor,
     createBridge: ({ id }) => new QwenHeyGenBridge({
       gatewayOrigin,
       liveAvatarClient,
