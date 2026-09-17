@@ -9,6 +9,7 @@ const STATIC_FILES = new Map([
   ['/', { path: resolve(ROOT, 'web/index.html'), type: 'text/html; charset=utf-8' }],
   ['/app.js', { path: resolve(ROOT, 'web/app.js'), type: 'text/javascript; charset=utf-8' }],
   ['/mic.js', { path: resolve(ROOT, 'web/mic.js'), type: 'text/javascript; charset=utf-8' }],
+  ['/sales-visual.js', { path: resolve(ROOT, 'web/sales-visual.js'), type: 'text/javascript; charset=utf-8' }],
   ['/vendor/livekit-client.esm.mjs', {
     path: resolve(ROOT, 'node_modules/livekit-client/dist/livekit-client.esm.mjs'),
     type: 'text/javascript; charset=utf-8',
