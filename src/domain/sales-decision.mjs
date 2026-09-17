@@ -1,15 +1,9 @@
+import { SALES_ACTION_KINDS, SALES_ACTION_LABELS } from '../actions/action-proposal-store.mjs'
 import { SALES_STAGES } from './sales-state.mjs'
 
 const INTERPRETIVE_LIST_FIELDS = Object.freeze(['pains', 'goals', 'objections'])
 const CONTROLLER_TEXT_FIELDS = Object.freeze(['qualificationStatus', 'nextStep'])
-const NEXT_STEP_KINDS = new Set(['book_demo', 'human_handoff', 'start_trial', 'send_followup', 'review_proposal'])
-const NEXT_STEP_LABELS = Object.freeze({
-  book_demo: 'Book a demo',
-  human_handoff: 'Talk to a specialist',
-  start_trial: 'Start a trial',
-  send_followup: 'Send a follow-up',
-  review_proposal: 'Review a proposal',
-})
+const NEXT_STEP_KINDS = new Set(SALES_ACTION_KINDS)
 
 function cleanText(value, max = 1_000) {
   if (value === null) return null
@@ -122,7 +116,7 @@ function canonicalNextStep(rawVisual) {
     type: 'next_step',
     props: {
       kind,
-      label: cleanText(props.label, 160) || NEXT_STEP_LABELS[kind],
+      label: cleanText(props.label, 160) || SALES_ACTION_LABELS[kind],
       description: cleanText(props.description, 500) || '',
       requiresConfirmation: true,
       executed: false,
