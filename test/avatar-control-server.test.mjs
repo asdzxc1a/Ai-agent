@@ -28,7 +28,13 @@ class FakeManager {
     return {
       id,
       sessionId: 'live-1',
-      bridge: { metrics: { audioChunks: 2, spawnThinkingCalls: 1 } },
+      bridge: {
+        metrics: { audioChunks: 2, spawnThinkingCalls: 1, visualArtifacts: 1 },
+        lastVisual: {
+          type: 'product_card',
+          props: { id: 'enterprise', name: 'Enterprise', priceMonthly: null, features: ['sso'] },
+        },
+      },
     }
   }
   sendAudio(id, audio) { this.audio.push({ id, audio }); return true }
@@ -46,11 +52,19 @@ test('avatar control server serves browser harness and routes session inputs', a
     const html = await fetch(`${origin}/`)
     assert.equal(html.status, 200)
     assert.match(html.headers.get('content-type'), /text\/html/)
-    assert.match(await html.text(), /Sales Avatar Test Console/)
+    const htmlText = await html.text()
+    assert.match(htmlText, /Sales Avatar Test Console/)
+    assert.match(htmlText, /salesVisual/)
 
     const app = await fetch(`${origin}/app.js`)
     assert.equal(app.status, 200)
-    assert.match(await app.text(), /livekit-client/)
+    const appText = await app.text()
+    assert.match(appText, /livekit-client/)
+    assert.match(appText, /renderSalesVisual/)
+
+    const visualModule = await fetch(`${origin}/sales-visual.js`)
+    assert.equal(visualModule.status, 200)
+    assert.match(await visualModule.text(), /salesVisualMarkup/)
 
     const vendor = await fetch(`${origin}/vendor/livekit-client.esm.mjs`)
     assert.equal(vendor.status, 200)
@@ -73,6 +87,9 @@ test('avatar control server serves browser harness and routes session inputs', a
     assert.equal(statusResponse.status, 200)
     const status = await statusResponse.json()
     assert.equal(status.bridge.metrics.spawnThinkingCalls, 1)
+    assert.equal(status.bridge.metrics.visualArtifacts, 1)
+    assert.equal(status.bridge.lastVisual.type, 'product_card')
+    assert.equal(status.bridge.lastVisual.props.id, 'enterprise')
 
     const wsUrl = new URL('/sessions/session-1/audio', origin)
     wsUrl.protocol = 'ws:'
