@@ -22,7 +22,7 @@ test('liveSalesPreflight blocks paid test when OpenAI or LiveAvatar credentials 
   assert.equal(result.configuration.identityMode, 'browser')
 })
 
-test('liveSalesPreflight accepts minimal transport-only live configuration', () => {
+test('liveSalesPreflight accepts transport test while clearly flagging demo commercial truth', () => {
   const result = liveSalesPreflight({
     QWEN_AUDIO_REALTIME_PROVIDER: 'gpt-live',
     OPENAI_API_KEY: 'openai-test',
@@ -37,7 +37,34 @@ test('liveSalesPreflight accepts minimal transport-only live configuration', () 
   assert.equal(result.configuration.reasonerMode, 'mock')
   assert.equal(result.configuration.identityMode, 'browser')
   assert.equal(result.configuration.hasPersistentIdentitySecret, true)
-  assert.equal(result.warnings.some(warning => warning.includes('personal')), false)
+  assert.equal(result.configuration.hasConfiguredProducts, false)
+  assert.equal(result.configuration.hasApprovedCaseStudies, false)
+  assert.equal(result.configuration.roiAssumptionSet, 'illustrative-default-v1')
+  assert.ok(result.warnings.some(warning => /demo product catalog/i.test(warning)))
+  assert.ok(result.warnings.some(warning => /no approved case-study/i.test(warning)))
+  assert.ok(result.warnings.some(warning => /illustrative-default-v1/i.test(warning)))
+})
+
+test('preflight recognizes configured product truth, approved proof, and approved ROI assumptions', () => {
+  const result = liveSalesPreflight({
+    QWEN_AUDIO_REALTIME_PROVIDER: 'gpt-live',
+    OPENAI_API_KEY: 'openai-test',
+    LIVEAVATAR_API_KEY: 'heygen-test',
+    SALES_REASONER_MODE: 'mock',
+    QWEN_AUDIO_AGENT_ASSISTANT_PROFILE_PATH: './config/sales-assistant.md',
+    QWEN_AUDIO_AGENT_IDENTITY_MODE: 'browser',
+    QWEN_AUDIO_AGENT_AUTH_SECRET: 'persistent-test-secret-that-is-long-enough',
+    SALES_PRODUCTS_PATH: './products.json',
+    SALES_CASE_STUDIES_PATH: './case-studies.json',
+    SALES_ROI_ASSUMPTION_SET: 'approved-v1',
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.configuration.hasConfiguredProducts, true)
+  assert.equal(result.configuration.hasApprovedCaseStudies, true)
+  assert.equal(result.configuration.roiAssumptionSet, 'approved-v1')
+  assert.equal(result.warnings.some(warning => /demo product catalog/i.test(warning)), false)
+  assert.equal(result.warnings.some(warning => /no approved case-study/i.test(warning)), false)
+  assert.equal(result.warnings.some(warning => /illustrative-default-v1/i.test(warning)), false)
 })
 
 test('liveSalesPreflight warns when personal identity would limit concurrent buyers', () => {
