@@ -9,6 +9,7 @@ import {
   GatewayClientEvent,
   GatewayServerEvent,
 } from 'qwen-audio-agent/realtime-events'
+import { salesVisualFromArtifact } from '../domain/sales-artifacts.mjs'
 import { HeyGenAudioSink } from './heygen-audio-sink.mjs'
 
 function timeoutPromise(ms, message) {
@@ -47,6 +48,8 @@ export class QwenHeyGenBridge {
     this.playbackStarted = new Set()
     this.toolCallIds = new Set()
     this.spawnThinkingCallIds = new Set()
+    this.visualArtifactIds = new Set()
+    this.lastVisual = null
     this.metrics = {
       responsesStarted: 0,
       audioChunks: 0,
@@ -56,6 +59,7 @@ export class QwenHeyGenBridge {
       userTranscriptFinals: 0,
       toolCalls: 0,
       spawnThinkingCalls: 0,
+      visualArtifacts: 0,
       lastAssistantTranscript: '',
       lastUserTranscript: '',
       lastEventAt: null,
@@ -89,7 +93,7 @@ export class QwenHeyGenBridge {
       url: wsUrl.toString(),
       createSocket: this.createGatewaySocket,
       clientType: 'sales-avatar-bridge',
-      clientVersion: '0.4.0',
+      clientVersion: '0.5.0',
       clientInstanceId: `sales-avatar-${randomUUID()}`,
       clientLabel: 'Sales Avatar Bridge',
       reconnect: true,
@@ -143,9 +147,23 @@ export class QwenHeyGenBridge {
 
   noteEvent() { this.metrics.lastEventAt = nowIso() }
 
+  captureTaskArtifacts(artifacts) {
+    for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
+      const artifactId = String(artifact?.artifactId || '').trim()
+      const visual = salesVisualFromArtifact(artifact)
+      if (!visual) continue
+      this.lastVisual = visual
+      if (artifactId && !this.visualArtifactIds.has(artifactId)) {
+        this.visualArtifactIds.add(artifactId)
+        this.metrics.visualArtifacts += 1
+      }
+    }
+  }
+
   handleEvent(event) {
     if (!event?.type) return
     this.noteEvent()
+    this.captureTaskArtifacts(event.task?.artifacts)
     if (event.type === GatewayServerEvent.VOICE_READY) {
       this.voiceReadyResolve?.(event)
       return
@@ -255,6 +273,7 @@ export class QwenHeyGenBridge {
       liveAvatarSessionId: this.avatarSession?.sessionId || null,
       avatarId: this.avatarSession?.avatarId || null,
       inputSampleRate: this.inputSampleRate,
+      lastVisual: this.lastVisual ? structuredClone(this.lastVisual) : null,
       metrics: structuredClone(this.metrics),
     }
   }
