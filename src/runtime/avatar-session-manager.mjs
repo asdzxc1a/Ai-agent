@@ -1,11 +1,18 @@
 import { randomUUID } from 'node:crypto'
 import { createLiveAvatarClientFromEnv } from '../integrations/liveavatar-client.mjs'
+import { NativeGptLiveBridge } from '../integrations/native-gpt-live-bridge.mjs'
 import { QwenHeyGenBridge } from '../integrations/qwen-heygen-bridge.mjs'
 
 function executionDisabledError() {
   const error = new Error('Sales action execution is disabled')
   error.code = 'ACTION_EXECUTION_DISABLED'
   return error
+}
+
+function nativeVoiceMode(env = process.env) {
+  return ['native-gpt-live', 'gpt-live-native', 'native-live'].includes(
+    String(env.SALES_VOICE_MODE || '').trim().toLowerCase(),
+  )
 }
 
 export class AvatarSessionManager {
@@ -31,7 +38,7 @@ export class AvatarSessionManager {
     const id = options.id || randomUUID()
     if (this.sessions.has(id)) throw new Error(`Avatar session ${id} already exists`)
     const bridge = this.createBridge({ id, ...options })
-    const started = await bridge.start({ timeoutMs: options.timeoutMs || 30_000 })
+    const started = await bridge.start({ ...options, timeoutMs: options.timeoutMs || 30_000 })
     const record = { id, bridge, started, createdAt: Date.now() }
     this.sessions.set(id, record)
     if (started.gatewaySessionId) this.learningSessions.set(id, started.gatewaySessionId)
@@ -42,6 +49,9 @@ export class AvatarSessionManager {
       livekitUrl: started.livekitUrl,
       livekitClientToken: started.livekitClientToken,
       inputSampleRate: started.inputSampleRate,
+      answerSdp: started.answerSdp || null,
+      transport: started.transport || null,
+      voiceMode: started.voiceMode || null,
     }
   }
 
@@ -60,6 +70,7 @@ export class AvatarSessionManager {
       sessionId: record.started.sessionId,
       gatewaySessionId: record.started.gatewaySessionId || null,
       inputSampleRate: record.started.inputSampleRate,
+      voiceMode: record.started.voiceMode || null,
       bridge: typeof record.bridge.getStatus === 'function' ? record.bridge.getStatus() : { started: true },
       pendingActions: this.actions(id)?.filter(action => action.status === 'pending').length ?? 0,
       actionExecutionEnabled: Boolean(this.actionExecutor),
@@ -158,7 +169,28 @@ export function createAvatarSessionManagerFromEnv({
   harness = null,
   actionProposals = null,
   actionExecutor = null,
+  backend = null,
 } = {}) {
+  if (nativeVoiceMode(env)) {
+    if (!backend) throw new TypeError('backend is required for native GPT-Live mode')
+    return new AvatarSessionManager({
+      maxSessions: Number(env.SALES_AVATAR_MAX_SESSIONS || 8),
+      harness,
+      actionProposals,
+      actionExecutor,
+      createBridge: ({ id }) => new NativeGptLiveBridge({
+        backend,
+        harness,
+        salesSessionId: `sales-live-${id}`,
+        openaiApiKey: env.OPENAI_API_KEY || env.GPT_LIVE_API_KEY || '',
+        openaiBaseUrl: env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+        model: env.GPT_LIVE_MODEL || 'gpt-live-1',
+        voice: env.GPT_LIVE_VOICE || env.GPT_LIVE_REALTIME_VOICE || 'marin',
+        ...bridgeOptions,
+      }),
+    })
+  }
+
   if (!gatewayOrigin) throw new TypeError('gatewayOrigin is required')
   const liveAvatarClient = createLiveAvatarClientFromEnv(env)
   return new AvatarSessionManager({
