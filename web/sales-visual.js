@@ -73,18 +73,18 @@ function roiMarkup(props) {
 
 export function salesVisualMarkup(visual) {
   if (!visual || typeof visual !== 'object' || Array.isArray(visual)) {
-    return '<div class="visual-empty">Waiting for a backend product/recommendation artifact…</div>'
+    return '<div class="visual-empty">Commercial evidence appears here only when SalesOS selects verified proof for the conversation.</div>'
   }
 
   const type = String(visual.type || 'visual')
   const props = visual.props && typeof visual.props === 'object' && !Array.isArray(visual.props) ? visual.props : {}
 
-  if (type === 'product_card') return productSummary(props, { label: 'Recommended product' })
-  if (type === 'pricing') return productSummary(props.product, { label: 'Current pricing', featureLimit: 6 })
+  if (type === 'product_card') return productSummary(props, { label: 'Recommended fit' })
+  if (type === 'pricing') return productSummary(props.product, { label: 'Verified pricing', featureLimit: 6 })
   if (type === 'comparison') {
     const products = Array.isArray(props.products) ? props.products.slice(0, 4) : []
     if (products.length >= 2) {
-      return ['<div class="visual-type">Product comparison</div>','<div class="comparison-grid">',...products.map(product => `<div class="comparison-item">${productSummary(product, { featureLimit: 6 })}</div>`),'</div>'].join('')
+      return ['<div class="visual-type">Verified comparison</div>','<div class="comparison-grid">',...products.map(product => `<div class="comparison-item">${productSummary(product, { featureLimit: 6 })}</div>`),'</div>'].join('')
     }
   }
   if (type === 'case_study') return caseStudyMarkup(props.caseStudy)
