@@ -3,11 +3,12 @@ import { createLiveAvatarClientFromEnv } from '../integrations/liveavatar-client
 import { QwenHeyGenBridge } from '../integrations/qwen-heygen-bridge.mjs'
 
 export class AvatarSessionManager {
-  constructor({ createBridge, maxSessions = 8, harness = null } = {}) {
+  constructor({ createBridge, maxSessions = 8, harness = null, actionProposals = null } = {}) {
     if (typeof createBridge !== 'function') throw new TypeError('createBridge is required')
     this.createBridge = createBridge
     this.maxSessions = maxSessions
     this.harness = harness
+    this.actionProposals = actionProposals
     this.sessions = new Map()
     this.learningSessions = new Map()
   }
@@ -46,9 +47,8 @@ export class AvatarSessionManager {
       sessionId: record.started.sessionId,
       gatewaySessionId: record.started.gatewaySessionId || null,
       inputSampleRate: record.started.inputSampleRate,
-      bridge: typeof record.bridge.getStatus === 'function'
-        ? record.bridge.getStatus()
-        : { started: true },
+      bridge: typeof record.bridge.getStatus === 'function' ? record.bridge.getStatus() : { started: true },
+      pendingActions: this.actions(id)?.filter(action => action.status === 'pending').length ?? 0,
     }
   }
 
@@ -68,6 +68,28 @@ export class AvatarSessionManager {
     const sessionId = this.resolveLearningSessionId(id)
     if (!sessionId || !this.harness) throw new Error(`Unknown learning session: ${id}`)
     return this.harness.promoteExperience({ ...input, sessionId })
+  }
+
+  actions(id, { status = null } = {}) {
+    const sessionId = this.resolveLearningSessionId(id)
+    if (!sessionId || !this.actionProposals?.list) return null
+    return this.actionProposals.list({ sessionId, status })
+  }
+
+  confirmAction(id, proposalId) {
+    const sessionId = this.resolveLearningSessionId(id)
+    if (!sessionId || !this.actionProposals?.confirm) throw new Error(`Unknown action session: ${id}`)
+    const proposal = this.actionProposals.confirm(proposalId, { sessionId })
+    this.harness?.recordActionLifecycle?.({ sessionId, type: 'sales.action.confirmed', proposal })
+    return proposal
+  }
+
+  cancelAction(id, proposalId) {
+    const sessionId = this.resolveLearningSessionId(id)
+    if (!sessionId || !this.actionProposals?.cancel) throw new Error(`Unknown action session: ${id}`)
+    const proposal = this.actionProposals.cancel(proposalId, { sessionId })
+    this.harness?.recordActionLifecycle?.({ sessionId, type: 'sales.action.cancelled', proposal })
+    return proposal
   }
 
   sendAudio(id, base64Pcm16) {
@@ -102,12 +124,19 @@ export class AvatarSessionManager {
   }
 }
 
-export function createAvatarSessionManagerFromEnv({ gatewayOrigin, env = process.env, bridgeOptions = {}, harness = null } = {}) {
+export function createAvatarSessionManagerFromEnv({
+  gatewayOrigin,
+  env = process.env,
+  bridgeOptions = {},
+  harness = null,
+  actionProposals = null,
+} = {}) {
   if (!gatewayOrigin) throw new TypeError('gatewayOrigin is required')
   const liveAvatarClient = createLiveAvatarClientFromEnv(env)
   return new AvatarSessionManager({
     maxSessions: Number(env.SALES_AVATAR_MAX_SESSIONS || 8),
     harness,
+    actionProposals,
     createBridge: ({ id }) => new QwenHeyGenBridge({
       gatewayOrigin,
       liveAvatarClient,
