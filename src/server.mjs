@@ -2,12 +2,16 @@ import { once } from 'node:events'
 import { createSalesBackendFromEnv } from './runtime/build-runtime.mjs'
 import { createAvatarSessionManagerFromEnv } from './runtime/avatar-session-manager.mjs'
 import { createAvatarControlServer } from './runtime/avatar-control-server.mjs'
+import { SALES_SPAWN_THINKING_DESCRIPTION } from './runtime/sales-frontend.mjs'
 import { createQwenSalesGateway } from './integrations/qwen-gateway.mjs'
 
 const { backend } = createSalesBackendFromEnv(process.env)
 const application = await createQwenSalesGateway({
   backend,
-  applicationOptions: { autoStart: false },
+  applicationOptions: {
+    autoStart: false,
+    spawnThinkingDescription: SALES_SPAWN_THINKING_DESCRIPTION,
+  },
 })
 
 const qwenHost = process.env.QWEN_GATEWAY_HOST || '127.0.0.1'
