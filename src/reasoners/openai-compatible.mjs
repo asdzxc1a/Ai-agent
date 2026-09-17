@@ -1,13 +1,14 @@
 export class OpenAICompatibleSalesReasoner {
-  constructor({ baseUrl, apiKey, model, fetchImpl = fetch, timeoutMs = 12000 }) {
+  constructor({ baseUrl, apiKey, model, fetchImpl = fetch, timeoutMs = 12000, businessContext = '' }) {
     this.baseUrl = baseUrl.replace(/\/$/, '')
     this.apiKey = apiKey
     this.model = model
     this.fetchImpl = fetchImpl
     this.timeoutMs = timeoutMs
+    this.businessContext = String(businessContext || '').trim()
   }
 
-  async decide({ state, turn, strategy, catalog, caseStudies, roiAvailable = false, signal }) {
+  async decide({ state, turn, backendInstruction = '', strategy, catalog, caseStudies, roiAvailable = false, signal }) {
     const timeoutController = new AbortController()
     const timeout = setTimeout(() => {
       timeoutController.abort(new Error(`Sales reasoner timed out after ${this.timeoutMs}ms`))
@@ -27,7 +28,16 @@ export class OpenAICompatibleSalesReasoner {
       'Never put prices, features, metrics, ROI numbers, testimonials, or financial assumptions inside visual props. The server hydrates all such facts.',
     ].join('\n')
 
-    const system = `You are the hidden sales supervisor, not the speaking avatar. Return JSON only.\nUse only structured facts provided. Never invent pricing, discounts, integrations, customer facts, case-study claims, or ROI numbers.\nSales strategy: ${JSON.stringify(strategy)}\n${visualRules}\nReturn {statePatch, content, visual, confidence}. content is factual guidance for the realtime frontend, not a script or chain-of-thought.`
+    const system = [
+      'You are the hidden sales supervisor, not the speaking voice. Return JSON only.',
+      'Use only operator-approved context and structured facts provided.',
+      'Never invent pricing, discounts, venue availability, guaranteed access, supplier availability, client names, celebrity or royal involvement, deadlines, integrations, customer facts, case-study claims, or ROI numbers.',
+      this.businessContext ? `Operator-approved business context: ${this.businessContext}` : '',
+      `Sales strategy: ${JSON.stringify(strategy)}`,
+      visualRules,
+      'Return {statePatch, content, visual, confidence}.',
+      'content must be concise, factual, speakable guidance that a live voice model can naturally paraphrase. It is not a script and must not expose chain-of-thought.',
+    ].filter(Boolean).join('\n')
 
     try {
       const response = await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
@@ -45,6 +55,7 @@ export class OpenAICompatibleSalesReasoner {
               content: JSON.stringify({
                 state,
                 turn,
+                recentConversationContext: String(backendInstruction || '').slice(0, 9000),
                 catalog: catalog.list(),
                 approvedCaseStudies: caseStudies?.list?.() || [],
               }),
