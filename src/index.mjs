@@ -1,6 +1,8 @@
 export { createSalesState, applyStatePatch, SALES_STAGES } from './domain/sales-state.mjs'
 export { extractDeterministicSalesFacts } from './domain/fact-extractor.mjs'
 export { InMemorySalesSessionStore } from './runtime/session-store.mjs'
+export { AvatarSessionManager, createAvatarSessionManagerFromEnv } from './runtime/avatar-session-manager.mjs'
+export { createAvatarControlServer } from './runtime/avatar-control-server.mjs'
 export { ProductCatalog } from './tools/product-catalog.mjs'
 export { selectSalesOutline } from './strategy/doga.mjs'
 export { MockSalesReasoner } from './reasoners/mock-reasoner.mjs'
