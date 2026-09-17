@@ -14,6 +14,22 @@ function cancellationError(taskId) {
   return error
 }
 
+function productIdsFromVisual(visual) {
+  if (!visual || typeof visual !== 'object') return []
+  if (visual.type === 'product_card') {
+    return visual.props?.id ? [visual.props.id] : []
+  }
+  if (visual.type === 'pricing') {
+    return visual.props?.product?.id ? [visual.props.product.id] : []
+  }
+  if (visual.type === 'comparison') {
+    return (Array.isArray(visual.props?.products) ? visual.props.products : [])
+      .map(product => product?.id)
+      .filter(Boolean)
+  }
+  return []
+}
+
 /**
  * Protocol-neutral sales backend that implements Qwen Audio Agent's BackendPort.
  * Sales truth remains server-owned; the reasoner only proposes decisions.
@@ -167,10 +183,11 @@ export class SalesBackendAdapter {
       const nextState = applyStatePatch(reasonedState, deterministicPatch, {
         incrementTurn: false,
       })
-      if (decision.visual?.type === 'product_card' && decision.visual.props?.id) {
+      const shownProductIds = productIdsFromVisual(decision.visual)
+      if (shownProductIds.length) {
         nextState.productsShown = [...new Set([
           ...(nextState.productsShown || []),
-          decision.visual.props.id,
+          ...shownProductIds,
         ])]
       }
       this.sessions.set(sessionId, nextState)
