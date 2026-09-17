@@ -1,17 +1,52 @@
+import { once } from 'node:events'
 import { createSalesBackendFromEnv } from './runtime/build-runtime.mjs'
+import { createAvatarSessionManagerFromEnv } from './runtime/avatar-session-manager.mjs'
+import { createAvatarControlServer } from './runtime/avatar-control-server.mjs'
 import { createQwenSalesGateway } from './integrations/qwen-gateway.mjs'
 
 const { backend } = createSalesBackendFromEnv(process.env)
-const application = await createQwenSalesGateway({ backend })
+const application = await createQwenSalesGateway({
+  backend,
+  applicationOptions: { autoStart: false },
+})
 
+const qwenHost = process.env.QWEN_GATEWAY_HOST || '127.0.0.1'
+const qwenPort = Number(process.env.QWEN_GATEWAY_PORT || 8765)
+const qwenServer = application.start({ host: qwenHost, port: qwenPort })
+if (!qwenServer.listening) await once(qwenServer, 'listening')
+const qwenAddress = qwenServer.address()
+const boundQwenPort = typeof qwenAddress === 'object' && qwenAddress ? qwenAddress.port : qwenPort
+const gatewayOrigin = `http://${qwenHost}:${boundQwenPort}`
+
+const avatarManager = createAvatarSessionManagerFromEnv({
+  gatewayOrigin,
+  env: process.env,
+  bridgeOptions: {
+    log: message => console.log(`[avatar-bridge] ${message}`),
+    onError: error => console.error('[avatar-bridge]', error),
+  },
+})
+const avatarControl = createAvatarControlServer({
+  manager: avatarManager,
+  host: process.env.AVATAR_CONTROL_HOST || '127.0.0.1',
+  port: Number(process.env.AVATAR_CONTROL_PORT || 8788),
+  log: message => console.log(`[avatar-control] ${message}`),
+})
+const control = await avatarControl.start()
+
+let shuttingDown = false
 async function shutdown(signal) {
+  if (shuttingDown) return
+  shuttingDown = true
   console.log(`[sales-avatar] ${signal}: shutting down`)
-  await application.close()
+  await avatarControl.close().catch(error => console.error(error))
+  await application.close().catch(error => console.error(error))
   process.exit(0)
 }
 
 process.once('SIGINT', () => void shutdown('SIGINT'))
 process.once('SIGTERM', () => void shutdown('SIGTERM'))
 
-console.log('[sales-avatar] Qwen Gateway started with sales backend')
+console.log(`[sales-avatar] Qwen Gateway: ${gatewayOrigin}`)
+console.log(`[sales-avatar] avatar control: ${control.origin}`)
 console.log(`[sales-avatar] reasoner=${process.env.SALES_REASONER_MODE || 'mock'} realtime=${process.env.QWEN_AUDIO_REALTIME_PROVIDER || 'qwen-default'}`)
