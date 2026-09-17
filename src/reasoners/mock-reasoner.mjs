@@ -8,6 +8,7 @@ export class MockSalesReasoner {
     const wantsPricing = /\b(price|pricing|cost|costs|how much|expensive)\b/.test(text)
     const wantsRoi = /\b(roi|return on investment|business case|payback|savings|value estimate)\b/.test(text)
     const wantsCaseStudy = /\b(case study|customer story|customer proof|reference customer|example customer)\b/.test(text)
+    const wantsNextStep = /\b(next step|book|meeting|demo|human|specialist|trial|follow[- ]?up|proposal)\b/.test(text)
     const wantsRecommendation = ['recommendation','objection'].includes(strategy.stage)
       || /recommend|which plan|what plan|best fit/.test(text)
 
@@ -32,6 +33,19 @@ export class MockSalesReasoner {
       } else {
         content = 'No approved matching case study is loaded. Say that honestly rather than inventing customer proof.'
       }
+    } else if (wantsNextStep) {
+      const kind = /\btrial\b/.test(text)
+        ? 'start_trial'
+        : /\b(human|specialist)\b/.test(text)
+          ? 'human_handoff'
+          : /follow[- ]?up/.test(text)
+            ? 'send_followup'
+            : /\bproposal\b/.test(text)
+              ? 'review_proposal'
+              : 'book_demo'
+      visual = { type: 'next_step', kind }
+      patch.nextStep = kind
+      content = 'Offer the proposed next step, but make clear that no external action occurs until the buyer explicitly confirms it.'
     } else if (wantsRecommendation && products[0]) {
       visual = { type: 'product_card', productId: products[0].id }
       content = `The current best fit is ${products[0].name}. Explain the recommendation using the buyer's stated requirements, not generic upselling.`
