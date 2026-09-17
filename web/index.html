@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sales Avatar Test Console</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background:#0c0d10; color:#f4f4f5; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 20% 0%,#1c2333 0,#0c0d10 38%); }
+    main { width:min(1180px,calc(100% - 32px)); margin:0 auto; padding:28px 0 48px; }
+    header { display:flex; gap:18px; align-items:end; justify-content:space-between; margin-bottom:20px; }
+    h1 { font-size:clamp(24px,4vw,42px); line-height:1; margin:0; letter-spacing:-.04em; }
+    .sub { color:#a1a1aa; max-width:680px; margin-top:10px; }
+    .grid { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(300px,.8fr); gap:18px; }
+    .card { background:rgba(24,24,27,.85); border:1px solid #2f3036; border-radius:18px; overflow:hidden; box-shadow:0 18px 60px rgba(0,0,0,.22); }
+    #stage { min-height:520px; display:grid; place-items:center; position:relative; background:linear-gradient(150deg,#151820,#090a0c); }
+    #stage::before { content:'LiveAvatar video'; color:#52525b; font-size:14px; position:absolute; }
+    .avatar-video { width:100%; height:100%; min-height:520px; object-fit:cover; position:relative; z-index:2; background:#09090b; }
+    .avatar-audio { display:none; }
+    .panel { padding:18px; }
+    .stack { display:grid; gap:14px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    button { border:0; border-radius:11px; padding:11px 14px; font:inherit; font-weight:650; cursor:pointer; background:#f4f4f5; color:#111113; }
+    button.secondary { background:#292a31; color:#f4f4f5; }
+    button.danger { background:#4a1f25; color:#ffd8dc; }
+    button:disabled { opacity:.38; cursor:not-allowed; }
+    textarea { width:100%; min-height:92px; resize:vertical; border-radius:12px; border:1px solid #34353d; background:#111216; color:#f4f4f5; padding:12px; font:inherit; outline:none; }
+    textarea:focus { border-color:#70717c; }
+    .label { font-size:12px; font-weight:700; color:#8c8d97; text-transform:uppercase; letter-spacing:.08em; margin-bottom:7px; }
+    #state { padding:10px 12px; border-radius:10px; background:#17181d; color:#b8b9c1; font-size:13px; }
+    #state[data-kind='ok'] { color:#b7f7d0; background:#11251a; }
+    #state[data-kind='warn'] { color:#ffe3a6; background:#2b2110; }
+    #state[data-kind='error'] { color:#ffc1c6; background:#31151a; }
+    .metrics { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .metric { background:#121318; border:1px solid #292a31; border-radius:12px; padding:12px; }
+    .metric strong { display:block; font-size:24px; }
+    .metric span { color:#858690; font-size:12px; }
+    .transcript { min-height:62px; padding:11px 12px; border-radius:11px; background:#101115; border:1px solid #282930; color:#d4d4d8; font-size:14px; white-space:pre-wrap; }
+    .meter { height:8px; border-radius:999px; background:#25262d; overflow:hidden; }
+    #meterBar { height:100%; width:2%; background:#d4d4d8; transition:width 70ms linear; }
+    .note { color:#777985; font-size:12px; line-height:1.5; }
+    @media (max-width:850px) { .grid{grid-template-columns:1fr;} #stage,.avatar-video{min-height:360px;} header{align-items:start;flex-direction:column;} }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Sales Avatar Test Console</h1>
+      <div class="sub">Local validation harness for Qwen Audio Agent → sales backend → GPT‑Live → HeyGen LiveAvatar. This is intentionally not the final sales UI.</div>
+    </div>
+    <div class="row">
+      <button id="start">Start paid session</button>
+      <button id="stop" class="secondary">Stop</button>
+    </div>
+  </header>
+
+  <section class="grid">
+    <div class="card" id="stage"></div>
+    <aside class="stack">
+      <div class="card panel stack">
+        <div id="state">Stopped</div>
+        <div>
+          <div class="label">Text test</div>
+          <textarea id="prompt">We have 45 sales reps and need Salesforce and SSO. Which plan fits us and why?</textarea>
+        </div>
+        <div class="row">
+          <button id="send">Send</button>
+          <button id="mic" class="secondary">Start mic</button>
+          <button id="interrupt" class="danger">Interrupt</button>
+        </div>
+        <div class="meter"><div id="meterBar"></div></div>
+        <div class="note">Mic audio is downsampled to mono PCM16 at 24 kHz and sent directly to the server-side Qwen voice session. Echo cancellation stays enabled because the avatar speaks from the same device.</div>
+      </div>
+
+      <div class="card panel stack">
+        <div class="label">Runtime proof</div>
+        <div class="metrics">
+          <div class="metric"><strong id="audioChunks">0</strong><span>HeyGen audio chunks</span></div>
+          <div class="metric"><strong id="delegations">0</strong><span>sales delegations</span></div>
+          <div class="metric"><strong id="toolCalls">0</strong><span>tool calls</span></div>
+          <div class="metric"><strong id="interruptions">0</strong><span>interruptions</span></div>
+        </div>
+        <div>
+          <div class="label">Buyer</div>
+          <div id="userTranscript" class="transcript">—</div>
+        </div>
+        <div>
+          <div class="label">Salesperson</div>
+          <div id="assistantTranscript" class="transcript">—</div>
+        </div>
+      </div>
+    </aside>
+  </section>
+</main>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
