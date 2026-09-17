@@ -1,13 +1,14 @@
 # Realtime Sales Avatar
 
-A realtime AI salesperson built around **Qwen Audio Agent + OpenAI GPT-Live + HeyGen LiveAvatar LITE**, with a vendor-neutral sales brain and server-owned deal state.
+A realtime AI salesperson built around **Qwen Audio Agent + OpenAI GPT-Live + HeyGen LiveAvatar LITE**, with a vendor-neutral sales brain, server-owned deal state, and a framework-neutral SalesOS learning harness.
 
-The architecture deliberately separates four concerns:
+The architecture deliberately separates five concerns:
 
 1. **Qwen Audio Agent** — realtime session, task lifecycle, voice/tool orchestration.
 2. **GPT-Live** — natural full-duplex conversation and interruption.
 3. **HeyGen LiveAvatar LITE** — visual/audio rendering only.
-4. **Sales backend** — DOGA-style strategy, commercial truth, deal state, tools, and eventually our fine-tuned model.
+4. **Sales backend** — DOGA-style strategy, commercial truth, deal state, and tools.
+5. **SalesOS harness** — structured trajectories, rewards, experience memory, evaluation/export, and eventually training data for our own model.
 
 ## What is implemented
 
@@ -28,10 +29,15 @@ The architecture deliberately separates four concerns:
 - server-side Qwen → HeyGen bridge with playback receipts
 - bridge metrics proving audio, transcripts, tool calls, sales-backend delegation, and visual artifacts
 - Qwen-standard sales visual artifact contract
-- browser `product_card` rendering with HTML escaping and generic fallback for future visual types
+- browser sales visual rendering with HTML escaping and canonical pricing/comparison/product truth
 - local session/control API
 - local browser test console with LiveKit video, text input, 24 kHz mic streaming, interruption, transcripts, sales visuals, and runtime metrics
 - guarded paid smoke test that refuses to spend credits unless explicitly confirmed
+- append-only `salesos.event.v1` trajectory capture from backend decisions and selected realtime events
+- multi-component `salesos.reward.v1` with factuality/compliance hard gates before a trajectory becomes training-eligible
+- explicit `salesos.experience.v1` experience bank for reusable state → strategy → outcome records
+- portable per-session `salesos.learning-bundle.v1` export for future CustomerLM, counterfactual, replay, and RL workers
+- raw PCM and hidden chain-of-thought are excluded from the SalesOS learning stream
 
 ## Requirements
 
@@ -69,6 +75,24 @@ npm run smoke:offline
 - browser visual rendering and escaping
 
 The Qwen source dependency and LiveKit browser SDK are pinned so upstream changes cannot silently change the test environment.
+
+## SalesOS learning layer
+
+SalesOS observes the realtime salesperson rather than becoming a second salesperson. The same harness receives structured policy decisions from `SalesBackendAdapter` and observable realtime events from `QwenHeyGenBridge`.
+
+For a live avatar session, the control API can expose the accumulated learning bundle and attach offline evaluation:
+
+```text
+GET  /sessions/:id/learning
+POST /sessions/:id/reward
+POST /sessions/:id/experience
+```
+
+The reward API keeps factuality and compliance as hard gates. A high conversion score cannot make an unsafe or unsupported trajectory eligible for training.
+
+Training frameworks do **not** run on the live hot path. AReaL/GRPO, CustomerLM simulation, counterfactual branching, SPEAR-style replay, RLSTA-style mining, or another trainer should consume exported learning bundles later.
+
+See [docs/SALES_OS.md](docs/SALES_OS.md).
 
 ## Prepare a live test
 
@@ -148,10 +172,10 @@ SALES_REASONER_MODEL=...
 
 DeepSeek/GLM/Qwen can all live behind this same adapter; model selection does not change the realtime architecture.
 
-The hidden model is advisory. Its output is canonicalized before use: protected identifiers/consent are excluded, explicit buyer facts win over model guesses, and product-card content is reloaded from structured product truth before reaching the UI.
+The hidden model is advisory. Its output is canonicalized before use: protected identifiers/consent are excluded, explicit buyer facts win over model guesses, and product/comparison/pricing content is rebuilt from structured product truth before reaching the UI.
 
 ## Why this shape
 
-Qwen Audio Agent already solves realtime Gateway/session/tool infrastructure. HeyGen's official GPT-Live demo already proved the difficult LiveAvatar media-server pattern. We reuse both and keep our proprietary work where it matters: **sales policy, commercial truth, product tools, deal state, evaluation, and eventually our own sales-tuned model**.
+Qwen Audio Agent already solves realtime Gateway/session/tool infrastructure. HeyGen's official GPT-Live demo already proved the difficult LiveAvatar media-server pattern. We reuse both and keep our proprietary work where it matters: **sales policy, commercial truth, product tools, deal state, trajectories, evaluation, experience memory, and eventually our own sales-tuned model**.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md).
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SALES_OS.md](docs/SALES_OS.md), and [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md).
