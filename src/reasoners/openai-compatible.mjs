@@ -12,18 +12,18 @@ export class OpenAICompatibleSalesReasoner {
     const timeout = setTimeout(() => {
       timeoutController.abort(new Error(`Sales reasoner timed out after ${this.timeoutMs}ms`))
     }, this.timeoutMs)
-    const requestSignal = signal
-      ? AbortSignal.any([signal, timeoutController.signal])
-      : timeoutController.signal
+    const requestSignal = signal ? AbortSignal.any([signal, timeoutController.signal]) : timeoutController.signal
 
     const visualRules = [
       'You may request at most one visual.',
-      'Allowed visual requests are ID-only:',
+      'Allowed visual requests are:',
       '{"type":"product_card","productId":"..."}',
       '{"type":"pricing","productId":"..."}',
       '{"type":"comparison","productIds":["...","..."]}',
       '{"type":"case_study","caseStudyId":"..."}',
       roiAvailable ? '{"type":"roi","productId":"..."}' : 'ROI visual is unavailable.',
+      '{"type":"next_step","kind":"book_demo|human_handoff|start_trial|send_followup|review_proposal","props":{"label":"optional","description":"optional"}}',
+      'next_step is proposal-only. Never include calendar slots, URLs, recipients, CRM writes, discounts, order data, or claim an action already happened.',
       'Never put prices, features, metrics, ROI numbers, testimonials, or financial assumptions inside visual props. The server hydrates all such facts.',
     ].join('\n')
 
@@ -32,10 +32,7 @@ export class OpenAICompatibleSalesReasoner {
     try {
       const response = await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${this.apiKey}`,
-        },
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${this.apiKey}` },
         signal: requestSignal,
         body: JSON.stringify({
           model: this.model,
