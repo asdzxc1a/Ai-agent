@@ -11,6 +11,12 @@ export {
   salesVisualFromArtifact,
   salesVisualsFromArtifacts,
 } from './domain/sales-artifacts.mjs'
+export {
+  ActionProposalError,
+  InMemoryActionProposalStore,
+  SALES_ACTION_KINDS,
+  SALES_ACTION_LABELS,
+} from './actions/action-proposal-store.mjs'
 export { InMemoryTrajectoryStore } from './harness/trajectory-store.mjs'
 export { InMemoryExperienceBank } from './harness/experience-bank.mjs'
 export { SalesOSHarness } from './harness/sales-os-harness.mjs'
