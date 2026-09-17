@@ -85,9 +85,13 @@ test('runtime exposes explicit ROI assumptions and identifies demo vs configured
   const demo = createSalesBackendFromEnv({ SALES_REASONER_MODE: 'mock' })
   assert.equal(demo.catalogMode, 'demo')
   assert.equal(demo.caseStudies.list().length, 0)
+  assert.equal(demo.actionExecution.mode, 'disabled')
+  assert.equal(demo.actionExecution.enabled, false)
+  assert.equal(demo.actionExecutor, null)
 
   const configured = createSalesBackendFromEnv({
     SALES_REASONER_MODE: 'mock',
+    SALES_ACTION_EXECUTION_MODE: 'sandbox',
     SALES_PRODUCTS_JSON: JSON.stringify([{
       id: 'configured-plan',
       name: 'Configured Plan',
@@ -108,4 +112,17 @@ test('runtime exposes explicit ROI assumptions and identifies demo vs configured
   assert.equal(configured.roiCalculator.hoursSavedPerRepPerMonth, 3)
   assert.equal(configured.roiCalculator.adoptionRate, 0.5)
   assert.equal(configured.roiCalculator.assumptionSet, 'approved-eu-v1')
+  assert.equal(configured.actionExecution.mode, 'sandbox')
+  assert.equal(configured.actionExecution.enabled, true)
+  assert.ok(configured.actionExecutor)
+})
+
+test('runtime rejects unknown action execution modes', () => {
+  assert.throws(
+    () => createSalesBackendFromEnv({
+      SALES_REASONER_MODE: 'mock',
+      SALES_ACTION_EXECUTION_MODE: 'production',
+    }),
+    /Unsupported SALES_ACTION_EXECUTION_MODE: production/,
+  )
 })
