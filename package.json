@@ -1,14 +1,16 @@
 {
   "name": "sales-avatar-foundation",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "Vendor-neutral sales brain for a realtime HeyGen + GPT-Live avatar, integrated through Qwen Audio Agent BackendPort.",
+  "description": "Vendor-neutral sales brain and realtime transport for a Qwen Audio Agent + GPT-Live + HeyGen LiveAvatar salesperson.",
   "scripts": {
     "test": "node --test",
     "test:qwen": "node --test test/qwen-conformance.test.mjs test/qwen-gateway.test.mjs",
     "demo": "node src/demo.mjs",
-    "gateway": "node --env-file=.env src/server.mjs"
+    "gateway": "node --env-file=.env src/server.mjs",
+    "preflight:live": "node --env-file=.env scripts/preflight-live.mjs",
+    "smoke:live": "node --env-file=.env scripts/smoke-live.mjs"
   },
   "dependencies": {
     "qwen-audio-agent": "github:QwenAudio/qwen-audio-agent#f40d0053c6a0a74c8e7cc40a334f31c9c36c1fae",
