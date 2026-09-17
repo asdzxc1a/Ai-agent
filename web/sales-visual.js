@@ -8,20 +8,24 @@ function escapeHtml(value) {
 }
 
 function safeJson(value) {
-  try {
-    return JSON.stringify(value, null, 2)
-  } catch {
-    return String(value ?? '')
-  }
+  try { return JSON.stringify(value, null, 2) } catch { return String(value ?? '') }
 }
 
 function priceLabel(priceMonthly) {
-  if (priceMonthly === null || priceMonthly === undefined || priceMonthly === '') {
-    return 'Custom pricing'
-  }
+  if (priceMonthly === null || priceMonthly === undefined || priceMonthly === '') return 'Custom pricing'
   const amount = Number(priceMonthly)
   if (!Number.isFinite(amount)) return escapeHtml(priceMonthly)
   return `$${amount.toLocaleString('en-US')}/month`
+}
+
+function moneyLabel(value, currency = 'USD') {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) return '—'
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
+  } catch {
+    return `${escapeHtml(currency)} ${amount.toLocaleString('en-US')}`
+  }
 }
 
 function featureMarkup(features, limit = 12) {
@@ -41,35 +45,50 @@ function productSummary(product, { label = '', featureLimit = 12 } = {}) {
   ].join('')
 }
 
+function caseStudyMarkup(caseStudy) {
+  const value = caseStudy && typeof caseStudy === 'object' && !Array.isArray(caseStudy) ? caseStudy : {}
+  const metrics = Array.isArray(value.metrics) ? value.metrics.slice(0, 8) : []
+  return [
+    '<div class="visual-type">Approved case study</div>',
+    `<div class="product-name">${escapeHtml(value.title || 'Case study')}</div>`,
+    value.customer ? `<div class="product-price">${escapeHtml(value.customer)}</div>` : '',
+    `<div class="visual-copy">${escapeHtml(value.summary || '')}</div>`,
+    metrics.length ? `<div class="metric-list">${metrics.map(metric => `<div class="metric-row"><strong>${escapeHtml(metric.value)}</strong><span>${escapeHtml(metric.label)}</span>${metric.evidence ? `<small>${escapeHtml(metric.evidence)}</small>` : ''}</div>`).join('')}</div>` : '',
+    value.sourceUrl ? `<div class="visual-source">Source: ${escapeHtml(value.sourceUrl)}</div>` : '',
+  ].join('')
+}
+
+function roiMarkup(props) {
+  const currency = String(props.currency || 'USD')
+  const product = props.product || {}
+  const assumptions = Array.isArray(props.assumptions) ? props.assumptions.slice(0, 8) : []
+  return [
+    '<div class="visual-type">Illustrative ROI estimate</div>',
+    `<div class="product-name">${escapeHtml(product.name || product.id || 'Product')}</div>`,
+    `<div class="roi-grid"><div><strong>${moneyLabel(props.annualGrossValue, currency)}</strong><span>annual gross value</span></div><div><strong>${props.annualNetValue == null ? 'Pricing required' : moneyLabel(props.annualNetValue, currency)}</strong><span>annual net value</span></div><div><strong>${escapeHtml(props.monthlyHoursSaved ?? '—')}</strong><span>hours saved / month</span></div><div><strong>${props.paybackMonths == null ? '—' : `${escapeHtml(props.paybackMonths)} mo`}</strong><span>illustrative payback</span></div></div>`,
+    `<div class="visual-copy">Team size: ${escapeHtml(props.teamSize ?? '—')}. ${escapeHtml(props.disclaimer || '')}</div>`,
+    assumptions.length ? `<div class="visual-json">Assumptions: ${escapeHtml(assumptions.map(item => `${item.key}=${item.value} ${item.unit}`).join(' · '))}</div>` : '',
+  ].join('')
+}
+
 export function salesVisualMarkup(visual) {
   if (!visual || typeof visual !== 'object' || Array.isArray(visual)) {
     return '<div class="visual-empty">Waiting for a backend product/recommendation artifact…</div>'
   }
 
   const type = String(visual.type || 'visual')
-  const props = visual.props && typeof visual.props === 'object' && !Array.isArray(visual.props)
-    ? visual.props
-    : {}
+  const props = visual.props && typeof visual.props === 'object' && !Array.isArray(visual.props) ? visual.props : {}
 
-  if (type === 'product_card') {
-    return productSummary(props, { label: 'Recommended product' })
-  }
-
-  if (type === 'pricing') {
-    return productSummary(props.product, { label: 'Current pricing', featureLimit: 6 })
-  }
-
+  if (type === 'product_card') return productSummary(props, { label: 'Recommended product' })
+  if (type === 'pricing') return productSummary(props.product, { label: 'Current pricing', featureLimit: 6 })
   if (type === 'comparison') {
     const products = Array.isArray(props.products) ? props.products.slice(0, 4) : []
     if (products.length >= 2) {
-      return [
-        '<div class="visual-type">Product comparison</div>',
-        '<div class="comparison-grid">',
-        ...products.map(product => `<div class="comparison-item">${productSummary(product, { featureLimit: 6 })}</div>`),
-        '</div>',
-      ].join('')
+      return ['<div class="visual-type">Product comparison</div>','<div class="comparison-grid">',...products.map(product => `<div class="comparison-item">${productSummary(product, { featureLimit: 6 })}</div>`),'</div>'].join('')
     }
   }
+  if (type === 'case_study') return caseStudyMarkup(props.caseStudy)
+  if (type === 'roi') return roiMarkup(props)
 
   return [
     `<div class="visual-type">${escapeHtml(type.replaceAll('_', ' '))}</div>`,
