@@ -2,6 +2,14 @@ import { SALES_STAGES } from './sales-state.mjs'
 
 const INTERPRETIVE_LIST_FIELDS = Object.freeze(['pains', 'goals', 'objections'])
 const CONTROLLER_TEXT_FIELDS = Object.freeze(['qualificationStatus', 'nextStep'])
+const NEXT_STEP_KINDS = new Set(['book_demo', 'human_handoff', 'start_trial', 'send_followup', 'review_proposal'])
+const NEXT_STEP_LABELS = Object.freeze({
+  book_demo: 'Book a demo',
+  human_handoff: 'Talk to a specialist',
+  start_trial: 'Start a trial',
+  send_followup: 'Send a follow-up',
+  review_proposal: 'Review a proposal',
+})
 
 function cleanText(value, max = 1_000) {
   if (value === null) return null
@@ -47,10 +55,7 @@ export function sanitizeSalesStatePatch(raw = {}) {
 
 function normalizeResources(resources) {
   if (!resources || typeof resources !== 'object') return {}
-  // Backwards compatibility: older callers passed ProductCatalog directly.
-  if (typeof resources.get === 'function' && !('catalog' in resources)) {
-    return { catalog: resources }
-  }
+  if (typeof resources.get === 'function' && !('catalog' in resources)) return { catalog: resources }
   return resources
 }
 
@@ -109,6 +114,22 @@ function canonicalRoi(rawVisual, { catalog, roiCalculator, state } = {}) {
   return estimate ? { type: 'roi', props: estimate } : null
 }
 
+function canonicalNextStep(rawVisual) {
+  const props = visualProps(rawVisual)
+  const kind = cleanText(props.kind ?? rawVisual?.kind, 80)
+  if (!kind || !NEXT_STEP_KINDS.has(kind)) return null
+  return {
+    type: 'next_step',
+    props: {
+      kind,
+      label: cleanText(props.label, 160) || NEXT_STEP_LABELS[kind],
+      description: cleanText(props.description, 500) || '',
+      requiresConfirmation: true,
+      executed: false,
+    },
+  }
+}
+
 export function canonicalizeSalesVisual(rawVisual, resources = {}) {
   if (!rawVisual || typeof rawVisual !== 'object' || Array.isArray(rawVisual)) return null
   const normalized = normalizeResources(resources)
@@ -118,6 +139,7 @@ export function canonicalizeSalesVisual(rawVisual, resources = {}) {
   if (type === 'comparison') return canonicalComparison(rawVisual, normalized.catalog)
   if (type === 'case_study') return canonicalCaseStudy(rawVisual, normalized.caseStudies)
   if (type === 'roi') return canonicalRoi(rawVisual, normalized)
+  if (type === 'next_step') return canonicalNextStep(rawVisual)
   return null
 }
 
