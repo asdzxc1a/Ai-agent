@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import {
   CaseStudyCatalog,
+  createActionExecutionRuntime,
   InMemoryActionProposalStore,
   InMemorySalesSessionStore,
   MockSalesReasoner,
@@ -74,6 +75,7 @@ export function createSalesBackendFromEnv(env = process.env) {
   const reasoner = createSalesReasonerFromEnv(env)
   const harness = new SalesOSHarness()
   const actionProposals = new InMemoryActionProposalStore()
+  const actionExecution = createActionExecutionRuntime({ env, store: actionProposals, harness })
   const backend = new SalesBackendAdapter({
     reasoner,
     sessions,
@@ -91,6 +93,8 @@ export function createSalesBackendFromEnv(env = process.env) {
     caseStudies,
     roiCalculator,
     actionProposals,
+    actionExecution,
+    actionExecutor: actionExecution.executor,
     reasoner,
     harness,
   }
