@@ -109,11 +109,8 @@ test('real Qwen Gateway websocket returns sales artifact from our BackendPort', 
     assert.equal(artifact.parts[0].data.type, 'product_card')
     assert.equal(artifact.parts[0].data.props.id, 'enterprise')
 
-    const persisted = sessions.get(completedEvent.task.sessionId || 'offline-sales-e2e')
-      || [...sessions.entries?.() || []][0]?.[1]
-    const knownState = sessions.get('offline-sales-e2e')
-      || sessions.get(completedEvent.task.ownerId)
-      || persisted
+    assert.ok(completedEvent.task.sessionId)
+    const knownState = sessions.get(completedEvent.task.sessionId)
     assert.equal(knownState?.teamSize, 45)
     assert.deepEqual(knownState?.requirements?.slice().sort(), ['salesforce', 'sso'])
     assert.ok(events.some(event => event.type === GatewayTaskEvent.RUNNING))
