@@ -13,6 +13,7 @@
     "smoke:live": "node --env-file=.env scripts/smoke-live.mjs"
   },
   "dependencies": {
+    "livekit-client": "^2.7.0",
     "qwen-audio-agent": "github:QwenAudio/qwen-audio-agent#f40d0053c6a0a74c8e7cc40a334f31c9c36c1fae",
     "ws": "8.18.0"
   },
