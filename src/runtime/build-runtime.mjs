@@ -1,8 +1,10 @@
 import {
+  CaseStudyCatalog,
   InMemorySalesSessionStore,
   MockSalesReasoner,
   OpenAICompatibleSalesReasoner,
   ProductCatalog,
+  RoiCalculator,
   SalesBackendAdapter,
   SalesOSHarness,
 } from '../index.mjs'
@@ -13,12 +15,18 @@ function required(env, key) {
   return value
 }
 
+function optionalNumber(env, key, fallback) {
+  const raw = String(env[key] ?? '').trim()
+  if (!raw) return fallback
+  const value = Number(raw)
+  if (!Number.isFinite(value)) throw new Error(`${key} must be numeric`)
+  return value
+}
+
 export function createSalesReasonerFromEnv(env = process.env) {
   const mode = String(env.SALES_REASONER_MODE || 'mock').trim().toLowerCase()
   if (mode === 'mock') return new MockSalesReasoner()
-  if (mode !== 'openai-compatible') {
-    throw new Error(`Unsupported SALES_REASONER_MODE: ${mode}`)
-  }
+  if (mode !== 'openai-compatible') throw new Error(`Unsupported SALES_REASONER_MODE: ${mode}`)
 
   return new OpenAICompatibleSalesReasoner({
     baseUrl: required(env, 'SALES_REASONER_BASE_URL'),
@@ -31,8 +39,23 @@ export function createSalesReasonerFromEnv(env = process.env) {
 export function createSalesBackendFromEnv(env = process.env) {
   const sessions = new InMemorySalesSessionStore()
   const catalog = new ProductCatalog()
+  const caseStudies = new CaseStudyCatalog()
+  const roiCalculator = new RoiCalculator({
+    currency: env.SALES_ROI_CURRENCY || 'USD',
+    fullyLoadedHourlyCost: optionalNumber(env, 'SALES_ROI_HOURLY_COST', 75),
+    hoursSavedPerRepPerMonth: optionalNumber(env, 'SALES_ROI_HOURS_SAVED_PER_REP_MONTH', 2),
+    adoptionRate: optionalNumber(env, 'SALES_ROI_ADOPTION_RATE', 0.6),
+    assumptionSet: env.SALES_ROI_ASSUMPTION_SET || 'illustrative-default-v1',
+  })
   const reasoner = createSalesReasonerFromEnv(env)
   const harness = new SalesOSHarness()
-  const backend = new SalesBackendAdapter({ reasoner, sessions, catalog, harness })
-  return { backend, sessions, catalog, reasoner, harness }
+  const backend = new SalesBackendAdapter({
+    reasoner,
+    sessions,
+    catalog,
+    caseStudies,
+    roiCalculator,
+    harness,
+  })
+  return { backend, sessions, catalog, caseStudies, roiCalculator, reasoner, harness }
 }
