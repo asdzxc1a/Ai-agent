@@ -8,7 +8,7 @@ import { prepareQwenGatewayIdentityEnvironment } from './integrations/qwen-ident
 
 function present(value) { return Boolean(String(value || '').trim()) }
 
-function runtimeConfiguration(env = process.env) {
+function runtimeConfiguration(env = process.env, { actionExecutionMode = null } = {}) {
   const provider = String(env.QWEN_AUDIO_REALTIME_PROVIDER || 'qwen-default').trim().toLowerCase()
   const reasonerMode = String(env.SALES_REASONER_MODE || 'mock').trim().toLowerCase()
   const realtimeProviderReady = ['gpt-live', 'openai', 'gptlive', 'gpt-realtime'].includes(provider)
@@ -26,6 +26,7 @@ function runtimeConfiguration(env = process.env) {
     ui: 'cockpit-v1',
     salesOS: 'harness-v1',
     actionControl: 'proposal-confirmation-v1',
+    actionExecutionMode: actionExecutionMode || String(env.SALES_ACTION_EXECUTION_MODE || 'disabled').trim().toLowerCase(),
     provider,
     reasonerMode,
     reasonerReady,
@@ -38,7 +39,13 @@ function runtimeConfiguration(env = process.env) {
 
 const qwenIdentity = prepareQwenGatewayIdentityEnvironment(process.env)
 
-const { backend, harness, actionProposals } = createSalesBackendFromEnv(process.env)
+const {
+  backend,
+  harness,
+  actionProposals,
+  actionExecution,
+  actionExecutor,
+} = createSalesBackendFromEnv(process.env)
 const application = await createQwenSalesGateway({
   backend,
   applicationOptions: {
@@ -60,6 +67,7 @@ const avatarManager = createAvatarSessionManagerFromEnv({
   env: process.env,
   harness,
   actionProposals,
+  actionExecutor,
   bridgeOptions: {
     log: message => console.log(`[avatar-bridge] ${message}`),
     onError: error => console.error('[avatar-bridge]', error),
@@ -72,7 +80,7 @@ const avatarControl = createAvatarControlServer({
   manager: avatarManager,
   host: publicHost,
   port: publicPort,
-  configuration: () => runtimeConfiguration(process.env),
+  configuration: () => runtimeConfiguration(process.env, { actionExecutionMode: actionExecution.mode }),
   log: message => console.log(`[avatar-control] ${message}`),
 })
 const control = await avatarControl.start()
@@ -90,8 +98,8 @@ async function shutdown(signal) {
 process.once('SIGINT', () => void shutdown('SIGINT'))
 process.once('SIGTERM', () => void shutdown('SIGTERM'))
 
-const config = runtimeConfiguration(process.env)
+const config = runtimeConfiguration(process.env, { actionExecutionMode: actionExecution.mode })
 console.log(`[sales-avatar] Qwen Gateway: ${gatewayOrigin}`)
 console.log(`[sales-avatar] avatar control: ${control.origin}`)
 console.log(`[sales-avatar] qwen identity=${qwenIdentity.mode}${qwenIdentity.generatedSecret ? ' (process-local signing secret)' : ''}`)
-console.log(`[sales-avatar] salesos=${config.salesOS} actions=${config.actionControl} reasoner=${config.reasonerMode} realtime=${config.provider} liveReady=${config.liveReady}`)
+console.log(`[sales-avatar] salesos=${config.salesOS} actions=${config.actionControl}/${config.actionExecutionMode} reasoner=${config.reasonerMode} realtime=${config.provider} liveReady=${config.liveReady}`)
