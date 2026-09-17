@@ -13,6 +13,14 @@ import {
   SalesOSHarness,
 } from '../index.mjs'
 
+class UnavailableSalesReasoner {
+  constructor(message) {
+    this.message = message
+    this.available = false
+  }
+  async decide() { throw new Error(this.message) }
+}
+
 function required(env, key) {
   const value = String(env[key] || '').trim()
   if (!value) throw new Error(`${key} is required for SALES_REASONER_MODE=openai-compatible`)
@@ -50,12 +58,24 @@ export function loadCaseStudiesFromEnv(env = process.env) {
 export function createSalesReasonerFromEnv(env = process.env) {
   const mode = String(env.SALES_REASONER_MODE || 'mock').trim().toLowerCase()
   if (mode === 'mock') return new MockSalesReasoner()
+  if (mode === 'deepseek') {
+    const apiKey = String(env.SALES_REASONER_API_KEY || '').trim()
+    if (!apiKey) return new UnavailableSalesReasoner('SALES_REASONER_API_KEY is required for DeepSeek sales reasoning')
+    return new OpenAICompatibleSalesReasoner({
+      baseUrl: String(env.SALES_REASONER_BASE_URL || 'https://api.deepseek.com').trim(),
+      apiKey,
+      model: String(env.SALES_REASONER_MODEL || 'deepseek-flash').trim(),
+      timeoutMs: Number(env.SALES_REASONER_TIMEOUT_MS || 12000),
+      businessContext: env.SALES_BUSINESS_CONTEXT || '',
+    })
+  }
   if (mode !== 'openai-compatible') throw new Error(`Unsupported SALES_REASONER_MODE: ${mode}`)
   return new OpenAICompatibleSalesReasoner({
     baseUrl: required(env, 'SALES_REASONER_BASE_URL'),
     apiKey: required(env, 'SALES_REASONER_API_KEY'),
     model: required(env, 'SALES_REASONER_MODEL'),
     timeoutMs: Number(env.SALES_REASONER_TIMEOUT_MS || 12000),
+    businessContext: env.SALES_BUSINESS_CONTEXT || '',
   })
 }
 
