@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import {
   CaseStudyCatalog,
+  InMemoryActionProposalStore,
   InMemorySalesSessionStore,
   MockSalesReasoner,
   OpenAICompatibleSalesReasoner,
@@ -38,19 +39,11 @@ function loadArraySource(env, { jsonKey, pathKey, label }) {
 }
 
 export function loadProductsFromEnv(env = process.env) {
-  return loadArraySource(env, {
-    jsonKey: 'SALES_PRODUCTS_JSON',
-    pathKey: 'SALES_PRODUCTS_PATH',
-    label: 'product catalog',
-  })
+  return loadArraySource(env, { jsonKey: 'SALES_PRODUCTS_JSON', pathKey: 'SALES_PRODUCTS_PATH', label: 'product catalog' })
 }
 
 export function loadCaseStudiesFromEnv(env = process.env) {
-  return loadArraySource(env, {
-    jsonKey: 'SALES_CASE_STUDIES_JSON',
-    pathKey: 'SALES_CASE_STUDIES_PATH',
-    label: 'case-study',
-  }) || []
+  return loadArraySource(env, { jsonKey: 'SALES_CASE_STUDIES_JSON', pathKey: 'SALES_CASE_STUDIES_PATH', label: 'case-study' }) || []
 }
 
 export function createSalesReasonerFromEnv(env = process.env) {
@@ -80,6 +73,25 @@ export function createSalesBackendFromEnv(env = process.env) {
   })
   const reasoner = createSalesReasonerFromEnv(env)
   const harness = new SalesOSHarness()
-  const backend = new SalesBackendAdapter({ reasoner, sessions, catalog, caseStudies, roiCalculator, harness })
-  return { backend, sessions, catalog, catalogMode, caseStudies, roiCalculator, reasoner, harness }
+  const actionProposals = new InMemoryActionProposalStore()
+  const backend = new SalesBackendAdapter({
+    reasoner,
+    sessions,
+    catalog,
+    caseStudies,
+    roiCalculator,
+    actionProposals,
+    harness,
+  })
+  return {
+    backend,
+    sessions,
+    catalog,
+    catalogMode,
+    caseStudies,
+    roiCalculator,
+    actionProposals,
+    reasoner,
+    harness,
+  }
 }
