@@ -54,6 +54,7 @@ export class QwenHeyGenBridge {
     this.avatarSession = null
     this.inputSampleRate = null
     this.gatewayIdentityCookie = ''
+    this.gatewayIsReady = false
     this.playbackStarted = new Set()
     this.toolCallIds = new Set()
     this.spawnThinkingCallIds = new Set()
@@ -110,7 +111,7 @@ export class QwenHeyGenBridge {
         mergeGatewaySocketOptions(options, this.gatewayIdentityCookie),
       ),
       clientType: 'sales-avatar-bridge',
-      clientVersion: '0.6.0',
+      clientVersion: '0.6.1',
       clientInstanceId: `sales-avatar-${randomUUID()}`,
       clientLabel: 'Sales Avatar Bridge',
       reconnect: true,
@@ -133,11 +134,17 @@ export class QwenHeyGenBridge {
         ...(this.outputVoice ? { outputVoice: this.outputVoice } : {}),
       },
       onStatus: status => {
-        if (status.state === 'ready') this.gatewayReadyResolve?.()
+        if (status.state === 'ready') {
+          this.gatewayIsReady = true
+          this.gatewayReadyResolve?.()
+        }
         if (status.state === 'unavailable') {
           const error = status.error || new Error('Qwen Gateway unavailable')
-          this.gatewayReadyReject?.(error)
-          this.voiceReadyReject?.(error)
+          // Only reject the startup stage that can currently be awaited. Before
+          // the Gateway is ready, rejecting voiceReady as well would create an
+          // unhandled rejection because start() has not reached that await yet.
+          if (this.gatewayIsReady) this.voiceReadyReject?.(error)
+          else this.gatewayReadyReject?.(error)
           this.onError(error)
         }
       },
@@ -311,7 +318,12 @@ export class QwenHeyGenBridge {
     this.audioSink = null
     this.avatarSession = null
     this.gatewayIdentityCookie = ''
+    this.gatewayIsReady = false
     this.playbackStarted.clear()
+    this.gatewayReadyResolve = null
+    this.gatewayReadyReject = null
+    this.voiceReadyResolve = null
+    this.voiceReadyReject = null
     client?.stop()
     await sink?.close?.()
     if (avatar?.sessionId) {
