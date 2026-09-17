@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { QwenHeyGenBridge } from '../src/integrations/qwen-heygen-bridge.mjs'
-import { GatewayClientEvent, GatewayServerEvent } from 'qwen-audio-agent/realtime-events'
+import { createSalesVisualArtifact } from '../src/domain/sales-artifacts.mjs'
+import { GatewayClientEvent, GatewayServerEvent, GatewayTaskEvent } from 'qwen-audio-agent/realtime-events'
 import { GatewayClientProtocolEvent } from 'qwen-audio-agent/gateway-client-protocol'
 
 class FakeGatewayClient {
@@ -29,7 +30,7 @@ class FakeSink {
   async close() { this.closed = true }
 }
 
-test('QwenHeyGenBridge tees Qwen audio to HeyGen, routes text, and exposes safe metrics', async () => {
+test('QwenHeyGenBridge tees Qwen audio, captures sales artifacts, and exposes safe metrics', async () => {
   const stopped = []
   const liveAvatarClient = {
     startSession: async () => ({
@@ -74,6 +75,26 @@ test('QwenHeyGenBridge tees Qwen audio to HeyGen, routes text, and exposes safe 
     surface: 'frontend',
     status: 'completed',
   })
+  const visualArtifact = createSalesVisualArtifact({
+    taskId: 'task-1',
+    visual: {
+      type: 'product_card',
+      props: { id: 'enterprise', name: 'Enterprise', priceMonthly: null, features: ['sso', 'salesforce'] },
+    },
+  })
+  gatewayClient.emit({
+    type: GatewayTaskEvent.COMPLETED,
+    task: {
+      id: 'task-1',
+      artifacts: [visualArtifact],
+    },
+  })
+  // Qwen task snapshots/updates can repeat the same final artifact. It must not
+  // inflate our visual counter.
+  gatewayClient.emit({
+    type: GatewayTaskEvent.UPDATED,
+    task: { id: 'task-1', artifacts: [visualArtifact] },
+  })
   gatewayClient.emit({
     type: GatewayServerEvent.TRANSCRIPT_FINAL,
     role: 'assistant',
@@ -106,6 +127,9 @@ test('QwenHeyGenBridge tees Qwen audio to HeyGen, routes text, and exposes safe 
   assert.equal(status.metrics.audioBytes, 3)
   assert.equal(status.metrics.spawnThinkingCalls, 1)
   assert.equal(status.metrics.toolCalls, 1)
+  assert.equal(status.metrics.visualArtifacts, 1)
+  assert.equal(status.lastVisual.type, 'product_card')
+  assert.equal(status.lastVisual.props.id, 'enterprise')
   assert.equal(status.metrics.assistantTranscriptFinals, 1)
   assert.match(status.metrics.lastAssistantTranscript, /Enterprise/)
   assert.equal(status.metrics.interruptions, 1)
