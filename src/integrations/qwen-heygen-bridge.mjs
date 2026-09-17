@@ -11,6 +11,10 @@ import {
 } from 'qwen-audio-agent/realtime-events'
 import { salesVisualFromArtifact } from '../domain/sales-artifacts.mjs'
 import { HeyGenAudioSink } from './heygen-audio-sink.mjs'
+import {
+  bootstrapQwenGatewayIdentity,
+  mergeGatewaySocketOptions,
+} from './qwen-identity.mjs'
 
 function timeoutPromise(ms, message) {
   return new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
@@ -25,7 +29,9 @@ export class QwenHeyGenBridge {
     outputVoice = '',
     gatewaySessionId = `sales-${randomUUID()}`,
     clientFactory = options => new GatewayClient(options),
-    createGatewaySocket = url => new WebSocket(url),
+    createGatewaySocket = (url, options) => new WebSocket(url, options),
+    identityBootstrap = bootstrapQwenGatewayIdentity,
+    fetchImpl = fetch,
     audioSinkFactory = () => new HeyGenAudioSink(),
     log = () => {},
     onError = () => {},
@@ -38,6 +44,8 @@ export class QwenHeyGenBridge {
     this.gatewaySessionId = gatewaySessionId
     this.clientFactory = clientFactory
     this.createGatewaySocket = createGatewaySocket
+    this.identityBootstrap = identityBootstrap
+    this.fetchImpl = fetchImpl
     this.audioSinkFactory = audioSinkFactory
     this.log = log
     this.onError = onError
@@ -45,6 +53,7 @@ export class QwenHeyGenBridge {
     this.audioSink = null
     this.avatarSession = null
     this.inputSampleRate = null
+    this.gatewayIdentityCookie = ''
     this.playbackStarted = new Set()
     this.toolCallIds = new Set()
     this.spawnThinkingCallIds = new Set()
@@ -72,9 +81,14 @@ export class QwenHeyGenBridge {
 
   async start({ timeoutMs = 30_000 } = {}) {
     if (this.client) throw new Error('QwenHeyGenBridge is already started')
-    this.avatarSession = await this.liveAvatarClient.startSession()
-    this.audioSink = this.audioSinkFactory()
-    await this.audioSink.connect(this.avatarSession, { timeoutMs })
+
+    // Prove the orchestration/voice layer first. This both gives browser-mode
+    // deployments a unique owner identity and avoids spending HeyGen minutes if
+    // Qwen/GPT-Live cannot become ready.
+    this.gatewayIdentityCookie = await this.identityBootstrap({
+      gatewayOrigin: this.gatewayOrigin,
+      fetchImpl: this.fetchImpl,
+    })
 
     const gatewayReady = new Promise((resolve, reject) => {
       this.gatewayReadyResolve = resolve
@@ -91,9 +105,12 @@ export class QwenHeyGenBridge {
 
     this.client = this.clientFactory({
       url: wsUrl.toString(),
-      createSocket: this.createGatewaySocket,
+      createSocket: (url, options = {}) => this.createGatewaySocket(
+        url,
+        mergeGatewaySocketOptions(options, this.gatewayIdentityCookie),
+      ),
       clientType: 'sales-avatar-bridge',
-      clientVersion: '0.5.0',
+      clientVersion: '0.6.0',
       clientInstanceId: `sales-avatar-${randomUUID()}`,
       clientLabel: 'Sales Avatar Bridge',
       reconnect: true,
@@ -134,6 +151,13 @@ export class QwenHeyGenBridge {
       this.client.send({ type: GatewayClientEvent.INPUT_UNMUTE })
       const ready = await Promise.race([voiceReady, timeoutPromise(timeoutMs, 'Timed out waiting for Qwen realtime voice readiness')])
       this.inputSampleRate = ready.inputSampleRate
+
+      // Only start billable avatar rendering after the realtime voice path is
+      // confirmed healthy.
+      this.avatarSession = await this.liveAvatarClient.startSession()
+      this.audioSink = this.audioSinkFactory()
+      await this.audioSink.connect(this.avatarSession, { timeoutMs })
+
       return {
         ...this.avatarSession,
         gatewaySessionId: this.gatewaySessionId,
@@ -270,6 +294,7 @@ export class QwenHeyGenBridge {
     return {
       started: Boolean(this.client && this.avatarSession),
       gatewaySessionId: this.gatewaySessionId,
+      gatewayIdentityScoped: Boolean(this.gatewayIdentityCookie),
       liveAvatarSessionId: this.avatarSession?.sessionId || null,
       avatarId: this.avatarSession?.avatarId || null,
       inputSampleRate: this.inputSampleRate,
@@ -285,6 +310,7 @@ export class QwenHeyGenBridge {
     this.client = null
     this.audioSink = null
     this.avatarSession = null
+    this.gatewayIdentityCookie = ''
     this.playbackStarted.clear()
     client?.stop()
     await sink?.close?.()
