@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto'
+
 function clean(value) {
   return String(value || '').trim()
 }
@@ -6,6 +8,33 @@ export function cookiePairFromSetCookie(value) {
   const raw = clean(value)
   if (!raw) return ''
   return raw.split(';', 1)[0]?.trim() || ''
+}
+
+/**
+ * Default the sales product to Qwen browser identity mode so every headless
+ * buyer session can own a separate active realtime Client. If no persistent
+ * signing secret is configured, generate a process-local one before Qwen's
+ * server configuration module is imported.
+ */
+export function prepareQwenGatewayIdentityEnvironment(
+  env = process.env,
+  { generateSecret = () => randomBytes(32).toString('hex') } = {},
+) {
+  const configured = clean(env.QWEN_AUDIO_AGENT_IDENTITY_MODE).toLowerCase()
+  const mode = configured === 'personal' ? 'personal' : 'browser'
+  env.QWEN_AUDIO_AGENT_IDENTITY_MODE = mode
+
+  let generatedSecret = false
+  if (mode === 'browser' && !clean(env.QWEN_AUDIO_AGENT_AUTH_SECRET)) {
+    env.QWEN_AUDIO_AGENT_AUTH_SECRET = generateSecret()
+    generatedSecret = true
+  }
+
+  return {
+    mode,
+    generatedSecret,
+    hasSecret: Boolean(clean(env.QWEN_AUDIO_AGENT_AUTH_SECRET)),
+  }
 }
 
 /**
