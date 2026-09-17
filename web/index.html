@@ -40,6 +40,14 @@
     .meter { height:8px; border-radius:999px; background:#25262d; overflow:hidden; }
     #meterBar { height:100%; width:2%; background:#d4d4d8; transition:width 70ms linear; }
     .note { color:#777985; font-size:12px; line-height:1.5; }
+    .sales-visual { min-height:112px; border:1px solid #34353d; background:linear-gradient(145deg,#141821,#0f1014); border-radius:14px; padding:14px; }
+    .visual-empty { color:#656771; font-size:13px; display:grid; place-items:center; }
+    .product-name { font-size:20px; font-weight:750; letter-spacing:-.02em; }
+    .product-price { margin-top:5px; color:#b7f7d0; font-size:14px; }
+    .product-features { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
+    .feature-pill { font-size:12px; border:1px solid #343b47; color:#cbd5e1; background:#151a22; padding:5px 8px; border-radius:999px; }
+    .visual-type { color:#777985; font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:5px; }
+    .visual-json { color:#c5c7ce; font:12px/1.5 ui-monospace, monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
     @media (max-width:850px) { .grid{grid-template-columns:1fr;} #stage,.avatar-video{min-height:360px;} header{align-items:start;flex-direction:column;} }
   </style>
 </head>
@@ -80,7 +88,12 @@
           <div class="metric"><strong id="audioChunks">0</strong><span>HeyGen audio chunks</span></div>
           <div class="metric"><strong id="delegations">0</strong><span>sales delegations</span></div>
           <div class="metric"><strong id="toolCalls">0</strong><span>tool calls</span></div>
+          <div class="metric"><strong id="visualArtifacts">0</strong><span>sales visuals</span></div>
           <div class="metric"><strong id="interruptions">0</strong><span>interruptions</span></div>
+        </div>
+        <div>
+          <div class="label">Sales visual</div>
+          <div id="salesVisual" class="sales-visual visual-empty">Waiting for a backend product/recommendation artifact…</div>
         </div>
         <div>
           <div class="label">Buyer</div>
