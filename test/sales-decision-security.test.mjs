@@ -19,6 +19,12 @@ test('model cannot overwrite protected sales state or invent product-card facts'
           sessionId: 'attacker-session',
           teamSize: 999,
           requirements: ['SAML'],
+          contact: { email: 'invented@example.com' },
+          budgetBand: '$1M+',
+          purchaseTimeline: 'today',
+          currentSolution: 'invented competitor',
+          pains: ['manual coaching'],
+          objections: ['price'],
           conversationStage: 'recommendation',
         },
         content: 'Recommend Enterprise.',
@@ -49,9 +55,13 @@ test('model cannot overwrite protected sales state or invent product-card facts'
   assert.equal(state.leadId, null)
   assert.equal(state.accountId, null)
   assert.deepEqual(state.consent, { crmWrite: false, followUp: false })
-  assert.ok(state.requirements.includes('salesforce'))
-  assert.ok(state.requirements.includes('sso'))
-  assert.ok(state.requirements.includes('SAML'))
+  assert.deepEqual(state.contact, { name: null, role: null, company: null, email: null })
+  assert.equal(state.budgetBand, null)
+  assert.equal(state.purchaseTimeline, null)
+  assert.equal(state.currentSolution, null)
+  assert.deepEqual(state.requirements.slice().sort(), ['salesforce', 'sso'])
+  assert.deepEqual(state.pains, ['manual coaching'])
+  assert.deepEqual(state.objections, ['price'])
   assert.deepEqual(state.productsShown, ['enterprise'])
 
   const visual = result.artifacts[0].parts[0].data
