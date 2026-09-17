@@ -29,6 +29,20 @@ export class AvatarSessionManager {
 
   get(id) { return this.sessions.get(id) ?? null }
 
+  status(id) {
+    const record = this.sessions.get(id)
+    if (!record) return null
+    return {
+      id: record.id,
+      createdAt: record.createdAt,
+      sessionId: record.started.sessionId,
+      inputSampleRate: record.started.inputSampleRate,
+      bridge: typeof record.bridge.getStatus === 'function'
+        ? record.bridge.getStatus()
+        : { started: true },
+    }
+  }
+
   sendAudio(id, base64Pcm16) {
     const record = this.sessions.get(id)
     if (!record) throw new Error(`Unknown avatar session: ${id}`)
