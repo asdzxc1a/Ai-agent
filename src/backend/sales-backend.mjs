@@ -1,6 +1,7 @@
 import { applyStatePatch } from '../domain/sales-state.mjs'
 import { extractDeterministicSalesFacts } from '../domain/fact-extractor.mjs'
 import { createSalesVisualArtifact } from '../domain/sales-artifacts.mjs'
+import { canonicalizeSalesDecision } from '../domain/sales-decision.mjs'
 import { selectSalesOutline } from '../strategy/doga.mjs'
 
 function clean(value) {
@@ -143,7 +144,7 @@ export class SalesBackendAdapter {
       })
       const strategy = selectSalesOutline(observedState, buyerTurn)
 
-      const decision = await Promise.race([
+      const rawDecision = await Promise.race([
         this.reasoner.decide({
           state: observedState,
           turn: buyerTurn,
@@ -154,6 +155,7 @@ export class SalesBackendAdapter {
         }),
         cancelled,
       ])
+      const decision = canonicalizeSalesDecision(rawDecision, { catalog: this.catalog })
 
       if (controller.signal.aborted) {
         throw controller.signal.reason || cancellationError(taskId)
@@ -165,6 +167,12 @@ export class SalesBackendAdapter {
       const nextState = applyStatePatch(reasonedState, deterministicPatch, {
         incrementTurn: false,
       })
+      if (decision.visual?.type === 'product_card' && decision.visual.props?.id) {
+        nextState.productsShown = [...new Set([
+          ...(nextState.productsShown || []),
+          decision.visual.props.id,
+        ])]
+      }
       this.sessions.set(sessionId, nextState)
 
       this.#emit({
