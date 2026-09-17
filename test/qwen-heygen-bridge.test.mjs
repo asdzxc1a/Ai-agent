@@ -6,12 +6,14 @@ import { GatewayClientEvent, GatewayServerEvent, GatewayTaskEvent } from 'qwen-a
 import { GatewayClientProtocolEvent } from 'qwen-audio-agent/gateway-client-protocol'
 
 class FakeGatewayClient {
-  constructor(options) {
+  constructor(options, order = null) {
     this.options = options
+    this.order = order
     this.sent = []
     this.stopped = false
   }
   start() {
+    this.order?.push('gateway-start')
     queueMicrotask(() => {
       this.options.onStatus({ state: 'ready' })
       this.options.onEvent({ type: GatewayServerEvent.VOICE_READY, inputSampleRate: 24000 })
@@ -23,40 +25,60 @@ class FakeGatewayClient {
 }
 
 class FakeSink {
-  constructor() { this.writes = []; this.interrupts = 0; this.closed = false }
-  async connect(session) { this.session = session; return this }
+  constructor(order = null) { this.order = order; this.writes = []; this.interrupts = 0; this.closed = false }
+  async connect(session) { this.order?.push('sink-connect'); this.session = session; return this }
   writePcm24k(audio) { this.writes.push(audio); return true }
   interrupt() { this.interrupts += 1; return true }
   async close() { this.closed = true }
 }
 
-test('QwenHeyGenBridge tees Qwen audio, captures sales artifacts, and exposes safe metrics', async () => {
+test('QwenHeyGenBridge scopes identity, proves voice before HeyGen, tees audio, and exposes metrics', async () => {
+  const order = []
   const stopped = []
   const liveAvatarClient = {
-    startSession: async () => ({
-      sessionId: 'live-1',
-      avatarId: 'avatar-1',
-      livekitUrl: 'wss://livekit.example',
-      livekitClientToken: 'token',
-      wsUrl: 'wss://media.example',
-    }),
+    startSession: async () => {
+      order.push('avatar-start')
+      return {
+        sessionId: 'live-1',
+        avatarId: 'avatar-1',
+        livekitUrl: 'wss://livekit.example',
+        livekitClientToken: 'token',
+        wsUrl: 'wss://media.example',
+      }
+    },
     stopSession: async id => stopped.push(id),
   }
   let gatewayClient
-  const sink = new FakeSink()
+  let socketOptions
+  const sink = new FakeSink(order)
   const bridge = new QwenHeyGenBridge({
     gatewayOrigin: 'http://127.0.0.1:3000',
     liveAvatarClient,
     gatewaySessionId: 'qwen-session-1',
-    clientFactory: options => (gatewayClient = new FakeGatewayClient(options)),
+    identityBootstrap: async () => {
+      order.push('identity')
+      return 'qwen_audio_agent_identity=user_1.signature'
+    },
+    clientFactory: options => (gatewayClient = new FakeGatewayClient(options, order)),
+    createGatewaySocket: (_url, options) => {
+      socketOptions = options
+      return { readyState: 1 }
+    },
     audioSinkFactory: () => sink,
   })
 
   const session = await bridge.start({ timeoutMs: 100 })
   assert.equal(session.inputSampleRate, 24000)
   assert.equal(session.gatewaySessionId, 'qwen-session-1')
+  assert.deepEqual(order.slice(0, 4), ['identity', 'gateway-start', 'avatar-start', 'sink-connect'])
   assert.ok(gatewayClient.sent.some(event => event.type === GatewayClientEvent.UNMUTE))
   assert.ok(gatewayClient.sent.some(event => event.type === GatewayClientEvent.INPUT_UNMUTE))
+
+  gatewayClient.options.createSocket('ws://example.test', {
+    headers: { Authorization: 'Bearer test' },
+  })
+  assert.equal(socketOptions.headers.Authorization, 'Bearer test')
+  assert.equal(socketOptions.headers.Cookie, 'qwen_audio_agent_identity=user_1.signature')
 
   assert.equal(bridge.sendInputAudio('mic-audio'), true)
   assert.ok(gatewayClient.sent.some(event => (
@@ -89,8 +111,6 @@ test('QwenHeyGenBridge tees Qwen audio, captures sales artifacts, and exposes sa
       artifacts: [visualArtifact],
     },
   })
-  // Qwen task snapshots/updates can repeat the same final artifact. It must not
-  // inflate our visual counter.
   gatewayClient.emit({
     type: GatewayTaskEvent.UPDATED,
     task: { id: 'task-1', artifacts: [visualArtifact] },
@@ -121,6 +141,7 @@ test('QwenHeyGenBridge tees Qwen audio, captures sales artifacts, and exposes sa
 
   const status = bridge.getStatus()
   assert.equal(status.started, true)
+  assert.equal(status.gatewayIdentityScoped, true)
   assert.equal(status.avatarId, 'avatar-1')
   assert.equal(status.metrics.responsesStarted, 1)
   assert.equal(status.metrics.audioChunks, 1)
@@ -150,6 +171,7 @@ test('QwenHeyGenBridge rejects non-24k output instead of desynchronizing HeyGen'
       startSession: async () => ({ sessionId: 'live-2', wsUrl: 'wss://media.example', livekitUrl: 'x', livekitClientToken: 'y' }),
       stopSession: async () => {},
     },
+    identityBootstrap: async () => '',
     clientFactory: options => (gatewayClient = new FakeGatewayClient(options)),
     audioSinkFactory: () => sink,
     onError: error => errors.push(error),
@@ -160,4 +182,28 @@ test('QwenHeyGenBridge rejects non-24k output instead of desynchronizing HeyGen'
   assert.match(errors[0].message, /24 kHz/)
   assert.equal(bridge.getStatus().metrics.audioChunks, 0)
   await bridge.close()
+})
+
+test('QwenHeyGenBridge does not start a paid avatar session when realtime voice cannot become ready', async () => {
+  let avatarStarts = 0
+  class UnavailableGatewayClient extends FakeGatewayClient {
+    start() {
+      queueMicrotask(() => this.options.onStatus({
+        state: 'unavailable',
+        error: new Error('realtime unavailable'),
+      }))
+    }
+  }
+  const bridge = new QwenHeyGenBridge({
+    gatewayOrigin: 'http://127.0.0.1:3000',
+    liveAvatarClient: {
+      async startSession() { avatarStarts += 1; throw new Error('should not be called') },
+      async stopSession() {},
+    },
+    identityBootstrap: async () => 'qwen_audio_agent_identity=user_2.signature',
+    clientFactory: options => new UnavailableGatewayClient(options),
+  })
+
+  await assert.rejects(() => bridge.start({ timeoutMs: 100 }), /realtime unavailable/)
+  assert.equal(avatarStarts, 0)
 })
