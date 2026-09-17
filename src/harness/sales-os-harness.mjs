@@ -25,6 +25,24 @@ function realtimeEnvelope(event) {
   return null
 }
 
+function actionEnvelope(proposal = {}) {
+  return {
+    proposalId: clean(proposal.id) || null,
+    taskId: clean(proposal.taskId) || null,
+    kind: clean(proposal.kind) || null,
+    label: clean(proposal.label) || null,
+    status: clean(proposal.status) || null,
+    requiresConfirmation: proposal.requiresConfirmation === true,
+    executed: proposal.executed === true,
+    createdAt: clean(proposal.createdAt) || null,
+    confirmedAt: clean(proposal.confirmedAt) || null,
+    cancelledAt: clean(proposal.cancelledAt) || null,
+    executedAt: clean(proposal.executedAt) || null,
+    failedAt: clean(proposal.failedAt) || null,
+    error: clean(proposal.error) || null,
+  }
+}
+
 export class SalesOSHarness {
   constructor({ trajectories = new InMemoryTrajectoryStore(), experiences = new InMemoryExperienceBank() } = {}) {
     this.trajectories = trajectories
@@ -71,6 +89,19 @@ export class SalesOSHarness {
         buyerTurn: clean(buyerTurn),
         error: { name: clean(error?.name) || 'Error', code: clean(error?.code) || null, message: clean(error?.message) },
       },
+    })
+  }
+
+  recordActionLifecycle({ sessionId, type, proposal } = {}) {
+    const eventType = clean(type)
+    if (!eventType.startsWith('sales.action.')) return null
+    const data = actionEnvelope(proposal)
+    return this.#append({
+      sessionId,
+      taskId: data.taskId,
+      source: 'action-control',
+      type: eventType,
+      data,
     })
   }
 
