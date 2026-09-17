@@ -20,6 +20,12 @@ export { MockSalesReasoner } from './reasoners/mock-reasoner.mjs'
 export { OpenAICompatibleSalesReasoner } from './reasoners/openai-compatible.mjs'
 export { SalesBackendAdapter } from './backend/sales-backend.mjs'
 export { SalesBackendWorkRuntime } from './integrations/sales-backend-runtime.mjs'
+export {
+  bootstrapQwenGatewayIdentity,
+  cookiePairFromSetCookie,
+  mergeGatewaySocketOptions,
+  prepareQwenGatewayIdentityEnvironment,
+} from './integrations/qwen-identity.mjs'
 export { LiveAvatarClient, LiveAvatarApiError, createLiveAvatarClientFromEnv } from './integrations/liveavatar-client.mjs'
 export { HeyGenAudioSink } from './integrations/heygen-audio-sink.mjs'
 export { QwenHeyGenBridge } from './integrations/qwen-heygen-bridge.mjs'
