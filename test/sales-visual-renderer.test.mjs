@@ -23,7 +23,7 @@ test('pricing renderer shows canonical product pricing', () => {
     type: 'pricing',
     props: { product: { id: 'pro', name: 'Pro', priceMonthly: 299, features: ['advanced analytics'] } },
   })
-  assert.match(markup, /Current pricing/)
+  assert.match(markup, /Verified pricing/)
   assert.match(markup, /Pro/)
   assert.match(markup, /\$299\/month/)
 })
@@ -38,7 +38,7 @@ test('comparison renderer shows multiple canonical products', () => {
       ],
     },
   })
-  assert.match(markup, /Product comparison/)
+  assert.match(markup, /Verified comparison/)
   assert.match(markup, /Starter/)
   assert.match(markup, /Pro/)
   assert.match(markup, /\$99\/month/)
