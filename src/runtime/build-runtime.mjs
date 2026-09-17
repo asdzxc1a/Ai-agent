@@ -4,6 +4,7 @@ import {
   OpenAICompatibleSalesReasoner,
   ProductCatalog,
   SalesBackendAdapter,
+  SalesOSHarness,
 } from '../index.mjs'
 
 function required(env, key) {
@@ -31,6 +32,7 @@ export function createSalesBackendFromEnv(env = process.env) {
   const sessions = new InMemorySalesSessionStore()
   const catalog = new ProductCatalog()
   const reasoner = createSalesReasonerFromEnv(env)
-  const backend = new SalesBackendAdapter({ reasoner, sessions, catalog })
-  return { backend, sessions, catalog, reasoner }
+  const harness = new SalesOSHarness()
+  const backend = new SalesBackendAdapter({ reasoner, sessions, catalog, harness })
+  return { backend, sessions, catalog, reasoner, harness }
 }

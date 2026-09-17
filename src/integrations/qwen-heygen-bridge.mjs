@@ -33,6 +33,7 @@ export class QwenHeyGenBridge {
     identityBootstrap = bootstrapQwenGatewayIdentity,
     fetchImpl = fetch,
     audioSinkFactory = () => new HeyGenAudioSink(),
+    harness = null,
     log = () => {},
     onError = () => {},
   } = {}) {
@@ -47,6 +48,7 @@ export class QwenHeyGenBridge {
     this.identityBootstrap = identityBootstrap
     this.fetchImpl = fetchImpl
     this.audioSinkFactory = audioSinkFactory
+    this.harness = harness
     this.log = log
     this.onError = onError
     this.client = null
@@ -194,6 +196,7 @@ export class QwenHeyGenBridge {
   handleEvent(event) {
     if (!event?.type) return
     this.noteEvent()
+    this.harness?.recordRealtimeEvent?.({ sessionId: this.gatewaySessionId, event })
     this.captureTaskArtifacts(event.task?.artifacts)
     if (event.type === GatewayServerEvent.VOICE_READY) {
       this.voiceReadyResolve?.(event)

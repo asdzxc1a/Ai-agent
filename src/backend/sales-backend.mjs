@@ -40,10 +40,11 @@ export class SalesBackendAdapter {
   #active = new Map()
   #subscribers = new Set()
 
-  constructor({ reasoner, sessions, catalog }) {
+  constructor({ reasoner, sessions, catalog, harness = null }) {
     this.reasoner = reasoner
     this.sessions = sessions
     this.catalog = catalog
+    this.harness = harness
   }
 
   describe() {
@@ -110,6 +111,7 @@ export class SalesBackendAdapter {
     if (this.#active.has(taskId)) {
       throw new Error(`Task ${taskId} is already active`)
     }
+    const sessionId = clean(work?.sessionId) || ownerId
 
     await this.start()
 
@@ -152,8 +154,8 @@ export class SalesBackendAdapter {
     })
 
     try {
-      const sessionId = clean(work?.sessionId) || ownerId
       const state = this.sessions.ensure(sessionId)
+      const stateBefore = structuredClone(state)
       const deterministicPatch = extractDeterministicSalesFacts(buyerTurn)
       const observedState = applyStatePatch(state, deterministicPatch, {
         incrementTurn: false,
@@ -217,10 +219,27 @@ export class SalesBackendAdapter {
         })
       }
 
+      this.harness?.recordBackendDecision?.({
+        sessionId,
+        taskId,
+        ownerId,
+        buyerTurn,
+        stateBefore,
+        observedState,
+        deterministicPatch,
+        strategy,
+        decision,
+        stateAfter: nextState,
+        artifacts,
+      })
+
       return {
         content: clean(decision.content),
         artifacts,
       }
+    } catch (error) {
+      this.harness?.recordBackendFailure?.({ sessionId, taskId, ownerId, buyerTurn, error })
+      throw error
     } finally {
       detachExternalAbort?.()
       if (this.#active.get(taskId) === record) this.#active.delete(taskId)

@@ -3,11 +3,13 @@ import { createLiveAvatarClientFromEnv } from '../integrations/liveavatar-client
 import { QwenHeyGenBridge } from '../integrations/qwen-heygen-bridge.mjs'
 
 export class AvatarSessionManager {
-  constructor({ createBridge, maxSessions = 8 } = {}) {
+  constructor({ createBridge, maxSessions = 8, harness = null } = {}) {
     if (typeof createBridge !== 'function') throw new TypeError('createBridge is required')
     this.createBridge = createBridge
     this.maxSessions = maxSessions
+    this.harness = harness
     this.sessions = new Map()
+    this.learningSessions = new Map()
   }
 
   async start(options = {}) {
@@ -18,9 +20,11 @@ export class AvatarSessionManager {
     const started = await bridge.start({ timeoutMs: options.timeoutMs || 30_000 })
     const record = { id, bridge, started, createdAt: Date.now() }
     this.sessions.set(id, record)
+    if (started.gatewaySessionId) this.learningSessions.set(id, started.gatewaySessionId)
     return {
       id,
       sessionId: started.sessionId,
+      gatewaySessionId: started.gatewaySessionId || null,
       livekitUrl: started.livekitUrl,
       livekitClientToken: started.livekitClientToken,
       inputSampleRate: started.inputSampleRate,
@@ -29,6 +33,10 @@ export class AvatarSessionManager {
 
   get(id) { return this.sessions.get(id) ?? null }
 
+  resolveLearningSessionId(id) {
+    return this.sessions.get(id)?.started?.gatewaySessionId || this.learningSessions.get(id) || null
+  }
+
   status(id) {
     const record = this.sessions.get(id)
     if (!record) return null
@@ -36,11 +44,30 @@ export class AvatarSessionManager {
       id: record.id,
       createdAt: record.createdAt,
       sessionId: record.started.sessionId,
+      gatewaySessionId: record.started.gatewaySessionId || null,
       inputSampleRate: record.started.inputSampleRate,
       bridge: typeof record.bridge.getStatus === 'function'
         ? record.bridge.getStatus()
         : { started: true },
     }
+  }
+
+  learning(id) {
+    const sessionId = this.resolveLearningSessionId(id)
+    if (!sessionId || !this.harness) return null
+    return this.harness.exportLearningBundle(sessionId)
+  }
+
+  recordReward(id, input = {}) {
+    const sessionId = this.resolveLearningSessionId(id)
+    if (!sessionId || !this.harness) throw new Error(`Unknown learning session: ${id}`)
+    return this.harness.recordReward(sessionId, input)
+  }
+
+  promoteExperience(id, input = {}) {
+    const sessionId = this.resolveLearningSessionId(id)
+    if (!sessionId || !this.harness) throw new Error(`Unknown learning session: ${id}`)
+    return this.harness.promoteExperience({ ...input, sessionId })
   }
 
   sendAudio(id, base64Pcm16) {
@@ -75,16 +102,18 @@ export class AvatarSessionManager {
   }
 }
 
-export function createAvatarSessionManagerFromEnv({ gatewayOrigin, env = process.env, bridgeOptions = {} } = {}) {
+export function createAvatarSessionManagerFromEnv({ gatewayOrigin, env = process.env, bridgeOptions = {}, harness = null } = {}) {
   if (!gatewayOrigin) throw new TypeError('gatewayOrigin is required')
   const liveAvatarClient = createLiveAvatarClientFromEnv(env)
   return new AvatarSessionManager({
     maxSessions: Number(env.SALES_AVATAR_MAX_SESSIONS || 8),
+    harness,
     createBridge: ({ id }) => new QwenHeyGenBridge({
       gatewayOrigin,
       liveAvatarClient,
       gatewaySessionId: `sales-avatar-${id}`,
       outputVoice: env.GPT_LIVE_REALTIME_VOICE || '',
+      harness,
       ...bridgeOptions,
     }),
   })

@@ -11,7 +11,7 @@ import { prepareQwenGatewayIdentityEnvironment } from './integrations/qwen-ident
 // sales product defaults to one Qwen owner per buyer rather than user_personal.
 const qwenIdentity = prepareQwenGatewayIdentityEnvironment(process.env)
 
-const { backend } = createSalesBackendFromEnv(process.env)
+const { backend, harness } = createSalesBackendFromEnv(process.env)
 const application = await createQwenSalesGateway({
   backend,
   applicationOptions: {
@@ -31,6 +31,7 @@ const gatewayOrigin = `http://${qwenHost}:${boundQwenPort}`
 const avatarManager = createAvatarSessionManagerFromEnv({
   gatewayOrigin,
   env: process.env,
+  harness,
   bridgeOptions: {
     log: message => console.log(`[avatar-bridge] ${message}`),
     onError: error => console.error('[avatar-bridge]', error),
@@ -60,4 +61,4 @@ process.once('SIGTERM', () => void shutdown('SIGTERM'))
 console.log(`[sales-avatar] Qwen Gateway: ${gatewayOrigin}`)
 console.log(`[sales-avatar] avatar control: ${control.origin}`)
 console.log(`[sales-avatar] qwen identity=${qwenIdentity.mode}${qwenIdentity.generatedSecret ? ' (process-local signing secret)' : ''}`)
-console.log(`[sales-avatar] reasoner=${process.env.SALES_REASONER_MODE || 'mock'} realtime=${process.env.QWEN_AUDIO_REALTIME_PROVIDER || 'qwen-default'}`)
+console.log(`[sales-avatar] salesos=harness-v1 reasoner=${process.env.SALES_REASONER_MODE || 'mock'} realtime=${process.env.QWEN_AUDIO_REALTIME_PROVIDER || 'qwen-default'}`)

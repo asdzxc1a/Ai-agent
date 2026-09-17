@@ -11,6 +11,10 @@ export {
   salesVisualFromArtifact,
   salesVisualsFromArtifacts,
 } from './domain/sales-artifacts.mjs'
+export { InMemoryTrajectoryStore } from './harness/trajectory-store.mjs'
+export { InMemoryExperienceBank } from './harness/experience-bank.mjs'
+export { SalesOSHarness } from './harness/sales-os-harness.mjs'
+export { SALES_REWARD_COMPONENTS, SALES_REWARD_HARD_GATES, createSalesRewardVector } from './harness/reward.mjs'
 export { InMemorySalesSessionStore } from './runtime/session-store.mjs'
 export { AvatarSessionManager, createAvatarSessionManagerFromEnv } from './runtime/avatar-session-manager.mjs'
 export { createAvatarControlServer } from './runtime/avatar-control-server.mjs'

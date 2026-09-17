@@ -90,6 +90,25 @@ export function createAvatarControlServer({
         manager.interrupt(id)
         return writeJson(res, 200, { ok: true })
       }
+      const learningId = sessionPath(url.pathname, '/learning')
+      if (req.method === 'GET' && learningId) {
+        const bundle = manager.learning?.(decodeURIComponent(learningId))
+        return writeJson(res, bundle ? 200 : 404, bundle ?? { error: 'learning session not found' })
+      }
+      const rewardId = sessionPath(url.pathname, '/reward')
+      if (req.method === 'POST' && rewardId) {
+        const id = decodeURIComponent(rewardId)
+        if (!manager.learning?.(id)) return writeJson(res, 404, { error: 'learning session not found' })
+        const body = await readJson(req)
+        return writeJson(res, 201, manager.recordReward(id, body))
+      }
+      const experienceId = sessionPath(url.pathname, '/experience')
+      if (req.method === 'POST' && experienceId) {
+        const id = decodeURIComponent(experienceId)
+        if (!manager.learning?.(id)) return writeJson(res, 404, { error: 'learning session not found' })
+        const body = await readJson(req)
+        return writeJson(res, 201, manager.promoteExperience(id, body))
+      }
       const plainId = sessionPath(url.pathname)
       if (req.method === 'GET' && plainId) {
         const status = manager.status(decodeURIComponent(plainId))
