@@ -8,6 +8,7 @@ test('sales backend scope requires delegation for commercial decisions', () => {
   }
   assert.match(SALES_SPAWN_THINKING_DESCRIPTION, /Do not delegate greetings/i)
   assert.match(SALES_SPAWN_THINKING_DESCRIPTION, /server-owned sales state/i)
+  assert.match(SALES_SPAWN_THINKING_DESCRIPTION, /action execution results/i)
 })
 
 test('liveSalesPreflight blocks paid test when OpenAI or LiveAvatar credentials are missing', () => {
@@ -20,6 +21,7 @@ test('liveSalesPreflight blocks paid test when OpenAI or LiveAvatar credentials 
   assert.ok(result.errors.some(error => error.includes('OPENAI_API_KEY')))
   assert.ok(result.errors.some(error => error.includes('LIVEAVATAR_API_KEY')))
   assert.equal(result.configuration.identityMode, 'browser')
+  assert.equal(result.configuration.actionExecutionMode, 'disabled')
 })
 
 test('liveSalesPreflight accepts transport test while clearly flagging demo commercial truth', () => {
@@ -36,6 +38,7 @@ test('liveSalesPreflight accepts transport test while clearly flagging demo comm
   assert.deepEqual(result.errors, [])
   assert.equal(result.configuration.reasonerMode, 'mock')
   assert.equal(result.configuration.identityMode, 'browser')
+  assert.equal(result.configuration.actionExecutionMode, 'disabled')
   assert.equal(result.configuration.hasPersistentIdentitySecret, true)
   assert.equal(result.configuration.hasConfiguredProducts, false)
   assert.equal(result.configuration.hasApprovedCaseStudies, false)
@@ -62,6 +65,7 @@ test('preflight recognizes configured product truth, approved proof, and approve
   assert.equal(result.configuration.hasConfiguredProducts, true)
   assert.equal(result.configuration.hasApprovedCaseStudies, true)
   assert.equal(result.configuration.roiAssumptionSet, 'approved-v1')
+  assert.equal(result.configuration.actionExecutionMode, 'disabled')
   assert.equal(result.warnings.some(warning => /demo product catalog/i.test(warning)), false)
   assert.equal(result.warnings.some(warning => /no approved case-study/i.test(warning)), false)
   assert.equal(result.warnings.some(warning => /illustrative-default-v1/i.test(warning)), false)
@@ -106,4 +110,29 @@ test('liveSalesPreflight validates external supervisor configuration separately'
   assert.ok(result.errors.some(error => error.includes('SALES_REASONER_BASE_URL')))
   assert.ok(result.errors.some(error => error.includes('SALES_REASONER_API_KEY')))
   assert.ok(result.errors.some(error => error.includes('SALES_REASONER_MODEL')))
+})
+
+test('liveSalesPreflight treats sandbox actions as explicit test-only execution', () => {
+  const result = liveSalesPreflight({
+    QWEN_AUDIO_REALTIME_PROVIDER: 'gpt-live',
+    OPENAI_API_KEY: 'openai-test',
+    LIVEAVATAR_API_KEY: 'heygen-test',
+    SALES_REASONER_MODE: 'mock',
+    SALES_ACTION_EXECUTION_MODE: 'sandbox',
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.configuration.actionExecutionMode, 'sandbox')
+  assert.ok(result.warnings.some(warning => /local fake action tools/i.test(warning)))
+})
+
+test('liveSalesPreflight rejects unknown action execution mode', () => {
+  const result = liveSalesPreflight({
+    QWEN_AUDIO_REALTIME_PROVIDER: 'gpt-live',
+    OPENAI_API_KEY: 'openai-test',
+    LIVEAVATAR_API_KEY: 'heygen-test',
+    SALES_REASONER_MODE: 'mock',
+    SALES_ACTION_EXECUTION_MODE: 'production',
+  })
+  assert.equal(result.ok, false)
+  assert.ok(result.errors.some(error => /Unsupported SALES_ACTION_EXECUTION_MODE: production/.test(error)))
 })
