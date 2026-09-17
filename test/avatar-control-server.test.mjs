@@ -10,6 +10,15 @@ class FakeManager {
     this.audio = []
     this.text = []
     this.interrupts = []
+    this.actionRecords = [{
+      id: 'action-1',
+      sessionId: 'gateway-1',
+      kind: 'book_demo',
+      label: 'Book a demo',
+      status: 'pending',
+      requiresConfirmation: true,
+      executed: false,
+    }]
   }
   async start() {
     const session = {
@@ -29,6 +38,7 @@ class FakeManager {
     return {
       id,
       sessionId: 'live-1',
+      pendingActions: this.actionRecords.filter(action => action.status === 'pending').length,
       bridge: {
         metrics: { audioChunks: 2, spawnThinkingCalls: 1, visualArtifacts: 1 },
         lastVisual: {
@@ -47,6 +57,21 @@ class FakeManager {
       rewards: [],
       experiences: [],
     }
+  }
+  actions(id) { return this.sessions.has(id) ? structuredClone(this.actionRecords) : null }
+  confirmAction(id, proposalId) {
+    if (!this.sessions.has(id)) return null
+    const action = this.actionRecords.find(item => item.id === proposalId)
+    if (!action) return null
+    action.status = 'confirmed'
+    return structuredClone(action)
+  }
+  cancelAction(id, proposalId) {
+    if (!this.sessions.has(id)) return null
+    const action = this.actionRecords.find(item => item.id === proposalId)
+    if (!action) return null
+    action.status = 'cancelled'
+    return structuredClone(action)
   }
   sendAudio(id, audio) { this.audio.push({ id, audio }); return true }
   sendText(id, text) { this.text.push({ id, text }); return true }
@@ -101,6 +126,26 @@ test('avatar control server serves Arcana SalesOS and routes session inputs', as
     const learningResponse = await fetch(`${origin}/sessions/session-1/learning`)
     assert.equal(learningResponse.status, 200)
     assert.equal((await learningResponse.json()).schemaVersion, 'salesos.learning-bundle.v1')
+
+    const actionsResponse = await fetch(`${origin}/sessions/session-1/actions`)
+    assert.equal(actionsResponse.status, 200)
+    const actions = await actionsResponse.json()
+    assert.equal(actions.length, 1)
+    assert.equal(actions[0].status, 'pending')
+    assert.equal(actions[0].executed, false)
+
+    const confirm = await fetch(`${origin}/sessions/session-1/actions/action-1/confirm`, { method: 'POST' })
+    assert.equal(confirm.status, 200)
+    assert.equal((await confirm.json()).status, 'confirmed')
+
+    const cancel = await fetch(`${origin}/sessions/session-1/actions/action-1/cancel`, { method: 'POST' })
+    assert.equal(cancel.status, 200)
+    const cancelled = await cancel.json()
+    assert.equal(cancelled.status, 'cancelled')
+    assert.equal(cancelled.executed, false)
+
+    const noExecute = await fetch(`${origin}/sessions/session-1/actions/action-1/execute`, { method: 'POST' })
+    assert.equal(noExecute.status, 404, 'control API intentionally exposes no action execution route')
 
     const textResponse = await fetch(`${origin}/sessions/session-1/text`, {
       method: 'POST',
