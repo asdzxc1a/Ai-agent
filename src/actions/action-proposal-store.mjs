@@ -62,6 +62,7 @@ export class InMemoryActionProposalStore {
       cancelledAt: null,
       executedAt: null,
       failedAt: null,
+      receipt: null,
       error: null,
     }
     this.#records.set(record.id, record)
@@ -88,9 +89,7 @@ export class InMemoryActionProposalStore {
   confirm(id, { sessionId } = {}) {
     const record = this.#mutable(id, sessionId)
     if (record.status === 'confirmed') return clone(record)
-    if (record.status !== 'pending') {
-      throw new ActionProposalError(`Cannot confirm action in status ${record.status}`, 'INVALID_TRANSITION')
-    }
+    if (record.status !== 'pending') throw new ActionProposalError(`Cannot confirm action in status ${record.status}`, 'INVALID_TRANSITION')
     record.status = 'confirmed'
     record.confirmedAt = this.clock()
     return clone(record)
@@ -113,15 +112,17 @@ export class InMemoryActionProposalStore {
       throw new ActionProposalError('Action must be explicitly confirmed before execution', 'CONFIRMATION_REQUIRED')
     }
     record.status = 'executing'
+    record.error = null
     return clone(record)
   }
 
-  completeExecution(id, { sessionId } = {}) {
+  completeExecution(id, { sessionId, receipt = null } = {}) {
     const record = this.#mutable(id, sessionId)
     if (record.status !== 'executing') throw new ActionProposalError(`Cannot complete action in status ${record.status}`, 'INVALID_TRANSITION')
     record.status = 'executed'
     record.executed = true
     record.executedAt = this.clock()
+    record.receipt = receipt == null ? null : clone(receipt)
     return clone(record)
   }
 
