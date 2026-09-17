@@ -8,6 +8,8 @@ console.log(`  realtime provider: ${result.configuration.provider || '(unset)'}`
 console.log(`  OpenAI credential: ${icon(result.configuration.hasOpenAIKey)}`)
 console.log(`  LiveAvatar credential: ${icon(result.configuration.hasLiveAvatarKey)}`)
 console.log(`  explicit avatar id: ${icon(result.configuration.hasAvatarId)} (optional)`)
+console.log(`  Qwen identity mode: ${result.configuration.identityMode}`)
+console.log(`  persistent identity secret: ${icon(result.configuration.hasPersistentIdentitySecret)} (optional for local single-process test)`)
 console.log(`  sales reasoner: ${result.configuration.reasonerMode}`)
 console.log(`  assistant profile: ${result.configuration.assistantProfilePath || '(generic Qwen profile)'}`)
 
