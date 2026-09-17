@@ -67,12 +67,19 @@ export function sanitizeSalesStatePatch(raw = {}) {
   return patch
 }
 
-function canonicalProductCard(rawVisual, catalog) {
-  if (!rawVisual || typeof rawVisual !== 'object' || Array.isArray(rawVisual)) return null
-  const props = rawVisual.props && typeof rawVisual.props === 'object' && !Array.isArray(rawVisual.props)
+function visualProps(rawVisual) {
+  return rawVisual?.props && typeof rawVisual.props === 'object' && !Array.isArray(rawVisual.props)
     ? rawVisual.props
     : {}
-  const productId = cleanText(props.id ?? rawVisual.productId, 120)
+}
+
+function requestedProductId(rawVisual) {
+  const props = visualProps(rawVisual)
+  return cleanText(props.productId ?? props.id ?? rawVisual?.productId, 120)
+}
+
+function canonicalProductCard(rawVisual, catalog) {
+  const productId = requestedProductId(rawVisual)
   if (!productId || !catalog?.get) return null
   const product = catalog.get(productId)
   if (!product) return null
@@ -82,10 +89,42 @@ function canonicalProductCard(rawVisual, catalog) {
   }
 }
 
+function canonicalPricing(rawVisual, catalog) {
+  const productId = requestedProductId(rawVisual)
+  if (!productId || !catalog?.get) return null
+  const product = catalog.get(productId)
+  if (!product) return null
+  return {
+    type: 'pricing',
+    props: { product },
+  }
+}
+
+function canonicalComparison(rawVisual, catalog) {
+  if (!catalog?.getMany) return null
+  const props = visualProps(rawVisual)
+  const productIds = Array.isArray(props.productIds)
+    ? props.productIds
+    : Array.isArray(rawVisual?.productIds)
+      ? rawVisual.productIds
+      : []
+  const ids = productIds
+    .map(id => cleanText(id, 120))
+    .filter(Boolean)
+  const products = catalog.getMany(ids, { limit: 4 })
+  if (products.length < 2) return null
+  return {
+    type: 'comparison',
+    props: { products },
+  }
+}
+
 export function canonicalizeSalesVisual(rawVisual, catalog) {
   if (!rawVisual || typeof rawVisual !== 'object' || Array.isArray(rawVisual)) return null
   const type = cleanText(rawVisual.type, 80)
   if (type === 'product_card') return canonicalProductCard(rawVisual, catalog)
+  if (type === 'pricing') return canonicalPricing(rawVisual, catalog)
+  if (type === 'comparison') return canonicalComparison(rawVisual, catalog)
   // Future visual types need their own structured data source/hydrator before
   // becoming frontend-authoritative. Unknown model-authored visuals are dropped.
   return null
