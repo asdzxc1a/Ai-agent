@@ -17,15 +17,20 @@ The architecture deliberately separates four concerns:
 - deterministic demo product catalog/recommendation
 - Qwen `BackendPort` adapter that passes Qwen's public conformance suite
 - real composition inside Qwen `GatewayApplication`
+- session-preserving custom Qwen `backendRuntime`, so separate visitor sessions cannot collapse into one owner-scoped deal state
+- real Qwen Gateway WebSocket task-path regression test
 - OpenAI-compatible hidden supervisor adapter for DeepSeek / GLM / Qwen / OpenAI-compatible endpoints
+- canonical model-decision boundary that blocks model-authored consent/IDs and rebuilds product facts/pricing from structured catalog truth
 - sales-specific `spawn_thinking` routing scope for pricing, recommendation, objections, qualification, comparisons, ROI, and commercial facts
 - consultative realtime salesperson profile
 - LiveAvatar LITE session mint/start/stop client
 - resilient HeyGen media-server socket with readiness gating, keep-alive, reconnect, PCM forwarding, and interruption
 - server-side Qwen → HeyGen bridge with playback receipts
-- bridge metrics proving audio, transcripts, tool calls, and sales-backend delegation
+- bridge metrics proving audio, transcripts, tool calls, sales-backend delegation, and visual artifacts
+- Qwen-standard sales visual artifact contract
+- browser `product_card` rendering with HTML escaping and generic fallback for future visual types
 - local session/control API
-- local browser test console with LiveKit video, text input, 24 kHz mic streaming, interruption, transcripts, and runtime metrics
+- local browser test console with LiveKit video, text input, 24 kHz mic streaming, interruption, transcripts, sales visuals, and runtime metrics
 - guarded paid smoke test that refuses to spend credits unless explicitly confirmed
 
 ## Requirements
@@ -49,7 +54,21 @@ npm test
 npm run demo
 ```
 
-The Qwen source dependency is pinned to one exact commit so upstream `main` cannot change underneath us.
+Run the focused free integration gate:
+
+```bash
+npm run smoke:offline
+```
+
+`smoke:offline` exercises:
+
+- the real Qwen Gateway WebSocket `task.create` path
+- visitor-session propagation into the sales backend
+- standard sales artifact delivery
+- protection against model-authored pricing/consent/identity changes
+- browser visual rendering and escaping
+
+The Qwen source dependency and LiveKit browser SDK are pinned so upstream changes cannot silently change the test environment.
 
 ## Prepare a live test
 
@@ -112,6 +131,7 @@ The test console can:
 - interrupt the avatar mid-response
 - show whether `spawn_thinking` actually delegated to the sales backend
 - show final buyer/salesperson transcripts and audio-chunk metrics
+- render structured sales recommendation artifacts next to the avatar
 
 This console is a validation harness, not the final sales product UI.
 
@@ -127,6 +147,8 @@ SALES_REASONER_MODEL=...
 ```
 
 DeepSeek/GLM/Qwen can all live behind this same adapter; model selection does not change the realtime architecture.
+
+The hidden model is advisory. Its output is canonicalized before use: protected identifiers/consent are excluded, explicit buyer facts win over model guesses, and product-card content is reloaded from structured product truth before reaching the UI.
 
 ## Why this shape
 
