@@ -1,5 +1,6 @@
 import { applyStatePatch } from '../domain/sales-state.mjs'
 import { extractDeterministicSalesFacts } from '../domain/fact-extractor.mjs'
+import { createSalesVisualArtifact } from '../domain/sales-artifacts.mjs'
 import { selectSalesOutline } from '../strategy/doga.mjs'
 
 function clean(value) {
@@ -179,15 +180,15 @@ export class SalesBackendAdapter {
       })
 
       const artifacts = decision.visual
-        ? [{ type: 'sales.visual', data: decision.visual }]
+        ? [createSalesVisualArtifact({ taskId, visual: decision.visual })]
         : []
 
-      if (decision.visual) {
+      for (const artifact of artifacts) {
         this.#emit({
           type: 'backend.artifact',
           taskId,
           ownerId,
-          artifact: decision.visual,
+          artifact,
         })
       }
 
