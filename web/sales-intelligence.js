@@ -22,6 +22,12 @@ function unique(values) {
   return [...new Set(values.map(clean).filter(Boolean))]
 }
 
+function optionalNumber(value) {
+  if (value === null || value === undefined || value === '') return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
 function buyerSignals(data = {}) {
   const patch = data.deterministicPatch || {}
   const state = data.stateAfter || data.observedState || {}
@@ -51,16 +57,17 @@ export function summarizeLearningBundle(bundle) {
   const strategy = data.strategy || {}
   const decision = data.decision || {}
   const reward = latestReward(bundle)
-  const confidence = Number(decision.confidence)
+  const confidence = optionalNumber(decision.confidence)
+  const rewardTotal = optionalNumber(reward?.total)
   return {
     eventCount: events.length,
     stage: clean(strategy.stage || data.stateAfter?.conversationStage || 'connect'),
     objection: clean(strategy.objection),
     objective: clean(strategy.outline?.objective || 'Listen first. Understand the buyer before making a recommendation.'),
-    confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : null,
+    confidence: confidence == null ? null : Math.max(0, Math.min(1, confidence)),
     signals: buyerSignals(data),
     trainingEligible: reward?.trainingEligible ?? null,
-    rewardTotal: Number.isFinite(Number(reward?.total)) ? Number(reward.total) : null,
+    rewardTotal,
   }
 }
 
@@ -69,6 +76,6 @@ export function formatStage(value) {
 }
 
 export function formatConfidence(value) {
-  const number = Number(value)
-  return Number.isFinite(number) ? `${Math.round(number * 100)}%` : '—'
+  const number = optionalNumber(value)
+  return number == null ? '—' : `${Math.round(number * 100)}%`
 }
