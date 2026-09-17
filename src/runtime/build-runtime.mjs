@@ -25,23 +25,38 @@ function optionalNumber(env, key, fallback) {
   return value
 }
 
-export function loadCaseStudiesFromEnv(env = process.env) {
-  const inline = String(env.SALES_CASE_STUDIES_JSON || '').trim()
-  const filePath = String(env.SALES_CASE_STUDIES_PATH || '').trim()
-  if (inline && filePath) throw new Error('Set only one of SALES_CASE_STUDIES_JSON or SALES_CASE_STUDIES_PATH')
-  if (!inline && !filePath) return []
+function loadArraySource(env, { jsonKey, pathKey, label }) {
+  const inline = String(env[jsonKey] || '').trim()
+  const filePath = String(env[pathKey] || '').trim()
+  if (inline && filePath) throw new Error(`Set only one of ${jsonKey} or ${pathKey}`)
+  if (!inline && !filePath) return null
   const raw = inline || readFileSync(resolve(filePath), 'utf8')
   let parsed
-  try { parsed = JSON.parse(raw) } catch (error) { throw new Error(`Invalid case-study JSON: ${error.message}`) }
-  if (!Array.isArray(parsed)) throw new Error('Case-study JSON must be an array')
+  try { parsed = JSON.parse(raw) } catch (error) { throw new Error(`Invalid ${label} JSON: ${error.message}`) }
+  if (!Array.isArray(parsed)) throw new Error(`${label} JSON must be an array`)
   return parsed
+}
+
+export function loadProductsFromEnv(env = process.env) {
+  return loadArraySource(env, {
+    jsonKey: 'SALES_PRODUCTS_JSON',
+    pathKey: 'SALES_PRODUCTS_PATH',
+    label: 'product catalog',
+  })
+}
+
+export function loadCaseStudiesFromEnv(env = process.env) {
+  return loadArraySource(env, {
+    jsonKey: 'SALES_CASE_STUDIES_JSON',
+    pathKey: 'SALES_CASE_STUDIES_PATH',
+    label: 'case-study',
+  }) || []
 }
 
 export function createSalesReasonerFromEnv(env = process.env) {
   const mode = String(env.SALES_REASONER_MODE || 'mock').trim().toLowerCase()
   if (mode === 'mock') return new MockSalesReasoner()
   if (mode !== 'openai-compatible') throw new Error(`Unsupported SALES_REASONER_MODE: ${mode}`)
-
   return new OpenAICompatibleSalesReasoner({
     baseUrl: required(env, 'SALES_REASONER_BASE_URL'),
     apiKey: required(env, 'SALES_REASONER_API_KEY'),
@@ -52,7 +67,9 @@ export function createSalesReasonerFromEnv(env = process.env) {
 
 export function createSalesBackendFromEnv(env = process.env) {
   const sessions = new InMemorySalesSessionStore()
-  const catalog = new ProductCatalog()
+  const configuredProducts = loadProductsFromEnv(env)
+  const catalog = configuredProducts ? new ProductCatalog(configuredProducts) : new ProductCatalog()
+  const catalogMode = configuredProducts ? 'configured' : 'demo'
   const caseStudies = new CaseStudyCatalog(loadCaseStudiesFromEnv(env))
   const roiCalculator = new RoiCalculator({
     currency: env.SALES_ROI_CURRENCY || 'USD',
@@ -63,13 +80,6 @@ export function createSalesBackendFromEnv(env = process.env) {
   })
   const reasoner = createSalesReasonerFromEnv(env)
   const harness = new SalesOSHarness()
-  const backend = new SalesBackendAdapter({
-    reasoner,
-    sessions,
-    catalog,
-    caseStudies,
-    roiCalculator,
-    harness,
-  })
-  return { backend, sessions, catalog, caseStudies, roiCalculator, reasoner, harness }
+  const backend = new SalesBackendAdapter({ reasoner, sessions, catalog, caseStudies, roiCalculator, harness })
+  return { backend, sessions, catalog, catalogMode, caseStudies, roiCalculator, reasoner, harness }
 }
