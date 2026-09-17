@@ -15,6 +15,8 @@ function timeoutPromise(ms, message) {
   return new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
 }
 
+function nowIso() { return new Date().toISOString() }
+
 export class QwenHeyGenBridge {
   constructor({
     gatewayOrigin,
@@ -43,6 +45,21 @@ export class QwenHeyGenBridge {
     this.avatarSession = null
     this.inputSampleRate = null
     this.playbackStarted = new Set()
+    this.toolCallIds = new Set()
+    this.spawnThinkingCallIds = new Set()
+    this.metrics = {
+      responsesStarted: 0,
+      audioChunks: 0,
+      audioBytes: 0,
+      interruptions: 0,
+      assistantTranscriptFinals: 0,
+      userTranscriptFinals: 0,
+      toolCalls: 0,
+      spawnThinkingCalls: 0,
+      lastAssistantTranscript: '',
+      lastUserTranscript: '',
+      lastEventAt: null,
+    }
     this.voiceReadyResolve = null
     this.gatewayReadyResolve = null
     this.gatewayReadyReject = null
@@ -72,7 +89,7 @@ export class QwenHeyGenBridge {
       url: wsUrl.toString(),
       createSocket: this.createGatewaySocket,
       clientType: 'sales-avatar-bridge',
-      clientVersion: '0.3.0',
+      clientVersion: '0.4.0',
       clientInstanceId: `sales-avatar-${randomUUID()}`,
       clientLabel: 'Sales Avatar Bridge',
       reconnect: true,
@@ -124,10 +141,40 @@ export class QwenHeyGenBridge {
     }
   }
 
+  noteEvent() { this.metrics.lastEventAt = nowIso() }
+
   handleEvent(event) {
     if (!event?.type) return
+    this.noteEvent()
     if (event.type === GatewayServerEvent.VOICE_READY) {
       this.voiceReadyResolve?.(event)
+      return
+    }
+    if (event.type === GatewayServerEvent.RESPONSE_STARTED) {
+      this.metrics.responsesStarted += 1
+      return
+    }
+    if (event.type === GatewayServerEvent.TRANSCRIPT_FINAL) {
+      const content = String(event.content || '').trim()
+      if (event.role === 'assistant') {
+        this.metrics.assistantTranscriptFinals += 1
+        this.metrics.lastAssistantTranscript = content.slice(0, 2_000)
+      } else if (event.role === 'user') {
+        this.metrics.userTranscriptFinals += 1
+        this.metrics.lastUserTranscript = content.slice(0, 2_000)
+      }
+      return
+    }
+    if (event.type === GatewayServerEvent.TOOL_CALL) {
+      const callId = String(event.callId || `${event.name || 'tool'}:${event.turnId || ''}:${event.taskId || ''}`)
+      if (!this.toolCallIds.has(callId)) {
+        this.toolCallIds.add(callId)
+        this.metrics.toolCalls += 1
+      }
+      if (String(event.name || '') === 'spawn_thinking' && !this.spawnThinkingCallIds.has(callId)) {
+        this.spawnThinkingCallIds.add(callId)
+        this.metrics.spawnThinkingCalls += 1
+      }
       return
     }
     if (event.type === GatewayServerEvent.AUDIO_DELTA) {
@@ -136,6 +183,8 @@ export class QwenHeyGenBridge {
         this.onError(error)
         return
       }
+      this.metrics.audioChunks += 1
+      try { this.metrics.audioBytes += Buffer.from(event.audio, 'base64').length } catch {}
       if (event.responseId && !this.playbackStarted.has(event.responseId)) {
         this.playbackStarted.add(event.responseId)
         this.client?.send({ type: GatewayClientEvent.PLAYBACK_STARTED, responseId: event.responseId })
@@ -155,6 +204,7 @@ export class QwenHeyGenBridge {
       return
     }
     if (event.type === GatewayServerEvent.RESPONSE_INTERRUPTED || event.type === GatewayServerEvent.PLAYBACK_CLEAR) {
+      this.metrics.interruptions += 1
       this.audioSink?.interrupt()
       if (event.responseId) {
         this.client?.send({
@@ -189,13 +239,24 @@ export class QwenHeyGenBridge {
     if (!this.client) throw new Error('QwenHeyGenBridge is not started')
     const content = String(text || '').trim()
     if (!content) return false
-    return this.client.send({ type: GatewayClientEvent.TEXT_MESSAGE, text: content })
+    return this.client.send({ type: GatewayClientEvent.INPUT_MESSAGE, text: content })
   }
 
   interrupt() {
     if (!this.client) return false
     this.audioSink?.interrupt()
     return this.client.send({ type: GatewayClientEvent.INTERRUPT })
+  }
+
+  getStatus() {
+    return {
+      started: Boolean(this.client && this.avatarSession),
+      gatewaySessionId: this.gatewaySessionId,
+      liveAvatarSessionId: this.avatarSession?.sessionId || null,
+      avatarId: this.avatarSession?.avatarId || null,
+      inputSampleRate: this.inputSampleRate,
+      metrics: structuredClone(this.metrics),
+    }
   }
 
   async close() {
