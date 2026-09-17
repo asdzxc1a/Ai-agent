@@ -6,6 +6,7 @@ import {
   ProductCatalog,
   SalesBackendAdapter,
 } from '../src/index.mjs'
+import { SALES_VISUAL_MEDIA_TYPE } from '../src/domain/sales-artifacts.mjs'
 import { createQwenSalesGateway } from '../src/integrations/qwen-gateway.mjs'
 
 function makeBackend() {
@@ -18,7 +19,7 @@ function makeBackend() {
   return { backend, sessions }
 }
 
-test('sales backend composes into the real Qwen Gateway runtime', async () => {
+test('sales backend composes into the real Qwen Gateway runtime with standard artifacts', async () => {
   const { backend, sessions } = makeBackend()
   const application = await createQwenSalesGateway({
     backend,
@@ -46,6 +47,11 @@ test('sales backend composes into the real Qwen Gateway runtime', async () => {
       ['salesforce', 'sso'],
     )
     assert.equal(application.services.agent.protocol, 'sales-backend')
+    assert.equal(outcome.artifacts.length, 1)
+    assert.equal(outcome.artifacts[0].artifactId, 'sales_visual_gateway-sales-task-1')
+    assert.equal(outcome.artifacts[0].parts[0].mediaType, SALES_VISUAL_MEDIA_TYPE)
+    assert.equal(outcome.artifacts[0].parts[0].data.type, 'product_card')
+    assert.equal(outcome.artifacts[0].parts[0].data.props.id, 'enterprise')
   } finally {
     await application.close()
   }
