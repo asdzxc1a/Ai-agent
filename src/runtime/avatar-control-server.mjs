@@ -56,7 +56,7 @@ function sessionPath(pathname, suffix = '') {
 }
 
 function actionMutationPath(pathname) {
-  const match = pathname.match(/^\/sessions\/([^/]+)\/actions\/([^/]+)\/(confirm|cancel)$/)
+  const match = pathname.match(/^\/sessions\/([^/]+)\/actions\/([^/]+)\/(confirm|cancel|execute)$/)
   if (!match) return null
   return {
     sessionId: decodeURIComponent(match[1]),
@@ -68,6 +68,7 @@ function actionMutationPath(pathname) {
 function actionErrorStatus(error) {
   if (['NOT_FOUND', 'SESSION_MISMATCH'].includes(error?.code)) return 404
   if (['INVALID_TRANSITION', 'CONFIRMATION_REQUIRED', 'UNSUPPORTED_ACTION'].includes(error?.code)) return 409
+  if (['ACTION_EXECUTION_DISABLED', 'ACTION_TOOL_UNAVAILABLE'].includes(error?.code)) return 503
   return 500
 }
 
@@ -140,9 +141,14 @@ export function createAvatarControlServer({
       const actionMutation = actionMutationPath(url.pathname)
       if (req.method === 'POST' && actionMutation) {
         try {
-          const proposal = actionMutation.action === 'confirm'
-            ? manager.confirmAction?.(actionMutation.sessionId, actionMutation.proposalId)
-            : manager.cancelAction?.(actionMutation.sessionId, actionMutation.proposalId)
+          let proposal
+          if (actionMutation.action === 'confirm') {
+            proposal = manager.confirmAction?.(actionMutation.sessionId, actionMutation.proposalId)
+          } else if (actionMutation.action === 'cancel') {
+            proposal = manager.cancelAction?.(actionMutation.sessionId, actionMutation.proposalId)
+          } else {
+            proposal = await manager.executeAction?.(actionMutation.sessionId, actionMutation.proposalId)
+          }
           if (!proposal) return writeJson(res, 404, { error: 'action proposal not found' })
           return writeJson(res, 200, proposal)
         } catch (error) {
