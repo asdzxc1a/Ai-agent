@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   CaseStudyCatalog,
   InMemorySalesSessionStore,
@@ -23,6 +25,18 @@ function optionalNumber(env, key, fallback) {
   return value
 }
 
+export function loadCaseStudiesFromEnv(env = process.env) {
+  const inline = String(env.SALES_CASE_STUDIES_JSON || '').trim()
+  const filePath = String(env.SALES_CASE_STUDIES_PATH || '').trim()
+  if (inline && filePath) throw new Error('Set only one of SALES_CASE_STUDIES_JSON or SALES_CASE_STUDIES_PATH')
+  if (!inline && !filePath) return []
+  const raw = inline || readFileSync(resolve(filePath), 'utf8')
+  let parsed
+  try { parsed = JSON.parse(raw) } catch (error) { throw new Error(`Invalid case-study JSON: ${error.message}`) }
+  if (!Array.isArray(parsed)) throw new Error('Case-study JSON must be an array')
+  return parsed
+}
+
 export function createSalesReasonerFromEnv(env = process.env) {
   const mode = String(env.SALES_REASONER_MODE || 'mock').trim().toLowerCase()
   if (mode === 'mock') return new MockSalesReasoner()
@@ -39,7 +53,7 @@ export function createSalesReasonerFromEnv(env = process.env) {
 export function createSalesBackendFromEnv(env = process.env) {
   const sessions = new InMemorySalesSessionStore()
   const catalog = new ProductCatalog()
-  const caseStudies = new CaseStudyCatalog()
+  const caseStudies = new CaseStudyCatalog(loadCaseStudiesFromEnv(env))
   const roiCalculator = new RoiCalculator({
     currency: env.SALES_ROI_CURRENCY || 'USD',
     fullyLoadedHourlyCost: optionalNumber(env, 'SALES_ROI_HOURLY_COST', 75),
