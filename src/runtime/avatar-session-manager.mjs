@@ -35,6 +35,12 @@ export class AvatarSessionManager {
     return record.bridge.sendInputAudio(base64Pcm16)
   }
 
+  sendText(id, text) {
+    const record = this.sessions.get(id)
+    if (!record) throw new Error(`Unknown avatar session: ${id}`)
+    return record.bridge.sendText(text)
+  }
+
   interrupt(id) {
     const record = this.sessions.get(id)
     if (!record) throw new Error(`Unknown avatar session: ${id}`)
