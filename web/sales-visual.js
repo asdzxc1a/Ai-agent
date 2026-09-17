@@ -24,6 +24,23 @@ function priceLabel(priceMonthly) {
   return `$${amount.toLocaleString('en-US')}/month`
 }
 
+function featureMarkup(features, limit = 12) {
+  const list = Array.isArray(features) ? features.slice(0, limit) : []
+  if (!list.length) return ''
+  return `<div class="product-features">${list.map(feature => `<span class="feature-pill">${escapeHtml(feature)}</span>`).join('')}</div>`
+}
+
+function productSummary(product, { label = '', featureLimit = 12 } = {}) {
+  const value = product && typeof product === 'object' && !Array.isArray(product) ? product : {}
+  const name = escapeHtml(value.name || value.id || 'Product')
+  return [
+    label ? `<div class="visual-type">${escapeHtml(label)}</div>` : '',
+    `<div class="product-name">${name}</div>`,
+    `<div class="product-price">${priceLabel(value.priceMonthly)}</div>`,
+    featureMarkup(value.features, featureLimit),
+  ].join('')
+}
+
 export function salesVisualMarkup(visual) {
   if (!visual || typeof visual !== 'object' || Array.isArray(visual)) {
     return '<div class="visual-empty">Waiting for a backend product/recommendation artifact…</div>'
@@ -35,18 +52,23 @@ export function salesVisualMarkup(visual) {
     : {}
 
   if (type === 'product_card') {
-    const name = escapeHtml(props.name || props.id || 'Product')
-    const price = priceLabel(props.priceMonthly)
-    const features = Array.isArray(props.features) ? props.features.slice(0, 12) : []
-    const featureMarkup = features.length
-      ? `<div class="product-features">${features.map(feature => `<span class="feature-pill">${escapeHtml(feature)}</span>`).join('')}</div>`
-      : ''
-    return [
-      '<div class="visual-type">Recommended product</div>',
-      `<div class="product-name">${name}</div>`,
-      `<div class="product-price">${price}</div>`,
-      featureMarkup,
-    ].join('')
+    return productSummary(props, { label: 'Recommended product' })
+  }
+
+  if (type === 'pricing') {
+    return productSummary(props.product, { label: 'Current pricing', featureLimit: 6 })
+  }
+
+  if (type === 'comparison') {
+    const products = Array.isArray(props.products) ? props.products.slice(0, 4) : []
+    if (products.length >= 2) {
+      return [
+        '<div class="visual-type">Product comparison</div>',
+        '<div class="comparison-grid">',
+        ...products.map(product => `<div class="comparison-item">${productSummary(product, { featureLimit: 6 })}</div>`),
+        '</div>',
+      ].join('')
+    }
   }
 
   return [
