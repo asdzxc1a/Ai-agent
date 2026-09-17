@@ -49,19 +49,27 @@ export function createAvatarControlServer({
       }
       const textId = sessionPath(url.pathname, '/text')
       if (req.method === 'POST' && textId) {
+        const id = decodeURIComponent(textId)
+        if (!manager.get(id)) return writeJson(res, 404, { error: 'session not found' })
         const body = await readJson(req)
         if (!String(body.text || '').trim()) return writeJson(res, 400, { error: 'text is required' })
-        manager.sendText(decodeURIComponent(textId), body.text)
+        manager.sendText(id, body.text)
         return writeJson(res, 202, { ok: true })
       }
       const interruptId = sessionPath(url.pathname, '/interrupt')
       if (req.method === 'POST' && interruptId) {
-        manager.interrupt(decodeURIComponent(interruptId))
+        const id = decodeURIComponent(interruptId)
+        if (!manager.get(id)) return writeJson(res, 404, { error: 'session not found' })
+        manager.interrupt(id)
         return writeJson(res, 200, { ok: true })
       }
-      const deleteId = sessionPath(url.pathname)
-      if (req.method === 'DELETE' && deleteId) {
-        const stopped = await manager.stop(decodeURIComponent(deleteId))
+      const plainId = sessionPath(url.pathname)
+      if (req.method === 'GET' && plainId) {
+        const status = manager.status(decodeURIComponent(plainId))
+        return writeJson(res, status ? 200 : 404, status ?? { error: 'session not found' })
+      }
+      if (req.method === 'DELETE' && plainId) {
+        const stopped = await manager.stop(decodeURIComponent(plainId))
         return writeJson(res, stopped ? 200 : 404, { ok: stopped })
       }
       return writeJson(res, 404, { error: 'not found' })
