@@ -6,16 +6,24 @@ import { formatConfidence, formatStage, summarizeLearningBundle } from './sales-
 const $ = id => document.getElementById(id)
 const state = {
   session: null,
+  configuration: {},
   room: null,
   mic: null,
   micSocket: null,
   muted: false,
+  peer: null,
+  nativeStream: null,
+  nativeDataChannel: null,
+  meterContext: null,
+  meterFrame: null,
   pollTimer: null,
   visualKey: '',
   callStartedAt: null,
   timer: null,
   learningPolls: 0,
 }
+
+function isNativeLive() { return state.configuration?.voiceMode === 'native-gpt-live' }
 
 function setState(text, kind = '') {
   $('state').textContent = text
@@ -30,9 +38,9 @@ function setBackendStatus(text, kind = '') {
 function setButtons(active, liveReady = true) {
   $('start').disabled = active || !liveReady
   $('stop').disabled = !active
-  $('send').disabled = !active
+  $('send').disabled = !active || isNativeLive()
   $('mic').disabled = !active
-  $('interrupt').disabled = !active
+  $('interrupt').disabled = !active || isNativeLive()
 }
 
 function setTranscript(id, text, emptyText) {
@@ -130,15 +138,25 @@ async function checkHealth() {
   try {
     const health = await jsonFetch('/health')
     const config = health.configuration || {}
+    state.configuration = config
     const liveReady = config.liveReady !== false
     if (liveReady) {
-      setBackendStatus('System ready', 'ok')
+      setBackendStatus(config.voiceMode === 'native-gpt-live' ? 'GPT-Live ready' : 'System ready', 'ok')
       setButtons(false, true)
-      setState('System ready')
+      setState(config.voiceMode === 'native-gpt-live'
+        ? `Ready — ${config.liveModel || 'gpt-live-1'} voice + ${config.reasonerModel || 'DeepSeek'} brain`
+        : 'System ready')
     } else {
       setBackendStatus('Preview mode', 'warn')
       setButtons(false, false)
-      setState('Backend online — add OpenAI + LiveAvatar credentials to start a live call', 'warn')
+      if (config.voiceMode === 'native-gpt-live') {
+        const missing = []
+        if (!config.hasOpenAIKey) missing.push('OpenAI')
+        if (!config.hasReasonerKey) missing.push('DeepSeek')
+        setState(`Backend online — add ${missing.join(' + ') || 'the required'} API key${missing.length === 1 ? '' : 's'} to start GPT-Live`, 'warn')
+      } else {
+        setState('Backend online — add OpenAI + LiveAvatar credentials to start a live call', 'warn')
+      }
     }
   } catch (error) {
     setBackendStatus('Backend offline', 'error')
@@ -179,8 +197,122 @@ function controlWsUrl(path) {
   return url.toString()
 }
 
+function waitForIceGathering(pc, timeoutMs = 5_000) {
+  if (pc.iceGatheringState === 'complete') return Promise.resolve()
+  return new Promise(resolve => {
+    const timer = setTimeout(done, timeoutMs)
+    function done() {
+      clearTimeout(timer)
+      pc.removeEventListener('icegatheringstatechange', onChange)
+      resolve()
+    }
+    function onChange() { if (pc.iceGatheringState === 'complete') done() }
+    pc.addEventListener('icegatheringstatechange', onChange)
+  })
+}
+
+function stopNativeMeter() {
+  if (state.meterFrame) cancelAnimationFrame(state.meterFrame)
+  state.meterFrame = null
+  state.meterContext?.close?.().catch(() => {})
+  state.meterContext = null
+  $('meterBar').style.width = '2%'
+}
+
+function startNativeMeter(stream) {
+  stopNativeMeter()
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext
+  if (!AudioContextClass) return
+  const context = new AudioContextClass()
+  const source = context.createMediaStreamSource(stream)
+  const analyser = context.createAnalyser()
+  analyser.fftSize = 256
+  source.connect(analyser)
+  const data = new Uint8Array(analyser.frequencyBinCount)
+  const tick = () => {
+    analyser.getByteTimeDomainData(data)
+    let sum = 0
+    for (const value of data) {
+      const centered = (value - 128) / 128
+      sum += centered * centered
+    }
+    const rms = Math.sqrt(sum / data.length)
+    $('meterBar').style.width = `${Math.min(100, Math.max(2, rms * 700))}%`
+    state.meterFrame = requestAnimationFrame(tick)
+  }
+  state.meterContext = context
+  void context.resume().catch(() => {})
+  tick()
+}
+
+async function startNativeLiveSession() {
+  if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
+    throw new Error('This browser does not support the microphone/WebRTC needed for GPT-Live')
+  }
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  })
+  const pc = new RTCPeerConnection()
+  const dataChannel = pc.createDataChannel('arcana-live-events')
+  const remoteAudio = document.createElement('audio')
+  remoteAudio.autoplay = true
+  remoteAudio.playsInline = true
+  remoteAudio.className = 'avatar-audio'
+  $('stage').appendChild(remoteAudio)
+
+  pc.ontrack = event => {
+    remoteAudio.srcObject = event.streams?.[0] || new MediaStream([event.track])
+    void remoteAudio.play().catch(() => {})
+  }
+  pc.onconnectionstatechange = () => {
+    if (['failed', 'disconnected'].includes(pc.connectionState)) {
+      setBackendStatus('Voice reconnecting', 'warn')
+      setState('GPT-Live media connection interrupted', 'warn')
+    }
+  }
+  dataChannel.onmessage = event => {
+    try {
+      const message = JSON.parse(String(event.data || ''))
+      if (message.type === 'session.started') setBackendStatus('GPT-Live connected', 'ok')
+      if (message.type === 'session.closed') setState('GPT-Live session closed', 'warn')
+      if (message.type === 'error') setState(message.error?.message || message.message || 'GPT-Live error', 'error')
+    } catch {}
+  }
+
+  for (const track of stream.getAudioTracks()) pc.addTrack(track, stream)
+  await pc.setLocalDescription(await pc.createOffer())
+  await waitForIceGathering(pc)
+  const session = await jsonFetch('/sessions', {
+    method: 'POST',
+    body: JSON.stringify({ sdp: pc.localDescription?.sdp || '' }),
+  })
+  if (!session.answerSdp) throw new Error('Server did not return the GPT-Live WebRTC answer')
+  await pc.setRemoteDescription({ type: 'answer', sdp: session.answerSdp })
+
+  state.session = session
+  state.peer = pc
+  state.nativeStream = stream
+  state.nativeDataChannel = dataChannel
+  state.muted = false
+  $('micLabel').textContent = 'Mute mic'
+  $('mic').setAttribute('aria-pressed', 'true')
+  startNativeMeter(stream)
+}
+
 async function enableMic() {
   if (!state.session) return
+  if (isNativeLive()) {
+    const tracks = state.nativeStream?.getAudioTracks?.() || []
+    if (!tracks.length) return
+    state.muted = !state.muted
+    for (const track of tracks) track.enabled = !state.muted
+    $('micLabel').textContent = state.muted ? 'Unmute mic' : 'Mute mic'
+    $('mic').setAttribute('aria-pressed', String(!state.muted))
+    setState(state.muted ? 'Microphone muted' : 'Listening — speak naturally', state.muted ? 'warn' : 'ok')
+    return
+  }
+
   if (state.mic) {
     state.muted = !state.muted
     state.mic.setMuted(state.muted)
@@ -225,13 +357,13 @@ async function pollStatus() {
     const bridge = status.bridge || {}
     const metrics = bridge.metrics || {}
     $('audioChunks').textContent = metrics.audioChunks ?? 0
-    $('delegations').textContent = metrics.spawnThinkingCalls ?? 0
+    $('delegations').textContent = metrics.delegations ?? metrics.spawnThinkingCalls ?? 0
     $('toolCalls').textContent = metrics.toolCalls ?? 0
     $('visualArtifacts').textContent = metrics.visualArtifacts ?? 0
     $('interruptions').textContent = metrics.interruptions ?? 0
     maybeRenderVisual(bridge.lastVisual)
     if (metrics.lastUserTranscript) setTranscript('userTranscript', metrics.lastUserTranscript, 'Waiting for the buyer…')
-    if (metrics.lastAssistantTranscript) setTranscript('assistantTranscript', metrics.lastAssistantTranscript, "The salesperson's final spoken response will appear here.")
+    if (metrics.lastAssistantTranscript) setTranscript('assistantTranscript', metrics.lastAssistantTranscript, "The salesperson's spoken response will appear here.")
     state.learningPolls += 1
     if (state.learningPolls % 2 === 0) void pollLearning()
   } catch (error) {
@@ -249,24 +381,35 @@ function startPolling() {
 }
 
 async function startSession() {
-  setState('Connecting realtime voice and avatar…')
+  setState(isNativeLive() ? 'Connecting microphone to native GPT-Live…' : 'Connecting realtime voice and avatar…')
   setBackendStatus('Connecting', 'warn')
   $('start').disabled = true
   resetVisual()
   resetIntelligence()
   setTranscript('userTranscript', '', 'Waiting for the buyer…')
-  setTranscript('assistantTranscript', '', "The salesperson's final spoken response will appear here.")
+  setTranscript('assistantTranscript', '', "The salesperson's spoken response will appear here.")
   try {
-    const session = await jsonFetch('/sessions', { method: 'POST', body: '{}' })
-    state.session = session
-    await connectLiveKit(session)
+    if (isNativeLive()) {
+      await startNativeLiveSession()
+    } else {
+      const session = await jsonFetch('/sessions', { method: 'POST', body: '{}' })
+      state.session = session
+      await connectLiveKit(session)
+    }
     setButtons(true)
     setLive(true)
     startTimer()
     startPolling()
-    setBackendStatus('Live', 'ok')
-    setState('Connected — start speaking or send a rehearsal message', 'ok')
+    setBackendStatus(isNativeLive() ? 'GPT-Live connected' : 'Live', 'ok')
+    setState(isNativeLive()
+      ? 'Listening — speak naturally. DeepSeek is the SalesOS brain.'
+      : 'Connected — start speaking or send a rehearsal message', 'ok')
   } catch (error) {
+    state.nativeStream?.getTracks?.().forEach(track => track.stop())
+    state.nativeStream = null
+    state.peer?.close?.()
+    state.peer = null
+    stopNativeMeter()
     setState(error.message, 'error')
     setBackendStatus('Could not start', 'error')
     $('start').disabled = false
@@ -275,6 +418,10 @@ async function startSession() {
 
 async function sendText() {
   if (!state.session) return
+  if (isNativeLive()) {
+    setState('Native GPT-Live test is voice-first — speak to the agent using the microphone.', 'warn')
+    return
+  }
   const text = $('prompt').value.trim()
   if (!text) return
   $('send').disabled = true
@@ -294,6 +441,10 @@ async function sendText() {
 
 async function interrupt() {
   if (!state.session) return
+  if (isNativeLive()) {
+    setState('Just speak over the agent — GPT-Live handles natural barge-in automatically.', 'ok')
+    return
+  }
   try {
     await jsonFetch(`/sessions/${encodeURIComponent(state.session.id)}/interrupt`, {
       method: 'POST', body: '{}',
@@ -313,6 +464,13 @@ async function stopSession() {
   state.mic = null
   state.micSocket?.close()
   state.micSocket = null
+  state.nativeDataChannel?.close?.()
+  state.nativeDataChannel = null
+  state.nativeStream?.getTracks?.().forEach(track => track.stop())
+  state.nativeStream = null
+  state.peer?.close?.()
+  state.peer = null
+  stopNativeMeter()
   state.muted = false
   $('micLabel').textContent = 'Start mic'
   $('mic').setAttribute('aria-pressed', 'false')
@@ -327,8 +485,8 @@ async function stopSession() {
   }
   stopTimer()
   setLive(false)
-  setButtons(false)
-  setBackendStatus('System ready', 'ok')
+  setButtons(false, state.configuration.liveReady !== false)
+  setBackendStatus(state.configuration.liveReady === false ? 'Preview mode' : 'System ready', state.configuration.liveReady === false ? 'warn' : 'ok')
   setState('Call ended — the learning trajectory remains available', 'ok')
 }
 
@@ -346,6 +504,9 @@ $('prompt').addEventListener('keydown', event => {
 window.addEventListener('beforeunload', () => {
   state.mic?.stop()
   state.micSocket?.close()
+  state.nativeStream?.getTracks?.().forEach(track => track.stop())
+  state.nativeDataChannel?.close?.()
+  state.peer?.close?.()
   state.room?.disconnect()
 })
 
