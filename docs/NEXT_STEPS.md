@@ -6,8 +6,16 @@ Completed:
 - Qwen Audio Agent pinned to commit `f40d0053c6a0a74c8e7cc40a334f31c9c36c1fae`.
 - `SalesBackendAdapter` wrapped with `createBackendAgentHost()`.
 - Qwen's public `verifyBackendAdapterConformance()` suite passes.
-- The sales backend also executes through the real `GatewayApplication` / `BackendWorkRuntime` path.
-- Owner isolation, duplicate-task rejection, cancellation, subscription cleanup, and result boundaries are covered by CI.
+- The sales backend executes through the real `GatewayApplication` path.
+- A custom `SalesBackendWorkRuntime` is injected through Qwen's public `backendRuntime` extension point so trusted Gateway `sessionId` reaches BackendPort and visitor/deal state stays session-isolated.
+- A real Qwen Gateway WebSocket `task.create` regression test proves prompt → BackendPort → completed Task → sales artifact across the actual Gateway wire.
+- Owner isolation, visitor-session isolation, duplicate-task rejection, cancellation, subscription cleanup, and result boundaries are covered by CI.
+
+Free focused gate:
+
+```bash
+npm run smoke:offline
+```
 
 ## Gate B — realtime GPT-Live ⏳ credentials required
 
@@ -41,31 +49,38 @@ Live acceptance:
 - repeated barge-in tests must clear buffered avatar audio immediately.
 - reconnect test must recover without replaying abandoned speech.
 
-## Gate D — sales visuals
+## Gate D — sales visuals 🟡 first artifact complete
 
-Next engineering milestone after live transport passes.
+Completed:
+- standard Gateway artifact MIME contract: `application/vnd.sales-avatar.visual+json`.
+- `product_card` is re-hydrated from structured catalog truth before display.
+- the artifact survives the real Qwen backend runtime.
+- the headless bridge extracts/deduplicates visual artifacts.
+- browser test console renders `product_card` next to the avatar.
+- renderer escapes untrusted display strings.
 
-Implement first six artifact types:
-- `product_card`
+Next visual types:
 - `comparison`
 - `pricing`
 - `case_study`
 - `roi`
 - `next_step`
 
-Browser owns layout; backend owns data. Artifacts must be deterministic and source their commercial facts from structured tools/state.
+Each new type must have its own structured hydrator/data source before it becomes frontend-authoritative. Unknown model-authored visual types are currently dropped by the backend.
 
-## Gate E — real hidden supervisor
+## Gate E — real hidden supervisor 🟡 adapter and security boundary complete
 
-After transport is stable, replace `MockSalesReasoner` with an OpenAI-compatible endpoint.
-
-Initial candidate: DeepSeek V4.1 Flash.
-
-Rules:
-- model selection remains environment/config only.
-- no model may own product price, inventory, permission, or persisted deal truth.
+Completed before live model use:
+- OpenAI-compatible supervisor adapter.
+- model selection is environment/config only.
+- canonical decision layer strips model authority over lead/account IDs, consent, session identity, and transaction state.
 - deterministic buyer facts override conflicting reasoner proposals.
-- GLM/Qwen remain drop-in challengers, not architecture forks.
+- `product_card` pricing/features/name are rebuilt from structured catalog truth, so a model cannot invent them.
+
+Live-model acceptance:
+1. Start with a low-cost hosted supervisor after Gate B/C transport passes.
+2. Initial candidate: DeepSeek V4.1 Flash; GLM/Qwen remain drop-in challengers.
+3. Measure factuality, latency, tool discipline, and sales outcome against the same scenarios.
 
 ## Gate F — real product truth
 
