@@ -8,6 +8,19 @@ export class ProductCatalog {
   constructor(products = DEFAULT_PRODUCTS) { this.products = products }
   list() { return structuredClone(this.products) }
   get(id) { return structuredClone(this.products.find(p => p.id === id) ?? null) }
+  getMany(ids = [], { limit = 4 } = {}) {
+    const seen = new Set()
+    const products = []
+    for (const value of Array.isArray(ids) ? ids : []) {
+      const id = String(value || '').trim()
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      const product = this.products.find(item => item.id === id)
+      if (product) products.push(structuredClone(product))
+      if (products.length >= limit) break
+    }
+    return products
+  }
   search({ requirements = [], teamSize = null } = {}) {
     const req = requirements.map(x => String(x).toLowerCase())
     return this.products.map(product => {
