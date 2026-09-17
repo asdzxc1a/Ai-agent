@@ -55,6 +55,22 @@ function sessionPath(pathname, suffix = '') {
   return pathname.match(new RegExp(`^/sessions/([^/]+)${escaped}$`))?.[1] ?? null
 }
 
+function actionMutationPath(pathname) {
+  const match = pathname.match(/^\/sessions\/([^/]+)\/actions\/([^/]+)\/(confirm|cancel)$/)
+  if (!match) return null
+  return {
+    sessionId: decodeURIComponent(match[1]),
+    proposalId: decodeURIComponent(match[2]),
+    action: match[3],
+  }
+}
+
+function actionErrorStatus(error) {
+  if (['NOT_FOUND', 'SESSION_MISMATCH'].includes(error?.code)) return 404
+  if (['INVALID_TRANSITION', 'CONFIRMATION_REQUIRED', 'UNSUPPORTED_ACTION'].includes(error?.code)) return 409
+  return 500
+}
+
 export function createAvatarControlServer({
   manager,
   host = '127.0.0.1',
@@ -116,6 +132,23 @@ export function createAvatarControlServer({
         const body = await readJson(req)
         return writeJson(res, 201, manager.promoteExperience(id, body))
       }
+      const actionsId = sessionPath(url.pathname, '/actions')
+      if (req.method === 'GET' && actionsId) {
+        const actions = manager.actions?.(decodeURIComponent(actionsId))
+        return writeJson(res, actions ? 200 : 404, actions ?? { error: 'action session not found' })
+      }
+      const actionMutation = actionMutationPath(url.pathname)
+      if (req.method === 'POST' && actionMutation) {
+        try {
+          const proposal = actionMutation.action === 'confirm'
+            ? manager.confirmAction?.(actionMutation.sessionId, actionMutation.proposalId)
+            : manager.cancelAction?.(actionMutation.sessionId, actionMutation.proposalId)
+          if (!proposal) return writeJson(res, 404, { error: 'action proposal not found' })
+          return writeJson(res, 200, proposal)
+        } catch (error) {
+          return writeJson(res, actionErrorStatus(error), { error: error.message, code: error.code || null })
+        }
+      }
       const plainId = sessionPath(url.pathname)
       if (req.method === 'GET' && plainId) {
         const status = manager.status(decodeURIComponent(plainId))
@@ -141,18 +174,15 @@ export function createAvatarControlServer({
       socket.destroy()
       return
     }
-    wss.handleUpgrade(req, socket, head, ws => {
-      wss.emit('connection', ws, req, decodeURIComponent(sessionId))
-    })
+    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req, decodeURIComponent(sessionId)))
   })
 
   wss.on('connection', (ws, _req, sessionId) => {
     ws.on('message', (data, isBinary) => {
       try {
         let audio
-        if (isBinary) {
-          audio = Buffer.from(data).toString('base64')
-        } else {
+        if (isBinary) audio = Buffer.from(data).toString('base64')
+        else {
           const text = String(data)
           try { audio = JSON.parse(text)?.audio } catch { audio = text }
         }
