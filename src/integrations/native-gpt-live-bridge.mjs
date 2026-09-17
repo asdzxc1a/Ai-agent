@@ -82,6 +82,13 @@ export class NativeGptLiveBridge {
       session: {
         model: this.model,
         audio: { output: { voice: this.voice } },
+        client: {
+          data_channel: {
+            // The browser only carries media and receives status. All control,
+            // delegation results, and prompt updates stay on the trusted sideband.
+            allowed_client_events: [],
+          },
+        },
         delegation: { type: 'client' },
         instructions: liveInstructions(),
         store: false,
@@ -157,6 +164,20 @@ export class NativeGptLiveBridge {
     if (this.history.length > 12) this.history.splice(0, this.history.length - 12)
   }
 
+  #flushAssistantTranscript() {
+    const content = clean(this.pendingAssistantTranscript, 2_000)
+    if (!content) return ''
+    this.pendingAssistantTranscript = ''
+    this.metrics.lastAssistantTranscript = content
+    this.metrics.assistantTranscriptFinals += 1
+    this.#recordHistory('assistant', content)
+    this.harness?.recordRealtimeEvent?.({
+      sessionId: this.salesSessionId,
+      event: { type: 'transcript.final', role: 'assistant', content },
+    })
+    return content
+  }
+
   #recentContext() {
     return this.history.slice(-8).map(item => `${item.role}: ${item.text}`).join('\n')
   }
@@ -190,10 +211,7 @@ export class NativeGptLiveBridge {
       return
     }
     if (event.type === 'session.closed') {
-      if (this.pendingAssistantTranscript) {
-        this.#recordHistory('assistant', this.pendingAssistantTranscript)
-        this.metrics.assistantTranscriptFinals += 1
-      }
+      this.#flushAssistantTranscript()
       return
     }
     if (event.type === 'error') this.onError(new Error(event.error?.message || event.message || 'GPT-Live error'))
@@ -204,11 +222,7 @@ export class NativeGptLiveBridge {
     const delegationId = clean(event?.delegation?.id, 240)
     if (!delegationId) return
 
-    if (this.pendingAssistantTranscript) {
-      this.#recordHistory('assistant', this.pendingAssistantTranscript)
-      this.pendingAssistantTranscript = ''
-      this.metrics.assistantTranscriptFinals += 1
-    }
+    this.#flushAssistantTranscript()
 
     const buyerTurn = clean(this.pendingBuyerTranscript, 4_000)
     this.pendingBuyerTranscript = ''
@@ -250,7 +264,10 @@ export class NativeGptLiveBridge {
           this.metrics.visualArtifacts += 1
         }
       }
-      const guidance = clean(result.content, 3_000) || 'Acknowledge the buyer, avoid unsupported claims, and ask one useful clarifying question.'
+      // Commentary is deliberately compact because Live commentary context is
+      // bounded; the hidden reasoner prompt also asks for concise guidance.
+      const guidance = clean(result.content, 1_600)
+        || 'Acknowledge the buyer, avoid unsupported claims, and ask one useful clarifying question.'
       this.#send({
         type: 'session.commentary.append',
         delegation_id: delegationId,
@@ -290,6 +307,7 @@ export class NativeGptLiveBridge {
     }
     try { ws?.close?.() } catch {}
     await this.delegationQueue.catch(() => {})
+    this.#flushAssistantTranscript()
     this.liveSessionId = null
   }
 }
