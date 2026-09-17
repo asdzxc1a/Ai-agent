@@ -1,5 +1,6 @@
 import { Room, RoomEvent, Track } from '/vendor/livekit-client.esm.mjs'
 import { startMicCapture } from './mic.js'
+import { renderSalesVisual } from './sales-visual.js'
 
 const $ = id => document.getElementById(id)
 const state = {
@@ -9,6 +10,7 @@ const state = {
   micSocket: null,
   muted: false,
   pollTimer: null,
+  visualKey: '',
 }
 
 function setState(text, kind = '') {
@@ -38,6 +40,21 @@ async function jsonFetch(path, options = {}) {
 
 function cleanupMediaElements() {
   $('stage').querySelectorAll('video,audio').forEach(element => element.remove())
+}
+
+function resetVisual() {
+  state.visualKey = ''
+  renderSalesVisual($('salesVisual'), null)
+  $('visualArtifacts').textContent = '0'
+}
+
+function maybeRenderVisual(visual) {
+  if (!visual) return
+  let nextKey = ''
+  try { nextKey = JSON.stringify(visual) } catch { nextKey = String(visual?.type || 'visual') }
+  if (nextKey === state.visualKey) return
+  state.visualKey = nextKey
+  renderSalesVisual($('salesVisual'), visual)
 }
 
 async function connectLiveKit(session) {
@@ -98,11 +115,14 @@ async function pollStatus() {
   if (!state.session) return
   try {
     const status = await jsonFetch(`/sessions/${encodeURIComponent(state.session.id)}`)
-    const metrics = status.bridge?.metrics || {}
+    const bridge = status.bridge || {}
+    const metrics = bridge.metrics || {}
     $('audioChunks').textContent = metrics.audioChunks ?? 0
     $('delegations').textContent = metrics.spawnThinkingCalls ?? 0
     $('toolCalls').textContent = metrics.toolCalls ?? 0
+    $('visualArtifacts').textContent = metrics.visualArtifacts ?? 0
     $('interruptions').textContent = metrics.interruptions ?? 0
+    maybeRenderVisual(bridge.lastVisual)
     if (metrics.lastUserTranscript) $('userTranscript').textContent = metrics.lastUserTranscript
     if (metrics.lastAssistantTranscript) $('assistantTranscript').textContent = metrics.lastAssistantTranscript
   } catch (error) {
@@ -119,6 +139,7 @@ function startPolling() {
 async function startSession() {
   setState('Starting LiveAvatar + GPT-Live…')
   $('start').disabled = true
+  resetVisual()
   try {
     const session = await jsonFetch('/sessions', { method: 'POST', body: '{}' })
     state.session = session
@@ -174,6 +195,7 @@ async function stopSession() {
     await jsonFetch(`/sessions/${encodeURIComponent(session.id)}`, { method: 'DELETE' }).catch(console.warn)
   }
   setButtons(false)
+  resetVisual()
   setState('Stopped')
 }
 
@@ -195,3 +217,4 @@ window.addEventListener('beforeunload', () => {
 })
 
 setButtons(false)
+resetVisual()
