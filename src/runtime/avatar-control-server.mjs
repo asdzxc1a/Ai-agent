@@ -11,6 +11,18 @@ function writeJson(res, status, body) {
   res.end(JSON.stringify(body))
 }
 
+async function readJson(req, maxBytes = 64 * 1024) {
+  const chunks = []
+  let size = 0
+  for await (const chunk of req) {
+    size += chunk.length
+    if (size > maxBytes) throw new Error('request body too large')
+    chunks.push(chunk)
+  }
+  if (!chunks.length) return {}
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+}
+
 function sessionPath(pathname, suffix = '') {
   const escaped = suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return pathname.match(new RegExp(`^/sessions/([^/]+)${escaped}$`))?.[1] ?? null
@@ -34,6 +46,13 @@ export function createAvatarControlServer({
       if (req.method === 'POST' && url.pathname === '/sessions') {
         const session = await manager.start()
         return writeJson(res, 201, session)
+      }
+      const textId = sessionPath(url.pathname, '/text')
+      if (req.method === 'POST' && textId) {
+        const body = await readJson(req)
+        if (!String(body.text || '').trim()) return writeJson(res, 400, { error: 'text is required' })
+        manager.sendText(decodeURIComponent(textId), body.text)
+        return writeJson(res, 202, { ok: true })
       }
       const interruptId = sessionPath(url.pathname, '/interrupt')
       if (req.method === 'POST' && interruptId) {
