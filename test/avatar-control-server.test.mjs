@@ -15,6 +15,7 @@ class FakeManager {
     const session = {
       id: 'session-1',
       sessionId: 'live-1',
+      gatewaySessionId: 'gateway-1',
       livekitUrl: 'wss://livekit',
       livekitClientToken: 'token',
       inputSampleRate: 24000,
@@ -37,6 +38,16 @@ class FakeManager {
       },
     }
   }
+  learning(id) {
+    if (!this.sessions.has(id)) return null
+    return {
+      schemaVersion: 'salesos.learning-bundle.v1',
+      sessionId: 'gateway-1',
+      trajectory: { events: [] },
+      rewards: [],
+      experiences: [],
+    }
+  }
   sendAudio(id, audio) { this.audio.push({ id, audio }); return true }
   sendText(id, text) { this.text.push({ id, text }); return true }
   interrupt(id) { this.interrupts.push(id); return true }
@@ -44,27 +55,39 @@ class FakeManager {
   async close() { this.sessions.clear() }
 }
 
-test('avatar control server serves browser harness and routes session inputs', async () => {
+test('avatar control server serves Arcana SalesOS and routes session inputs', async () => {
   const manager = new FakeManager()
-  const control = createAvatarControlServer({ manager, port: 0 })
+  const control = createAvatarControlServer({
+    manager,
+    port: 0,
+    configuration: { app: 'arcana-salesos', liveReady: false, salesOS: 'harness-v1' },
+  })
   const { origin } = await control.start()
   try {
+    const health = await fetch(`${origin}/health`)
+    assert.equal(health.status, 200)
+    const healthBody = await health.json()
+    assert.equal(healthBody.configuration.app, 'arcana-salesos')
+    assert.equal(healthBody.configuration.liveReady, false)
+
     const html = await fetch(`${origin}/`)
     assert.equal(html.status, 200)
     assert.match(html.headers.get('content-type'), /text\/html/)
     const htmlText = await html.text()
-    assert.match(htmlText, /Sales Avatar Test Console/)
+    assert.match(htmlText, /Arcana SalesOS/)
+    assert.match(htmlText, /Live sales intelligence/)
     assert.match(htmlText, /salesVisual/)
 
-    const app = await fetch(`${origin}/app.js`)
-    assert.equal(app.status, 200)
-    const appText = await app.text()
-    assert.match(appText, /livekit-client/)
-    assert.match(appText, /renderSalesVisual/)
-
-    const visualModule = await fetch(`${origin}/sales-visual.js`)
-    assert.equal(visualModule.status, 200)
-    assert.match(await visualModule.text(), /salesVisualMarkup/)
+    for (const [path, pattern] of [
+      ['/app.js', /summarizeLearningBundle/],
+      ['/sales-visual.js', /salesVisualMarkup/],
+      ['/sales-intelligence.js', /summarizeLearningBundle/],
+      ['/styles.css', /\.workspace/],
+    ]) {
+      const response = await fetch(`${origin}${path}`)
+      assert.equal(response.status, 200)
+      assert.match(await response.text(), pattern)
+    }
 
     const vendor = await fetch(`${origin}/vendor/livekit-client.esm.mjs`)
     assert.equal(vendor.status, 200)
@@ -74,6 +97,10 @@ test('avatar control server serves browser harness and routes session inputs', a
     assert.equal(createdResponse.status, 201)
     const created = await createdResponse.json()
     assert.equal(created.id, 'session-1')
+
+    const learningResponse = await fetch(`${origin}/sessions/session-1/learning`)
+    assert.equal(learningResponse.status, 200)
+    assert.equal((await learningResponse.json()).schemaVersion, 'salesos.learning-bundle.v1')
 
     const textResponse = await fetch(`${origin}/sessions/session-1/text`, {
       method: 'POST',
