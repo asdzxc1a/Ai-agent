@@ -1,19 +1,14 @@
 import { SALES_STAGES } from './sales-state.mjs'
 
-const LIST_FIELDS = Object.freeze([
+const INTERPRETIVE_LIST_FIELDS = Object.freeze([
   'pains',
   'goals',
-  'requirements',
   'objections',
 ])
-const TEXT_FIELDS = Object.freeze([
-  'currentSolution',
-  'budgetBand',
-  'purchaseTimeline',
+const CONTROLLER_TEXT_FIELDS = Object.freeze([
   'qualificationStatus',
   'nextStep',
 ])
-const CONTACT_FIELDS = Object.freeze(['name', 'role', 'company', 'email'])
 
 function cleanText(value, max = 1_000) {
   if (value === null) return null
@@ -43,21 +38,16 @@ export function sanitizeSalesStatePatch(raw = {}) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
   const patch = {}
 
-  for (const field of LIST_FIELDS) {
+  // The model may update interpretive/controller state. These fields describe
+  // sales strategy, not externally authoritative customer/product truth.
+  for (const field of INTERPRETIVE_LIST_FIELDS) {
     const values = stringList(raw[field])
     if (values) patch[field] = values
   }
 
-  for (const field of TEXT_FIELDS) {
+  for (const field of CONTROLLER_TEXT_FIELDS) {
     const value = cleanText(raw[field])
     if (value !== undefined) patch[field] = value
-  }
-
-  if (raw.teamSize !== undefined) {
-    const teamSize = Number(raw.teamSize)
-    if (Number.isSafeInteger(teamSize) && teamSize > 0 && teamSize <= 1_000_000) {
-      patch.teamSize = teamSize
-    }
   }
 
   if (raw.conversationStage !== undefined) {
@@ -65,18 +55,15 @@ export function sanitizeSalesStatePatch(raw = {}) {
     if (stage && SALES_STAGES.includes(stage)) patch.conversationStage = stage
   }
 
-  if (raw.contact && typeof raw.contact === 'object' && !Array.isArray(raw.contact)) {
-    const contact = {}
-    for (const field of CONTACT_FIELDS) {
-      const value = cleanText(raw.contact[field], field === 'email' ? 320 : 240)
-      if (value !== undefined) contact[field] = value
-    }
-    if (Object.keys(contact).length) patch.contact = contact
-  }
-
   // Deliberately excluded from model authority:
-  // leadId, accountId, consent, productsShown, caseStudiesShown, sessionId,
-  // timestamps, tool authorization, pricing, and transaction state.
+  // - customer/deal facts: teamSize, requirements, contact, currentSolution,
+  //   budgetBand, purchaseTimeline
+  // - identity/authorization: sessionId, leadId, accountId, consent
+  // - commercial/transaction truth: productsShown, caseStudiesShown, pricing,
+  //   inventory, discounts, tool authorization, transaction state
+  // - timestamps/internal bookkeeping
+  // These must come from deterministic extraction, structured tools, or an
+  // explicit validated user action before entering server-owned truth.
   return patch
 }
 
