@@ -15,10 +15,11 @@ class FakeBridge {
   sendInputAudio(audio) { this.audio.push(audio); return true }
   sendText(text) { this.text.push(text); return true }
   interrupt() { this.interrupts += 1; return true }
+  getStatus() { return { started: true, metrics: { audioChunks: this.audio.length, spawnThinkingCalls: 1 } } }
   async close() { this.closed = true }
 }
 
-test('AvatarSessionManager owns bridge lifecycle and input routing', async () => {
+test('AvatarSessionManager owns bridge lifecycle, input routing, and safe status', async () => {
   const bridges = new Map()
   const manager = new AvatarSessionManager({
     createBridge: ({ id }) => {
@@ -37,7 +38,15 @@ test('AvatarSessionManager owns bridge lifecycle and input routing', async () =>
   assert.deepEqual(bridges.get('local-1').audio, ['pcm'])
   assert.deepEqual(bridges.get('local-1').text, ['show me enterprise'])
   assert.equal(bridges.get('local-1').interrupts, 1)
+
+  const status = manager.status('local-1')
+  assert.equal(status.id, 'local-1')
+  assert.equal(status.sessionId, 'live-local-1')
+  assert.equal(status.bridge.metrics.audioChunks, 1)
+  assert.equal(status.bridge.metrics.spawnThinkingCalls, 1)
+
   assert.equal(await manager.stop('local-1'), true)
   assert.equal(bridges.get('local-1').closed, true)
   assert.equal(manager.get('local-1'), null)
+  assert.equal(manager.status('local-1'), null)
 })
