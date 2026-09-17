@@ -23,6 +23,15 @@ export function liveSalesPreflight(env = process.env) {
     warnings.push('QWEN_AUDIO_AGENT_ASSISTANT_PROFILE_PATH is not set; Qwen will use its generic assistant persona')
   }
 
+  const identityConfigured = String(env.QWEN_AUDIO_AGENT_IDENTITY_MODE || '').trim().toLowerCase()
+  const identityMode = identityConfigured === 'personal' ? 'personal' : 'browser'
+  const hasPersistentIdentitySecret = Boolean(String(env.QWEN_AUDIO_AGENT_AUTH_SECRET || '').trim())
+  if (identityMode === 'personal') {
+    warnings.push('QWEN_AUDIO_AGENT_IDENTITY_MODE=personal shares one Qwen voice owner; use browser mode for concurrent website buyers')
+  } else if (!hasPersistentIdentitySecret) {
+    warnings.push('QWEN_AUDIO_AGENT_AUTH_SECRET is unset; the launcher will generate a process-local signing secret (fine for local/single-process tests, not multi-instance production)')
+  }
+
   const reasonerMode = String(env.SALES_REASONER_MODE || 'mock').trim().toLowerCase()
   if (reasonerMode === 'openai-compatible') {
     for (const key of ['SALES_REASONER_BASE_URL', 'SALES_REASONER_API_KEY', 'SALES_REASONER_MODEL']) {
@@ -39,6 +48,8 @@ export function liveSalesPreflight(env = process.env) {
     configuration: {
       provider: provider || null,
       reasonerMode,
+      identityMode,
+      hasPersistentIdentitySecret,
       hasOpenAIKey: Boolean(String(env.OPENAI_API_KEY || env.GPT_LIVE_API_KEY || '').trim()),
       hasLiveAvatarKey: Boolean(String(env.LIVEAVATAR_API_KEY || '').trim()),
       hasAvatarId: Boolean(String(env.LIVEAVATAR_AVATAR_ID || '').trim()),
