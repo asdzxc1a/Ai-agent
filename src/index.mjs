@@ -1,5 +1,16 @@
 export { createSalesState, applyStatePatch, SALES_STAGES } from './domain/sales-state.mjs'
 export { extractDeterministicSalesFacts } from './domain/fact-extractor.mjs'
+export {
+  canonicalizeSalesDecision,
+  canonicalizeSalesVisual,
+  sanitizeSalesStatePatch,
+} from './domain/sales-decision.mjs'
+export {
+  SALES_VISUAL_MEDIA_TYPE,
+  createSalesVisualArtifact,
+  salesVisualFromArtifact,
+  salesVisualsFromArtifacts,
+} from './domain/sales-artifacts.mjs'
 export { InMemorySalesSessionStore } from './runtime/session-store.mjs'
 export { AvatarSessionManager, createAvatarSessionManagerFromEnv } from './runtime/avatar-session-manager.mjs'
 export { createAvatarControlServer } from './runtime/avatar-control-server.mjs'
