@@ -1,5 +1,19 @@
 import { createServer } from 'node:http'
+import { readFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { WebSocketServer } from 'ws'
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const STATIC_FILES = new Map([
+  ['/', { path: resolve(ROOT, 'web/index.html'), type: 'text/html; charset=utf-8' }],
+  ['/app.js', { path: resolve(ROOT, 'web/app.js'), type: 'text/javascript; charset=utf-8' }],
+  ['/mic.js', { path: resolve(ROOT, 'web/mic.js'), type: 'text/javascript; charset=utf-8' }],
+  ['/vendor/livekit-client.esm.mjs', {
+    path: resolve(ROOT, 'node_modules/livekit-client/dist/livekit-client.esm.mjs'),
+    type: 'text/javascript; charset=utf-8',
+  }],
+])
 
 function writeJson(res, status, body) {
   res.writeHead(status, {
@@ -7,8 +21,18 @@ function writeJson(res, status, body) {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
     'access-control-allow-headers': 'content-type',
+    'cache-control': 'no-store',
   })
   res.end(JSON.stringify(body))
+}
+
+async function writeStatic(res, entry) {
+  const body = await readFile(entry.path)
+  res.writeHead(200, {
+    'content-type': entry.type,
+    'cache-control': entry.path.includes('node_modules') ? 'public, max-age=3600' : 'no-store',
+  })
+  res.end(body)
 }
 
 async function readJson(req, maxBytes = 64 * 1024) {
@@ -40,6 +64,8 @@ export function createAvatarControlServer({
     if (req.method === 'OPTIONS') return writeJson(res, 204, {})
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
     try {
+      const staticEntry = req.method === 'GET' ? STATIC_FILES.get(url.pathname) : null
+      if (staticEntry) return await writeStatic(res, staticEntry)
       if (req.method === 'GET' && url.pathname === '/health') {
         return writeJson(res, 200, { ok: true, sessions: manager.sessions?.size ?? null })
       }
