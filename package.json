@@ -10,7 +10,7 @@
     "demo": "node src/demo.mjs"
   },
   "dependencies": {
-    "qwen-audio-agent": "1.11.0"
+    "qwen-audio-agent": "github:QwenAudio/qwen-audio-agent#f40d0053c6a0a74c8e7cc40a334f31c9c36c1fae"
   },
   "engines": {
     "node": ">=22.22.2"
