@@ -25,6 +25,11 @@ function clean(value, max = 500) {
 
 function clone(value) { return value == null ? value : structuredClone(value) }
 
+function validTtl(value) {
+  const ttl = Number(value)
+  return Number.isFinite(ttl) && ttl > 0 ? ttl : 0
+}
+
 export class ActionProposalError extends Error {
   constructor(message, code = 'ACTION_PROPOSAL_ERROR') {
     super(message)
@@ -36,8 +41,12 @@ export class ActionProposalError extends Error {
 export class InMemoryActionProposalStore {
   #records = new Map()
 
-  constructor({ clock = () => new Date().toISOString() } = {}) {
+  constructor({
+    clock = () => new Date().toISOString(),
+    proposalTtlMs = 0,
+  } = {}) {
     this.clock = clock
+    this.proposalTtlMs = validTtl(proposalTtlMs)
   }
 
   create({ sessionId, taskId = null, kind, label = '', description = '' } = {}) {
@@ -46,6 +55,10 @@ export class InMemoryActionProposalStore {
     if (!sid) throw new ActionProposalError('Action proposal requires sessionId', 'INVALID_SESSION')
     if (!ALLOWED_KINDS.has(actionKind)) throw new ActionProposalError(`Unsupported action kind: ${actionKind}`, 'UNSUPPORTED_ACTION')
     const now = this.clock()
+    const createdMs = Date.parse(now)
+    const expiresAt = this.proposalTtlMs && Number.isFinite(createdMs)
+      ? new Date(createdMs + this.proposalTtlMs).toISOString()
+      : null
     const record = {
       id: `action_${randomUUID()}`,
       schemaVersion: 'sales.action-proposal.v1',
@@ -58,6 +71,8 @@ export class InMemoryActionProposalStore {
       requiresConfirmation: true,
       executed: false,
       createdAt: now,
+      expiresAt,
+      expiredAt: null,
       confirmedAt: null,
       cancelledAt: null,
       executedAt: null,
@@ -73,13 +88,16 @@ export class InMemoryActionProposalStore {
     const record = this.#records.get(clean(id, 240))
     if (!record) return null
     if (sessionId && record.sessionId !== clean(sessionId, 200)) return null
+    this.#expireIfNeeded(record)
     return clone(record)
   }
 
   list({ sessionId = null, status = null } = {}) {
     const sid = clean(sessionId, 200)
     const wantedStatus = clean(status, 80)
-    return [...this.#records.values()]
+    const records = [...this.#records.values()]
+    for (const record of records) this.#expireIfNeeded(record)
+    return records
       .filter(record => !sid || record.sessionId === sid)
       .filter(record => !wantedStatus || record.status === wantedStatus)
       .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
@@ -88,6 +106,7 @@ export class InMemoryActionProposalStore {
 
   confirm(id, { sessionId } = {}) {
     const record = this.#mutable(id, sessionId)
+    this.#assertNotExpired(record)
     if (record.status === 'confirmed') return clone(record)
     if (record.status !== 'pending') throw new ActionProposalError(`Cannot confirm action in status ${record.status}`, 'INVALID_TRANSITION')
     record.status = 'confirmed'
@@ -97,6 +116,7 @@ export class InMemoryActionProposalStore {
 
   cancel(id, { sessionId } = {}) {
     const record = this.#mutable(id, sessionId)
+    this.#assertNotExpired(record)
     if (record.status === 'cancelled') return clone(record)
     if (!['pending', 'confirmed'].includes(record.status)) {
       throw new ActionProposalError(`Cannot cancel action in status ${record.status}`, 'INVALID_TRANSITION')
@@ -108,6 +128,7 @@ export class InMemoryActionProposalStore {
 
   beginExecution(id, { sessionId } = {}) {
     const record = this.#mutable(id, sessionId)
+    this.#assertNotExpired(record)
     if (record.status !== 'confirmed') {
       throw new ActionProposalError('Action must be explicitly confirmed before execution', 'CONFIRMATION_REQUIRED')
     }
@@ -133,6 +154,24 @@ export class InMemoryActionProposalStore {
     record.failedAt = this.clock()
     record.error = clean(error?.message || error, 500) || 'Action execution failed'
     return clone(record)
+  }
+
+  #expireIfNeeded(record) {
+    if (!record?.expiresAt || !['pending', 'confirmed'].includes(record.status)) return record
+    const expiresMs = Date.parse(record.expiresAt)
+    const now = this.clock()
+    const nowMs = Date.parse(now)
+    if (!Number.isFinite(expiresMs) || !Number.isFinite(nowMs) || nowMs < expiresMs) return record
+    record.status = 'expired'
+    record.expiredAt = now
+    return record
+  }
+
+  #assertNotExpired(record) {
+    this.#expireIfNeeded(record)
+    if (record.status === 'expired') {
+      throw new ActionProposalError('Action proposal has expired', 'ACTION_EXPIRED')
+    }
   }
 
   #mutable(id, sessionId) {
