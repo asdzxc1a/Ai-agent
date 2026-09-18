@@ -366,7 +366,7 @@ export class RunEngine implements RunService {
     let result: unknown;
     let failure: RunFailure | undefined;
     let selectedAction: AgentAction | undefined;
-    let diagnosticCount = 0;
+    let diagnosticCount: number;
 
     try {
       let startedAt = Date.now();
