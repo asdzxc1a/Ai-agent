@@ -187,3 +187,27 @@ Steel publishes a moving `:latest` image. A moving tag makes browser behavior ch
 **Consequence**
 
 Runtime upgrades are explicit engineering changes: resolve a new digest, smoke-test it, run the full browser acceptance suite, then update `infra/steel-image.txt`.
+
+
+---
+
+## D-009 — Pin Stagehand v3.7.3 for direct Steel CDP compatibility
+
+**Date:** 2026-09-18  
+**Status:** Accepted
+
+**Decision**
+
+Use `@browserbasehq/stagehand@3.7.3` for the Stagehand→Steel compatibility layer in Gate 2.
+
+**Why**
+
+V3 explicitly supports attaching to an already-running browser through `localBrowserLaunchOptions.cdpUrl`. Stagehand v4 moved local browser operation to an extension-resident runtime; its default `localBrowser.connect()` path assumes the Stagehand extension is available to the browser process. Our Stagehand SDK runs on the host while Steel's Chromium runs in Docker, so v4 would require extension injection/mounting before we have evidence that complexity is valuable.
+
+**Consequence**
+
+Stagehand is treated as a replaceable compatibility layer. Gate 2 does not adopt v4 extension plumbing.
+
+**Revisit when**
+
+We intentionally build a browser image/runtime that preloads the Stagehand v4 extension, or our own semantic/runtime layer makes Stagehand replaceable entirely.
