@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-18  
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
-**Current gate:** Gate 6 — Replayable SSE  
-**Overall status:** Gate 5 is merged in PR #31. Gate 6 is in progress on branch `gate-6-replayable-sse`, tracked by issue #32.
+**Current gate:** Gate 7 — Artifacts + debugging  
+**Overall status:** Gate 6 passed PR #33 merge gates: normal CI, raw Steel regression, Stagehand/API/PostgreSQL regressions, durable restart, and PostgreSQL-backed SSE disconnect/reconnect replay are green. Gate 7 is next after PR #33 merges.
 
 ## North star
 
@@ -83,6 +83,8 @@ Gate 4 PR #29 code-head evidence on `4de8a6cf7e9e48d31541cc9260238110ad0d12fa`: 
 
 Gate 5 PR #31 evidence on head `90ef1dde8cb062c731e6c2ee9f8e49d776c2715e`: CI run `35385727058` — passed; Steel integration run `35385726966` — passed; combined Stagehand/PostgreSQL run `35385727172` — passed. In that combined run, the 10-session semantic regression passed in 18.68s, the Gate 4 HTTP browser acceptance passed in 1.98s, PostgreSQL repository acceptance passed in 285ms, and the full API restart acceptance passed in 2.14s (2.95s total), proving the same COMPLETED result, persisted steps, and ordered events survive a fresh pool/API instance. PostgreSQL image: `postgres@sha256:6c538e7206ea40ff740ef27883529390a690b6ead6ba96b44c67a9f7c638e8fd`.
 
+Gate 6 PR #33 evidence on head `6a4c7a6134d28106696c5d050298cd8b3852d384`: CI run `35387635098` — passed; Steel run `35387634898` — passed; combined Stagehand/PostgreSQL/SSE run `35387634903` — passed. The PostgreSQL replay test disconnected after `RUN_CREATED` (event id 1), confirmed the run continued, reconnected with `Last-Event-ID: 1`, and received exactly ids 2–3 (`RUN_STARTED`, `RUN_COMPLETED`) with no duplicates. The SSE test passed in 643ms (877ms total Vitest duration), and the durable restart regression remained green.
+
 Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
 
 ## Known risks
@@ -95,7 +97,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 6:** expose persisted `run_events` as replayable SSE at `GET /v1/runs/:id/events`, with monotonic event IDs and reconnect using `Last-Event-ID`. The event table from Gate 5 becomes the source of truth; do not introduce a separate ephemeral event bus yet.
+**Gate 7:** add an artifact/debugging layer without changing execution semantics: persist screenshots and diagnostic metadata behind an `ArtifactStore` abstraction, keep secrets/redaction rules explicit, and make intentionally failing fixture runs diagnosable from stored artifacts.
 
 ## Gate completion rule
 
