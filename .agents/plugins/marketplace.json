@@ -1,0 +1,20 @@
+{
+  "name": "ai-agent-personal",
+  "plugins": [
+    {
+      "name": "ship-feature",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ship-feature"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity",
+      "interface": {
+        "displayName": "Ship Feature"
+      }
+    }
+  ]
+}

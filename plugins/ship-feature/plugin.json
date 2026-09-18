@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ship-feature",
+  "version": "1.0.0",
+  "description": "Build non-trivial software features with one coherent implementation lead, adversarial review, and product review."
+}
