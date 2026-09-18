@@ -12,6 +12,9 @@ export interface CreateSteelSessionOptions {
   headless?: boolean;
   timezone?: string;
   skipFingerprintInjection?: boolean;
+  deviceConfig?: {
+    device: "desktop" | "mobile";
+  };
 }
 
 interface SteelSessionList {
