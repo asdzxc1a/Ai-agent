@@ -61,7 +61,7 @@ Acceptance:
 
 ## Gate 2 — Stagehand → Steel
 
-**Status:** IN_PROGRESS
+**Status:** PASSED
 
 Build:
 
