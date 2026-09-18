@@ -19,6 +19,19 @@ export interface CreateSteelSessionOptions {
   };
 }
 
+export interface SteelLogQuery {
+  startTime?: string;
+  eventTypes?: string[];
+  limit?: number;
+  offset?: number;
+}
+
+export interface SteelLogQueryResult {
+  events: unknown[];
+  total: number;
+  hasMore: boolean;
+}
+
 function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, "");
 }
@@ -112,6 +125,92 @@ export class SteelClient {
 
     const payload: unknown = await response.json();
     return parseSessionDetails(payload);
+  }
+
+  public async captureScreenshot(
+    options: {
+      fullPage?: boolean;
+    } = {}
+  ): Promise<Uint8Array> {
+    const response = await fetch(
+      `${this.#baseUrl}/v1/sessions/screenshot`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify(options)
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Steel screenshot failed with HTTP ${response.status}: ${await readError(response)}`
+      );
+    }
+
+    return new Uint8Array(
+      await response.arrayBuffer()
+    );
+  }
+
+  public async queryLogs(
+    query: SteelLogQuery = {}
+  ): Promise<SteelLogQueryResult> {
+    const params = new URLSearchParams();
+
+    if (query.startTime !== undefined) {
+      params.set("startTime", query.startTime);
+    }
+
+    if (query.eventTypes !== undefined) {
+      params.set(
+        "eventTypes",
+        query.eventTypes.join(",")
+      );
+    }
+
+    if (query.limit !== undefined) {
+      params.set("limit", String(query.limit));
+    }
+
+    if (query.offset !== undefined) {
+      params.set("offset", String(query.offset));
+    }
+
+    const suffix =
+      params.size === 0
+        ? ""
+        : `?${params.toString()}`;
+
+    const response = await fetch(
+      `${this.#baseUrl}/v1/logs/query${suffix}`
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Steel log query failed with HTTP ${response.status}: ${await readError(response)}`
+      );
+    }
+
+    const payload: unknown = await response.json();
+
+    if (
+      !isObject(payload) ||
+      !Array.isArray(payload.events) ||
+      typeof payload.total !== "number" ||
+      typeof payload.hasMore !== "boolean"
+    ) {
+      throw new Error(
+        "Steel returned an invalid log-query response."
+      );
+    }
+
+    return {
+      events: payload.events,
+      total: payload.total,
+      hasMore: payload.hasMore
+    };
   }
 
   public async releaseSession(sessionId: string): Promise<SteelReleasedSession> {

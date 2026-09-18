@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
 **Current gate:** Gate 7 — Artifacts + debugging  
-**Overall status:** Gate 6 passed PR #33 merge gates: normal CI, raw Steel regression, Stagehand/API/PostgreSQL regressions, durable restart, and PostgreSQL-backed SSE disconnect/reconnect replay are green. Gate 7 is next after PR #33 merges.
+**Overall status:** Gate 6 is merged in PR #33. Gate 7 is in progress on branch `gate-7-artifacts-debugging`, tracked by issue #34.
 
 ## North star
 
@@ -97,7 +97,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 7:** add an artifact/debugging layer without changing execution semantics: persist screenshots and diagnostic metadata behind an `ArtifactStore` abstraction, keep secrets/redaction rules explicit, and make intentionally failing fixture runs diagnosable from stored artifacts.
+**Gate 7 / issue #34:** add provider-neutral browser evidence capabilities, an `ArtifactStore` with local filesystem implementation, best-effort run screenshots/diagnostics/summary, redaction, and artifact list/download API routes.
 
 ## Gate completion rule
 

@@ -1,7 +1,10 @@
 import type {
+  BrowserDiagnostic,
+  BrowserDiagnosticKind,
   BrowserRuntime,
   BrowserSession,
-  BrowserSessionOptions
+  BrowserSessionOptions,
+  BrowserScreenshotOptions
 } from "@astra/browser-runtime";
 
 import {
@@ -14,12 +17,125 @@ export interface SteelBrowserRuntimeOptions {
   skipFingerprintInjection?: boolean;
 }
 
+function isRecord(
+  value: unknown
+): value is Record<string, unknown> {
+  return (
+    value !== null &&
+    typeof value === "object"
+  );
+}
+
+function diagnosticKind(
+  type: string
+): BrowserDiagnosticKind | undefined {
+  switch (type) {
+    case "Console":
+      return "console";
+    case "PageError":
+      return "page-error";
+    case "BrowserError":
+      return "browser-error";
+    case "RequestFailed":
+      return "request-failed";
+    case "Error":
+      return "error";
+    default:
+      return undefined;
+  }
+}
+
+function mapDiagnostic(
+  value: unknown
+): BrowserDiagnostic | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const type =
+    typeof value.type === "string"
+      ? value.type
+      : undefined;
+  const kind =
+    type === undefined
+      ? undefined
+      : diagnosticKind(type);
+
+  if (kind === undefined) {
+    return undefined;
+  }
+
+  const base = {
+    kind,
+    ...(typeof value.timestamp === "string"
+      ? {
+          timestamp: value.timestamp
+        }
+      : {})
+  };
+
+  if (
+    isRecord(value.console) &&
+    typeof value.console.text === "string"
+  ) {
+    return {
+      ...base,
+      message: value.console.text,
+      ...(typeof value.console.level === "string"
+        ? {
+            level: value.console.level
+          }
+        : {}),
+      ...(typeof value.console.loc === "string"
+        ? {
+            location: value.console.loc
+          }
+        : {})
+    };
+  }
+
+  if (
+    isRecord(value.error) &&
+    typeof value.error.message === "string"
+  ) {
+    return {
+      ...base,
+      message: value.error.message,
+      ...(typeof value.error.url === "string"
+        ? {
+            url: value.error.url
+          }
+        : {})
+    };
+  }
+
+  if (typeof value.message === "string") {
+    return {
+      ...base,
+      message: value.message,
+      ...(typeof value.logLevel === "string"
+        ? {
+            level: value.logLevel
+          }
+        : {}),
+      ...(typeof value.loc === "string"
+        ? {
+            location: value.loc
+          }
+        : {})
+    };
+  }
+
+  return undefined;
+}
+
 class SteelBrowserSession implements BrowserSession {
   public readonly id: string;
   public readonly cdpUrl: string;
   public readonly viewerUrl?: string;
 
   readonly #client: SteelClient;
+  readonly #createdAt: string;
   #closePromise?: Promise<void>;
 
   public constructor(
@@ -29,10 +145,42 @@ class SteelBrowserSession implements BrowserSession {
     this.#client = client;
     this.id = details.id;
     this.cdpUrl = details.websocketUrl;
+    this.#createdAt =
+      details.createdAt ??
+      new Date().toISOString();
 
     if (details.sessionViewerUrl !== undefined) {
       this.viewerUrl = details.sessionViewerUrl;
     }
+  }
+
+  public captureScreenshot(
+    options: BrowserScreenshotOptions = {}
+  ): Promise<Uint8Array> {
+    return this.#client.captureScreenshot(
+      options
+    );
+  }
+
+  public async getDiagnostics(): Promise<BrowserDiagnostic[]> {
+    const result = await this.#client.queryLogs({
+      startTime: this.#createdAt,
+      eventTypes: [
+        "Console",
+        "PageError",
+        "BrowserError",
+        "Error",
+        "RequestFailed"
+      ],
+      limit: 1000
+    });
+
+    return result.events
+      .map(mapDiagnostic)
+      .filter(
+        (entry): entry is BrowserDiagnostic =>
+          entry !== undefined
+      );
   }
 
   public close(): Promise<void> {
@@ -41,21 +189,29 @@ class SteelBrowserSession implements BrowserSession {
   }
 
   async #closeOnce(): Promise<void> {
-    const current = await this.#client.getSession(this.id);
+    const current =
+      await this.#client.getSession(this.id);
 
     if (current.status === "released") {
       return;
     }
 
-    if (current.status !== "live" && current.status !== "idle") {
+    if (
+      current.status !== "live" &&
+      current.status !== "idle"
+    ) {
       throw new Error(
         `Steel session ${this.id} cannot be closed from status ${current.status}.`
       );
     }
 
-    const released = await this.#client.releaseSession(this.id);
+    const released =
+      await this.#client.releaseSession(this.id);
 
-    if (!released.success || released.status !== "released") {
+    if (
+      !released.success ||
+      released.status !== "released"
+    ) {
       throw new Error(
         `Steel session ${this.id} did not reach released state.`
       );
@@ -63,7 +219,8 @@ class SteelBrowserSession implements BrowserSession {
   }
 }
 
-export class SteelBrowserRuntime implements BrowserRuntime {
+export class SteelBrowserRuntime
+  implements BrowserRuntime {
   readonly #client: SteelClient;
   readonly #skipFingerprintInjection: boolean;
 
@@ -75,24 +232,35 @@ export class SteelBrowserRuntime implements BrowserRuntime {
       baseUrl === undefined
         ? new SteelClient()
         : new SteelClient(baseUrl);
-    this.#skipFingerprintInjection = skipFingerprintInjection;
+    this.#skipFingerprintInjection =
+      skipFingerprintInjection;
   }
 
   public async createSession(
     options: BrowserSessionOptions = {}
   ): Promise<BrowserSession> {
-    const details = await this.#client.createSession({
-      ...(options.headless === undefined
-        ? {}
-        : { headless: options.headless }),
-      ...(options.viewport === undefined
-        ? {}
-        : { dimensions: options.viewport }),
-      ...(this.#skipFingerprintInjection
-        ? { skipFingerprintInjection: true }
-        : {})
-    });
+    const details =
+      await this.#client.createSession({
+        ...(options.headless === undefined
+          ? {}
+          : {
+              headless: options.headless
+            }),
+        ...(options.viewport === undefined
+          ? {}
+          : {
+              dimensions: options.viewport
+            }),
+        ...(this.#skipFingerprintInjection
+          ? {
+              skipFingerprintInjection: true
+            }
+          : {})
+      });
 
-    return new SteelBrowserSession(this.#client, details);
+    return new SteelBrowserSession(
+      this.#client,
+      details
+    );
   }
 }

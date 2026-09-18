@@ -55,6 +55,18 @@ function sendJson(
   response.end(JSON.stringify(payload));
 }
 
+function safeDownloadName(
+  name: string
+): string {
+  const safe = name.replace(
+    /[^A-Za-z0-9._-]/g,
+    "_"
+  );
+  return safe.length === 0
+    ? "artifact.bin"
+    : safe;
+}
+
 async function readJsonBody(
   request: IncomingMessage
 ): Promise<unknown> {
@@ -115,7 +127,8 @@ function apiError(
 function parseLastEventId(
   request: IncomingMessage
 ): number {
-  const raw = request.headers["last-event-id"];
+  const raw =
+    request.headers["last-event-id"];
 
   if (raw === undefined) {
     return 0;
@@ -152,7 +165,9 @@ function parseLastEventId(
   return parsed;
 }
 
-function isTerminalRun(run: RunSnapshot): boolean {
+function isTerminalRun(
+  run: RunSnapshot
+): boolean {
   return (
     run.status === "COMPLETED" ||
     run.status === "FAILED" ||
@@ -188,7 +203,8 @@ async function streamRunEvents(
   runId: string,
   afterSequence: number
 ): Promise<void> {
-  const initialRun = await runService.getRun(runId);
+  const initialRun =
+    await runService.getRun(runId);
 
   if (initialRun === undefined) {
     throw new RequestError(
@@ -198,13 +214,16 @@ async function streamRunEvents(
     );
   }
 
-  const controller = new AbortController();
+  const controller =
+    new AbortController();
+
   response.once("close", () => {
     controller.abort();
   });
 
   response.writeHead(200, {
-    "content-type": "text/event-stream; charset=utf-8",
+    "content-type":
+      "text/event-stream; charset=utf-8",
     "cache-control": "no-cache, no-transform",
     "connection": "keep-alive",
     "x-accel-buffering": "no"
@@ -215,11 +234,12 @@ async function streamRunEvents(
 
   try {
     while (!controller.signal.aborted) {
-      const events = await runService.listEventsAfter(
-        runId,
-        cursor,
-        EVENT_BATCH_SIZE
-      );
+      const events =
+        await runService.listEventsAfter(
+          runId,
+          cursor,
+          EVENT_BATCH_SIZE
+        );
 
       let terminalDelivered = false;
 
@@ -229,7 +249,9 @@ async function streamRunEvents(
         }
 
         cursor = event.sequenceNumber;
-        response.write(formatSseEvent(event));
+        response.write(
+          formatSseEvent(event)
+        );
 
         if (isTerminalEvent(event)) {
           terminalDelivered = true;
@@ -242,9 +264,13 @@ async function streamRunEvents(
         return;
       }
 
-      const run = await runService.getRun(runId);
+      const run =
+        await runService.getRun(runId);
 
-      if (run === undefined || isTerminalRun(run)) {
+      if (
+        run === undefined ||
+        isTerminalRun(run)
+      ) {
         response.end();
         return;
       }
@@ -278,6 +304,23 @@ async function streamRunEvents(
   }
 }
 
+async function requireRun(
+  runService: RunService,
+  runId: string
+): Promise<RunSnapshot> {
+  const run = await runService.getRun(runId);
+
+  if (run === undefined) {
+    throw new RequestError(
+      404,
+      "RUN_NOT_FOUND",
+      "Run not found."
+    );
+  }
+
+  return run;
+}
+
 async function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
@@ -296,7 +339,8 @@ async function handleRequest(
 
     let parsed;
     try {
-      parsed = parseCreateRunRequest(raw);
+      parsed =
+        parseCreateRunRequest(raw);
     } catch (error) {
       if (error instanceof ApiInputError) {
         throw new RequestError(
@@ -309,16 +353,18 @@ async function handleRequest(
       throw error;
     }
 
-    const run = await runService.createRun({
-      request: parsed,
-      ...(parsed.outputSchema === undefined
-        ? {}
-        : {
-            outputSchema: compileOutputSchema(
-              parsed.outputSchema
-            )
-          })
-    });
+    const run =
+      await runService.createRun({
+        request: parsed,
+        ...(parsed.outputSchema === undefined
+          ? {}
+          : {
+              outputSchema:
+                compileOutputSchema(
+                  parsed.outputSchema
+                )
+            })
+      });
 
     const accepted: CreateRunAccepted = {
       runId: run.id,
@@ -329,16 +375,93 @@ async function handleRequest(
     return;
   }
 
-  const eventMatch = requestUrl.pathname.match(
-    /^\/v1\/runs\/([^/]+)\/events$/
-  );
+  const artifactDownloadMatch =
+    requestUrl.pathname.match(
+      /^\/v1\/runs\/([^/]+)\/artifacts\/([^/]+)$/
+    );
+
+  if (
+    request.method === "GET" &&
+    artifactDownloadMatch?.[1] &&
+    artifactDownloadMatch[2]
+  ) {
+    const runId = decodeURIComponent(
+      artifactDownloadMatch[1]
+    );
+    const artifactId = decodeURIComponent(
+      artifactDownloadMatch[2]
+    );
+
+    await requireRun(runService, runId);
+
+    const artifact =
+      await runService.readArtifact(
+        runId,
+        artifactId
+      );
+
+    if (artifact === undefined) {
+      throw new RequestError(
+        404,
+        "ARTIFACT_NOT_FOUND",
+        "Artifact not found."
+      );
+    }
+
+    const body = Buffer.from(
+      artifact.data
+    );
+
+    response.writeHead(200, {
+      "content-type":
+        artifact.record.mediaType,
+      "content-length":
+        String(body.byteLength),
+      "cache-control": "no-store",
+      "content-disposition":
+        `attachment; filename="${safeDownloadName(artifact.record.name)}"`
+    });
+    response.end(body);
+    return;
+  }
+
+  const artifactListMatch =
+    requestUrl.pathname.match(
+      /^\/v1\/runs\/([^/]+)\/artifacts$/
+    );
+
+  if (
+    request.method === "GET" &&
+    artifactListMatch?.[1]
+  ) {
+    const runId = decodeURIComponent(
+      artifactListMatch[1]
+    );
+
+    await requireRun(runService, runId);
+
+    const artifacts =
+      await runService.listArtifacts(runId);
+
+    sendJson(response, 200, {
+      artifacts
+    });
+    return;
+  }
+
+  const eventMatch =
+    requestUrl.pathname.match(
+      /^\/v1\/runs\/([^/]+)\/events$/
+    );
 
   if (
     request.method === "GET" &&
     eventMatch?.[1]
   ) {
-    const runId = decodeURIComponent(eventMatch[1]);
-    const lastEventId = parseLastEventId(request);
+    const runId =
+      decodeURIComponent(eventMatch[1]);
+    const lastEventId =
+      parseLastEventId(request);
 
     await streamRunEvents(
       response,
@@ -349,22 +472,20 @@ async function handleRequest(
     return;
   }
 
-  const runMatch = requestUrl.pathname.match(
-    /^\/v1\/runs\/([^/]+)$/
-  );
-
-  if (request.method === "GET" && runMatch?.[1]) {
-    const run = await runService.getRun(
-      decodeURIComponent(runMatch[1])
+  const runMatch =
+    requestUrl.pathname.match(
+      /^\/v1\/runs\/([^/]+)$/
     );
 
-    if (run === undefined) {
-      throw new RequestError(
-        404,
-        "RUN_NOT_FOUND",
-        "Run not found."
+  if (
+    request.method === "GET" &&
+    runMatch?.[1]
+  ) {
+    const run =
+      await requireRun(
+        runService,
+        decodeURIComponent(runMatch[1])
       );
-    }
 
     sendJson(response, 200, run);
     return;
@@ -373,7 +494,9 @@ async function handleRequest(
   if (
     requestUrl.pathname === "/v1/runs" ||
     runMatch !== null ||
-    eventMatch !== null
+    eventMatch !== null ||
+    artifactListMatch !== null ||
+    artifactDownloadMatch !== null
   ) {
     throw new RequestError(
       405,
@@ -392,34 +515,39 @@ async function handleRequest(
 export function createApiServer(
   runService: RunService
 ): Server {
-  return createServer((request, response) => {
-    void handleRequest(
-      request,
-      response,
-      runService
-    ).catch((error: unknown) => {
-      if (response.headersSent) {
-        response.end();
-        return;
-      }
+  return createServer(
+    (request, response) => {
+      void handleRequest(
+        request,
+        response,
+        runService
+      ).catch((error: unknown) => {
+        if (response.headersSent) {
+          response.end();
+          return;
+        }
 
-      if (error instanceof RequestError) {
+        if (error instanceof RequestError) {
+          sendJson(
+            response,
+            error.statusCode,
+            apiError(
+              error.code,
+              error.message
+            )
+          );
+          return;
+        }
+
         sendJson(
           response,
-          error.statusCode,
-          apiError(error.code, error.message)
+          500,
+          apiError(
+            "INTERNAL_ERROR",
+            "Internal server error."
+          )
         );
-        return;
-      }
-
-      sendJson(
-        response,
-        500,
-        apiError(
-          "INTERNAL_ERROR",
-          "Internal server error."
-        )
-      );
-    });
-  });
+      });
+    }
+  );
 }

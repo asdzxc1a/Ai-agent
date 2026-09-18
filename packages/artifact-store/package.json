@@ -1,5 +1,5 @@
 {
-  "name": "@astra/run-engine",
+  "name": "@astra/artifact-store",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,16 +11,8 @@
       "default": "./dist/index.js"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json"
-  },
-  "dependencies": {
-    "@astra/agent-runtime": "workspace:*",
-    "@astra/browser-runtime": "workspace:*",
-    "@astra/contracts": "workspace:*",
-    "@astra/artifact-store": "workspace:*"
   }
 }
