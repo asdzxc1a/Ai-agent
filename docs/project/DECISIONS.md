@@ -405,3 +405,39 @@ A client observing terminal run state should never discover that the durable ter
 **Consequence**
 
 Gate 6 may treat the persisted event sequence as the authoritative replay source for SSE.
+
+
+---
+
+## D-017 — SSE is a polling projection of the durable event log
+
+**Date:** 2026-09-18  
+**Status:** Accepted
+
+**Decision**
+
+`GET /v1/runs/:id/events` streams events directly from persisted `run_events`. SSE ids are the durable per-run `sequence_number`; `Last-Event-ID` resumes strictly after that sequence.
+
+Gate 6 uses a small abort-aware polling loop over:
+
+```ts
+listEventsAfter(runId, afterSequence, limit)
+```
+
+There is no in-memory EventEmitter, Redis pub/sub, Kafka, NATS, or WebSocket layer.
+
+**Why**
+
+Replay correctness matters more than sub-50ms push latency at this stage. Using PostgreSQL as the source of truth guarantees reconnect behavior, works after process restart, and prevents divergence between an ephemeral event channel and stored run history.
+
+**Consequences**
+
+- disconnecting an SSE client does not affect run execution;
+- any API instance with database access can replay historical events;
+- terminal events are streamed from the same log used for recovery/debugging;
+- polling cost/latency can be optimized later without changing the public SSE contract;
+- a future notification/pub-sub layer must remain an acceleration mechanism, not the authoritative event store.
+
+**Evidence**
+
+PR #33 integration run `35387634903`: PostgreSQL SSE disconnect/reconnect acceptance passed with event ids `1 → [2,3]`, no duplicates, and a matching terminal run result.
