@@ -4,21 +4,28 @@ import {
   type Server,
   type ServerResponse
 } from "node:http";
+import { setTimeout as delay } from "node:timers/promises";
 
 import type {
   ApiErrorCode,
   ApiErrorResponse,
-  CreateRunAccepted
+  CreateRunAccepted,
+  RunSnapshot
 } from "@astra/contracts";
+import type {
+  RunEventRecord,
+  RunService
+} from "@astra/run-engine";
 
 import {
   ApiInputError,
   compileOutputSchema,
   parseCreateRunRequest
 } from "./schema.js";
-import type { RunService } from "@astra/run-engine";
 
 const MAX_REQUEST_BYTES = 64 * 1024;
+const EVENT_POLL_INTERVAL_MS = 50;
+const EVENT_BATCH_SIZE = 100;
 
 class RequestError extends Error {
   public readonly statusCode: number;
@@ -105,6 +112,172 @@ function apiError(
   };
 }
 
+function parseLastEventId(
+  request: IncomingMessage
+): number {
+  const raw = request.headers["last-event-id"];
+
+  if (raw === undefined) {
+    return 0;
+  }
+
+  if (Array.isArray(raw)) {
+    throw new RequestError(
+      400,
+      "INVALID_REQUEST",
+      "Last-Event-ID must contain one non-negative integer."
+    );
+  }
+
+  const value = raw.trim();
+
+  if (!/^\d+$/.test(value)) {
+    throw new RequestError(
+      400,
+      "INVALID_REQUEST",
+      "Last-Event-ID must be a non-negative integer."
+    );
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isSafeInteger(parsed)) {
+    throw new RequestError(
+      400,
+      "INVALID_REQUEST",
+      "Last-Event-ID is outside the supported integer range."
+    );
+  }
+
+  return parsed;
+}
+
+function isTerminalRun(run: RunSnapshot): boolean {
+  return (
+    run.status === "COMPLETED" ||
+    run.status === "FAILED" ||
+    run.status === "CANCELLED"
+  );
+}
+
+function isTerminalEvent(
+  event: RunEventRecord
+): boolean {
+  return (
+    event.eventType === "RUN_COMPLETED" ||
+    event.eventType === "RUN_FAILED" ||
+    event.eventType === "RUN_CANCELLED"
+  );
+}
+
+function formatSseEvent(
+  event: RunEventRecord
+): string {
+  return [
+    `id: ${event.sequenceNumber}`,
+    `event: ${event.eventType}`,
+    `data: ${JSON.stringify(event)}`,
+    "",
+    ""
+  ].join("\n");
+}
+
+async function streamRunEvents(
+  response: ServerResponse,
+  runService: RunService,
+  runId: string,
+  afterSequence: number
+): Promise<void> {
+  const initialRun = await runService.getRun(runId);
+
+  if (initialRun === undefined) {
+    throw new RequestError(
+      404,
+      "RUN_NOT_FOUND",
+      "Run not found."
+    );
+  }
+
+  const controller = new AbortController();
+  response.once("close", () => {
+    controller.abort();
+  });
+
+  response.writeHead(200, {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache, no-transform",
+    "connection": "keep-alive",
+    "x-accel-buffering": "no"
+  });
+  response.flushHeaders();
+
+  let cursor = afterSequence;
+
+  try {
+    while (!controller.signal.aborted) {
+      const events = await runService.listEventsAfter(
+        runId,
+        cursor,
+        EVENT_BATCH_SIZE
+      );
+
+      let terminalDelivered = false;
+
+      for (const event of events) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        cursor = event.sequenceNumber;
+        response.write(formatSseEvent(event));
+
+        if (isTerminalEvent(event)) {
+          terminalDelivered = true;
+          break;
+        }
+      }
+
+      if (terminalDelivered) {
+        response.end();
+        return;
+      }
+
+      const run = await runService.getRun(runId);
+
+      if (run === undefined || isTerminalRun(run)) {
+        response.end();
+        return;
+      }
+
+      try {
+        await delay(
+          EVENT_POLL_INTERVAL_MS,
+          undefined,
+          {
+            signal: controller.signal
+          }
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        throw error;
+      }
+    }
+  } finally {
+    if (
+      !response.writableEnded &&
+      !response.destroyed
+    ) {
+      response.end();
+    }
+  }
+}
+
 async function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
@@ -156,6 +329,26 @@ async function handleRequest(
     return;
   }
 
+  const eventMatch = requestUrl.pathname.match(
+    /^\/v1\/runs\/([^/]+)\/events$/
+  );
+
+  if (
+    request.method === "GET" &&
+    eventMatch?.[1]
+  ) {
+    const runId = decodeURIComponent(eventMatch[1]);
+    const lastEventId = parseLastEventId(request);
+
+    await streamRunEvents(
+      response,
+      runService,
+      runId,
+      lastEventId
+    );
+    return;
+  }
+
   const runMatch = requestUrl.pathname.match(
     /^\/v1\/runs\/([^/]+)$/
   );
@@ -179,7 +372,8 @@ async function handleRequest(
 
   if (
     requestUrl.pathname === "/v1/runs" ||
-    runMatch !== null
+    runMatch !== null ||
+    eventMatch !== null
   ) {
     throw new RequestError(
       405,

@@ -17,6 +17,7 @@ import type {
 } from "@astra/contracts";
 
 import type {
+  RunEventRecord,
   RunRepository
 } from "./repository.js";
 
@@ -28,6 +29,12 @@ export interface StartRunInput {
 export interface RunService {
   createRun(input: StartRunInput): Promise<RunSnapshot>;
   getRun(runId: string): Promise<RunSnapshot | undefined>;
+
+  listEventsAfter(
+    runId: string,
+    afterSequence: number,
+    limit?: number
+  ): Promise<RunEventRecord[]>;
 }
 
 class RunExecutionError extends Error {
@@ -113,6 +120,18 @@ export class RunEngine implements RunService {
     runId: string
   ): Promise<RunSnapshot | undefined> {
     return this.#repository.getRun(runId);
+  }
+
+  public listEventsAfter(
+    runId: string,
+    afterSequence: number,
+    limit?: number
+  ): Promise<RunEventRecord[]> {
+    return this.#repository.listEventsAfter(
+      runId,
+      afterSequence,
+      limit
+    );
   }
 
   async #execute(

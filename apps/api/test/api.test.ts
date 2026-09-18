@@ -348,5 +348,50 @@ describe("first product API", () => {
         error: { code: string };
       }).error.code
     ).toBe("RUN_NOT_FOUND");
+
+    const missingEvents = await fetch(
+      `${baseUrl}/v1/runs/does-not-exist/events`
+    );
+
+    expect(missingEvents.status).toBe(404);
+    expect(
+      (await missingEvents.json() as {
+        error: { code: string };
+      }).error.code
+    ).toBe("RUN_NOT_FOUND");
+
+    const acceptedResponse = await fetch(
+      `${baseUrl}/v1/runs`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          url: "http://fixture.test/",
+          goal: "Click the fixture button."
+        })
+      }
+    );
+
+    const accepted = await acceptedResponse.json() as {
+      runId: string;
+    };
+
+    const invalidCursor = await fetch(
+      `${baseUrl}/v1/runs/${accepted.runId}/events`,
+      {
+        headers: {
+          "Last-Event-ID": "not-an-integer"
+        }
+      }
+    );
+
+    expect(invalidCursor.status).toBe(400);
+    expect(
+      (await invalidCursor.json() as {
+        error: { code: string };
+      }).error.code
+    ).toBe("INVALID_REQUEST");
   });
 });
