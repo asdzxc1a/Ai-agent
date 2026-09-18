@@ -76,6 +76,8 @@ importers:
         specifier: workspace:*
         version: link:../browser-steel
 
+  packages/artifact-store: {}
+
   packages/browser-runtime: {}
 
   packages/browser-steel:
@@ -91,6 +93,9 @@ importers:
       '@astra/agent-runtime':
         specifier: workspace:*
         version: link:../agent-runtime
+      '@astra/artifact-store':
+        specifier: workspace:*
+        version: link:../artifact-store
       '@astra/browser-runtime':
         specifier: workspace:*
         version: link:../browser-runtime
