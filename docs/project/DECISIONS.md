@@ -211,3 +211,35 @@ Stagehand is treated as a replaceable compatibility layer. Gate 2 does not adopt
 **Revisit when**
 
 We intentionally build a browser image/runtime that preloads the Stagehand v4 extension, or our own semantic/runtime layer makes Stagehand replaceable entirely.
+
+
+---
+
+## D-010 — Supersede D-009 with Stagehand 3.7.0 + scoped peer exception
+
+**Date:** 2026-09-18  
+**Status:** Accepted; supersedes D-009
+
+**Decision**
+
+Use `@browserbasehq/stagehand@3.7.0` inside `@astra/agent-stagehand`, with `zod@4.4.3`.
+
+Keep pnpm strict peer validation enabled globally. Allow exactly this optional-peer mismatch:
+
+```yaml
+peerDependencyRules:
+  allowedVersions:
+    "openai@4.104.0>zod": "4.4.3"
+```
+
+**Why**
+
+Stagehand 3.7.0 is the latest published v3 release before 3.7.3's supporting-dependency refresh and retains the direct existing-browser `cdpUrl` path we need. Stagehand itself declares Zod 3 or Zod 4 support. Its Ollama adapter requires Zod 4, while OpenAI 4.104.0 declares Zod 3 as an optional peer. OpenAI's package metadata confirms that peer is optional, and our Gate 2 runtime uses a custom `LLMClient`, not OpenAI's Zod helper APIs.
+
+**Consequence**
+
+The exception is intentionally narrow and auditable. Any Stagehand/OpenAI/Zod upgrade must remove or re-justify it; broad peer-check disabling remains forbidden.
+
+**Revisit when**
+
+Stagehand v4 is intentionally integrated through a browser image that contains its extension, or a later compatible Stagehand/provider set removes the peer conflict.
