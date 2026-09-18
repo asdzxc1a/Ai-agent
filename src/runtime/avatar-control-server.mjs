@@ -11,6 +11,7 @@ const STATIC_FILES = new Map([
   ['/mic.js', { path: resolve(ROOT, 'web/mic.js'), type: 'text/javascript; charset=utf-8' }],
   ['/sales-visual.js', { path: resolve(ROOT, 'web/sales-visual.js'), type: 'text/javascript; charset=utf-8' }],
   ['/sales-intelligence.js', { path: resolve(ROOT, 'web/sales-intelligence.js'), type: 'text/javascript; charset=utf-8' }],
+  ['/action-ui.js', { path: resolve(ROOT, 'web/action-ui.js'), type: 'text/javascript; charset=utf-8' }],
   ['/styles.css', { path: resolve(ROOT, 'web/styles.css'), type: 'text/css; charset=utf-8' }],
   ['/vendor/livekit-client.esm.mjs', {
     path: resolve(ROOT, 'node_modules/livekit-client/dist/livekit-client.esm.mjs'),
