@@ -108,7 +108,7 @@ export class InMemoryActionProposalStore {
     const now = this.clock()
     const changed = []
     for (const record of this.#records.values()) {
-      if (record.id === replacementId) continue
+      if (record.id === replacementId) break
       if (record.sessionId !== sid || record.kind !== actionKind || record.status !== 'pending') continue
       record.status = 'superseded'
       record.supersededAt = now
