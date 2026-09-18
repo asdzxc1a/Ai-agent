@@ -108,7 +108,6 @@ test('avatar control server serves Arcana SalesOS and routes session inputs', as
       ['/action-ui.js', /actionProposalMarkup/],
       ['/sales-visual.js', /salesVisualMarkup/],
       ['/sales-intelligence.js', /summarizeLearningBundle/],
-      ['/action-ui.js', /actionProposalMarkup/],
       ['/styles.css', /\.workspace/],
     ]) {
       const response = await fetch(`${origin}${path}`)
