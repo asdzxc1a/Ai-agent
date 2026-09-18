@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: arcana-salesos
+    runtime: node
+    plan: free
+    branch: codex/sales-avatar-foundation
+    buildCommand: npm install --no-audit --no-fund
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: SALES_VOICE_MODE
+        value: native-gpt-live
+      - key: GPT_LIVE_MODEL
+        value: gpt-live-1
+      - key: GPT_LIVE_VOICE
+        value: marin
+      - key: SALES_REASONER_MODE
+        value: deepseek
+      - key: SALES_REASONER_BASE_URL
+        value: https://api.deepseek.com
+      - key: SALES_REASONER_MODEL
+        value: deepseek-flash
+      - key: SALES_REASONER_TIMEOUT_MS
+        value: "12000"
+      - key: SALES_ACTION_EXECUTION_MODE
+        value: disabled
+      - key: SALES_AVATAR_MAX_SESSIONS
+        value: "8"
+      - key: SALES_BUSINESS_CONTEXT
+        value: >-
+          Arcana Events is a Monaco-based event agency producing luxury private events, children's and adult birthday parties, corporate and official events, and unusual bespoke briefs. The team operates strongly in Monaco, is active in London and Paris, and can coordinate international execution. Operator-confirmed strengths include Welcome Monaco membership, strong Monaco venue and supplier relationships, last-minute execution, and solving unusual requests. The largest event size explicitly confirmed by the operator is about 200 guests. The current sales mission is to build relationships with Dubai concierge companies serving HNW and UHNW clients and earn the next relevant brief, supplier introduction, trial project or partnership call. Commercial structures may include a production fee, management percentage and commission depending on scope. Style: luxury, understated, relationship-first, high-energy. Never guarantee venue availability, access, named high-profile clients, celebrity or royal involvement, pricing, deadlines or supplier availability unless explicitly verified in server-owned data.
+      - key: SALES_PRODUCTS_JSON
+        value: >-
+          [{"id":"monaco-production","name":"Monaco Event Production","priceMonthly":null,"features":["private and luxury events","venue sourcing","full event production","guest management","last-minute execution","unusual bespoke requests"],"maxSeats":200,"tags":["monaco","concierge","luxury","private-events","last-minute"]},{"id":"london-paris-production","name":"London & Paris Event Production","priceMonthly":null,"features":["private events","corporate events","venue sourcing","production management","supplier coordination"],"maxSeats":200,"tags":["london","paris","europe","concierge"]},{"id":"international-bespoke","name":"International Bespoke Event Execution","priceMonthly":null,"features":["international coordination","unusual requests","partner sourcing","production management","high-touch client service"],"maxSeats":200,"tags":["international","bespoke","complex-briefs","concierge"]}]
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SALES_REASONER_API_KEY
+        sync: false
