@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
 **Current gate:** Gate 6 — Replayable SSE  
-**Overall status:** Gate 5 passed PR #31 merge gates: normal CI, raw Steel regression, Stagehand/API regression, PostgreSQL repository acceptance, and durable API restart acceptance are green. Gate 6 is next after PR #31 merges.
+**Overall status:** Gate 5 is merged in PR #31. Gate 6 is in progress on branch `gate-6-replayable-sse`, tracked by issue #32.
 
 ## North star
 
