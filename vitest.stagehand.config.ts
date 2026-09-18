@@ -1,6 +1,25 @@
+import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vitest/config";
 
+function workspaceSource(path: string): string {
+  return fileURLToPath(new URL(path, import.meta.url));
+}
+
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@astra/agent-runtime": workspaceSource(
+        "./packages/agent-runtime/src/index.ts"
+      ),
+      "@astra/browser-runtime": workspaceSource(
+        "./packages/browser-runtime/src/index.ts"
+      ),
+      "@astra/browser-steel": workspaceSource(
+        "./packages/browser-steel/src/index.ts"
+      )
+    }
+  },
   test: {
     include: [
       "packages/agent-stagehand/test/**/*.integration.ts"
