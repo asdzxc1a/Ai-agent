@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Astra Steel Fixture</title>
+</head>
+<body>
+  <main>
+    <h1>Steel runtime fixture</h1>
+    <button id="activate" type="button">Activate</button>
+    <output id="status" aria-live="polite">idle</output>
+  </main>
+
+  <script>
+    const button = document.querySelector("#activate");
+    const status = document.querySelector("#status");
+
+    button.addEventListener("click", () => {
+      button.dataset.state = "clicked";
+      status.textContent = "clicked";
+    });
+  </script>
+</body>
+</html>
