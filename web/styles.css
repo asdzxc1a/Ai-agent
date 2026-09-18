@@ -213,6 +213,7 @@ textarea:focus { border-color: rgba(217,189,134,.37); background: #101012; }
 .action-executing { border-left-color: #9ebedb; }
 .action-executed { border-left-color: var(--green); background: var(--green-soft); }
 .action-failed { border-left-color: var(--red); background: var(--red-soft); }
+.action-superseded { border-left-color: var(--muted-2); opacity: .72; }
 .action-unknown { border-left-color: var(--red); }
 
 .system-card { padding: 0; }
