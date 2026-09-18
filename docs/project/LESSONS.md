@@ -94,3 +94,48 @@ One small mutable `STATE.md`; plan for future work; append-only decisions/lesson
 **Prevention**
 
 Do not duplicate facts. Keep current state concise.
+
+
+---
+
+## L-005 — Prefer ecosystem-compatible package-manager versions over newest-major novelty
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+pnpm 12 generated a multi-document `pnpm-lock.yaml`. The workspace itself installed successfully, but GitHub/Dependabot ecosystem tooling has active compatibility problems with that lockfile shape and can misread the dependency graph.
+
+**Cause**
+
+Choosing the newest package-manager major based only on package availability rather than checking the surrounding CI/security-tool ecosystem.
+
+**Fix**
+
+Pin pnpm `10.34.5` for Gate 0. It produces the conventional single-document lockfile while retaining modern pnpm behavior.
+
+**Prevention**
+
+When changing foundational tooling, evaluate compatibility with GitHub dependency graph, Dependabot/security scanners, lockfile consumers, and CI—not just local install success.
+
+---
+
+## L-006 — Keep peer dependencies strict and explicit
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+The pnpm 10 bootstrap failed because Vitest 5 requires Vite as a peer dependency and Vite was not declared explicitly.
+
+**Cause**
+
+The first bootstrap happened under a toolchain that auto-installed the peer transitively, hiding the undeclared dependency.
+
+**Fix**
+
+Keep `strict-peer-dependencies=true`, keep `auto-install-peers=false`, and declare `vite@8.3.0` directly.
+
+**Prevention**
+
+Treat strict peer-dependency failures as useful contract checks. Do not silence them globally to make CI green.
