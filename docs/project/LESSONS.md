@@ -321,3 +321,48 @@ Do not use deprecated `baseUrl`. Keep root `paths` targets explicitly relative, 
 **Prevention**
 
 When compiler migrations surface deprecations, adopt the forward-compatible configuration instead of adding `ignoreDeprecations` unless migration is genuinely blocked.
+
+
+---
+
+## L-012 — Runtime validation output must be normalized to exact public contracts
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+Zod successfully validated the public output schema, but TypeScript rejected the parsed value under `exactOptionalPropertyTypes`: optional fields were represented as properties whose value could be `undefined`, while the public contract means the property is absent when omitted.
+
+**Cause**
+
+A runtime validator's inferred TypeScript shape is not always identical to the public domain model, especially under exact optional-property semantics.
+
+**Fix**
+
+Normalize validated schema objects at the API boundary. Omitted `const`, `required`, and `additionalProperties` fields are genuinely omitted before the value enters the domain/run layer.
+
+**Prevention**
+
+Treat validation output as untrusted transport shape until it has been normalized into the domain contract. Do not weaken `exactOptionalPropertyTypes` to make validator inference convenient.
+
+---
+
+## L-013 — Product acceptance should reuse proven infrastructure in one browser job
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+A separate API-browser workflow would require another large Steel image pull and duplicate browser provisioning.
+
+**Cause**
+
+Testing each layer in a separate CI environment is clean conceptually but expensive operationally.
+
+**Fix**
+
+Keep raw Steel as its own provider regression. In the Stagehand/Steel semantic workflow, reuse the same pinned Steel container and deterministic fixture for two sequential checks: the 10-session semantic regression, then the real HTTP API browser acceptance.
+
+**Prevention**
+
+When integration tests need the same expensive environment, isolate logical assertions but share the environment lifecycle when it does not reduce fault localization.
