@@ -160,3 +160,85 @@ test('control API hides cross-session action proposals', async () => {
     await control.close()
   }
 })
+
+test('cancelled action cannot execute', async () => {
+  const { manager, actionProposals } = createManager()
+  await manager.start({ id: 'buyer-cancelled' })
+  const proposal = actionProposals.create({
+    sessionId: 'sales-avatar-buyer-cancelled',
+    kind: 'book_demo',
+  })
+  manager.confirmAction('buyer-cancelled', proposal.id)
+  manager.cancelAction('buyer-cancelled', proposal.id)
+
+  await assert.rejects(
+    () => manager.executeAction('buyer-cancelled', proposal.id),
+    error => error?.code === 'CONFIRMATION_REQUIRED',
+  )
+  assert.equal(actionProposals.get(proposal.id).status, 'cancelled')
+  await manager.close()
+})
+
+test('manager passes optional execution context without allowing session identity overrides', async () => {
+  let captured = null
+  const manager = new AvatarSessionManager({
+    createBridge: ({ id }) => createBridge(id),
+    actionExecutor: {
+      async execute(proposalId, input) {
+        captured = { proposalId, input }
+        return { id: proposalId, status: 'executed' }
+      },
+    },
+  })
+  await manager.start({ id: 'buyer-context' })
+
+  const result = await manager.executeAction('buyer-context', 'action-context', {
+    note: 'internal-context',
+    avatarSessionId: 'spoofed-avatar',
+    gatewaySessionId: 'spoofed-gateway',
+  })
+
+  assert.equal(result.status, 'executed')
+  assert.equal(captured.proposalId, 'action-context')
+  assert.equal(captured.input.sessionId, 'sales-avatar-buyer-context')
+  assert.equal(captured.input.context.note, 'internal-context')
+  assert.equal(captured.input.context.avatarSessionId, 'buyer-context')
+  assert.equal(captured.input.context.gatewaySessionId, 'sales-avatar-buyer-context')
+  await manager.close()
+})
+
+test('HTTP execute request cannot smuggle confirmation or executed state', async () => {
+  const { manager, actionProposals } = createManager()
+  const control = createAvatarControlServer({ manager, port: 0 })
+  const { origin } = await control.start()
+
+  try {
+    const createdResponse = await fetch(`${origin}/sessions`, { method: 'POST' })
+    const session = await createdResponse.json()
+    const proposal = actionProposals.create({
+      sessionId: session.gatewaySessionId,
+      kind: 'book_demo',
+    })
+
+    const response = await fetch(
+      `${origin}/sessions/${encodeURIComponent(session.id)}/actions/${encodeURIComponent(proposal.id)}/execute`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          status: 'confirmed',
+          requiresConfirmation: false,
+          executed: true,
+          confirmation: true,
+        }),
+      },
+    )
+
+    assert.equal(response.status, 409)
+    assert.equal((await response.json()).code, 'CONFIRMATION_REQUIRED')
+    assert.equal(actionProposals.get(proposal.id).status, 'pending')
+  } finally {
+    await control.close()
+  }
+})
+
