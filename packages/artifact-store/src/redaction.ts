@@ -3,6 +3,9 @@ const REDACTED = "[REDACTED]";
 const SENSITIVE_KEY =
   /(password|passphrase|secret|token|access[_-]?token|api[_-]?key|authorization|bearer|cookie|set[_-]?cookie|private[_-]?key)/i;
 
+const SENSITIVE_URL_KEY =
+  /(password|passphrase|secret|token|access[_-]?token|api[_-]?key|authorization|bearer|cookie|set[_-]?cookie|private[_-]?key|credential|signature|sig)/i;
+
 function redactUrl(value: string): string {
   let url: URL;
 
@@ -19,8 +22,12 @@ function redactUrl(value: string): string {
     return value;
   }
 
+  if (url.password.length > 0) {
+    url.password = REDACTED;
+  }
+
   for (const key of [...url.searchParams.keys()]) {
-    if (SENSITIVE_KEY.test(key)) {
+    if (SENSITIVE_URL_KEY.test(key)) {
       url.searchParams.set(key, REDACTED);
     }
   }
@@ -32,12 +39,22 @@ function redactString(value: string): string {
   let redacted = redactUrl(value);
 
   redacted = redacted.replace(
-    /\bBearer\s+[^\s]+/gi,
+    /-----BEGIN [^-\r\n]*PRIVATE KEY-----[\s\S]*?-----END [^-\r\n]*PRIVATE KEY-----/gi,
+    "[REDACTED PRIVATE KEY]"
+  );
+
+  redacted = redacted.replace(
+    /((?:authorization|cookie|set-cookie)\s*[:=]\s*)[^\r\n]+/gi,
+    "$1[REDACTED]"
+  );
+
+  redacted = redacted.replace(
+    /\bBearer\s+[^\s,;]+/gi,
     "Bearer [REDACTED]"
   );
 
   redacted = redacted.replace(
-    /((?:password|passphrase|secret|token|access[_-]?token|api[_-]?key|authorization|cookie|set[_-]?cookie|private[_-]?key)\s*[:=]\s*)([^\s&;,]+)/gi,
+    /((?:password|passphrase|secret|token|access[_-]?token|api[_-]?key|private[_-]?key)\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s&;,]+)/gi,
     "$1[REDACTED]"
   );
 
