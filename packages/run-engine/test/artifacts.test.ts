@@ -87,6 +87,7 @@ class FailingAgentSession
         description: "Danger button",
         method: "click",
         arguments: [
+          "plain-argument-should-not-appear",
           "password=hunter2"
         ]
       }
@@ -228,6 +229,9 @@ test("failed run leaves redacted debugging artifacts", async () => {
   expect(summaryText).not.toContain(
     "url-secret"
   );
+  expect(summaryText).not.toContain(
+    "plain-argument-should-not-appear"
+  );
 
   const diagnosticsRecord =
     artifacts.find(
@@ -255,6 +259,103 @@ test("failed run leaves redacted debugging artifacts", async () => {
   );
   expect(diagnosticsText).not.toContain(
     "super-secret"
+  );
+});
+
+test("configured artifact store captures successful lifecycle evidence", async () => {
+  const artifactStore = new InMemoryArtifactStore();
+  const engine = new RunEngine({
+    repository: new InMemoryRunRepository(),
+    browserRuntime: new EvidenceBrowserRuntime(),
+    agentRuntime: {
+      async openSession() {
+        return {
+          async navigate() {},
+          async observe() {
+            return [
+              {
+                selector: "xpath=//button",
+                description: "Safe button",
+                method: "click",
+                arguments: [
+                  "plain-success-argument"
+                ]
+              }
+            ];
+          },
+          async act(action) {
+            return {
+              success: true,
+              message: "ok",
+              actionDescription:
+                action.description,
+              actions: [action]
+            };
+          },
+          async extract<T>(
+            instruction: string,
+            schema: RuntimeSchema<T>
+          ): Promise<T> {
+            void instruction;
+            return schema.parse({});
+          },
+          async close() {}
+        };
+      }
+    },
+    artifactStore
+  });
+
+  const started = await engine.createRun({
+    request: {
+      url:
+        "https://fixture.test/?token=success-secret",
+      goal: "Click safe."
+    }
+  });
+
+  const terminal = await waitForTerminal(
+    engine,
+    started.id
+  );
+
+  expect(terminal.status).toBe("COMPLETED");
+
+  const artifacts =
+    await engine.listArtifacts(started.id);
+  const names = artifacts.map(
+    (artifact) => artifact.name
+  );
+
+  expect(names).toContain(
+    "after-navigation.jpg"
+  );
+  expect(names).toContain("after-action.jpg");
+  expect(names).toContain(
+    "browser-diagnostics.json"
+  );
+  expect(names).toContain("run-summary.json");
+
+  const summaryRecord = artifacts.find(
+    (artifact) =>
+      artifact.name === "run-summary.json"
+  );
+  const summary = await engine.readArtifact(
+    started.id,
+    summaryRecord!.id
+  );
+  const summaryText = new TextDecoder().decode(
+    summary!.data
+  );
+
+  expect(summaryText).toContain("Safe button");
+  expect(summaryText).toContain("xpath=//button");
+  expect(summaryText).toContain("click");
+  expect(summaryText).not.toContain(
+    "plain-success-argument"
+  );
+  expect(summaryText).not.toContain(
+    "success-secret"
   );
 });
 
