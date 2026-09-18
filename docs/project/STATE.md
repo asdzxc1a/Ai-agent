@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
 **Current gate:** Gate 3 — Our browser/agent interfaces  
-**Overall status:** Gate 2 is merged in PR #25. Gate 3 is in progress on branch `gate-3-runtime-interfaces`, tracked by issue #26.
+**Overall status:** Gate 3 passed all PR #27 merge gates: strict CI, raw Steel regression, and the 10-session Stagehand semantic flow through our owned runtime interfaces are green. Gate 4 is next after PR #27 merges.
 
 ## North star
 
@@ -46,7 +46,7 @@ Chromium
 
 ## What has been built
 
-Foundation code includes the TypeScript/pnpm workspace, `@astra/contracts`, `@astra/browser-steel`, and `@astra/agent-stagehand`. Steel owns browser/session/CDP lifecycle; Stagehand 3.7.0 attaches to Steel over CDP. The semantic integration uses a secret-free deterministic test LLM that supplies only structured model judgments while Stagehand still performs real page observation, encoded-ID→XPath mapping, browser action execution, and Zod-validated extraction.
+Foundation code now includes owned `@astra/browser-runtime` and `@astra/agent-runtime` contracts plus provider adapters `@astra/browser-steel` and `@astra/agent-stagehand`. Application-level orchestration can create a provider-neutral `BrowserSession`, pass it into a provider-neutral `AgentRuntime`, then navigate/observe/act/extract without importing Steel or Stagehand types. Steel and Stagehand remain replaceable implementation details.
 
 Project-memory system:
 
@@ -77,6 +77,8 @@ Gate 2 branch evidence: normal CI run `35378403117` passed frozen install, lint,
 
 Gate 2 PR #25 merge evidence on the code-complete head: CI run `35379048578` — passed; Stagehand Steel integration run `35379048624` — passed; Steel integration run `35379048628` — passed.
 
+Gate 3 PR #27 evidence on head `f6d93b74912d6412cb1be76b6050265142f83094`: CI run `35381977883` — passed; Steel integration run `35381977729` — passed; Stagehand Steel integration run `35381977879` — passed. The owned-runtime semantic acceptance completed 10/10 sessions in 13.87s (14.42s total Vitest duration), including cleanup.
+
 Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
 
 ## Known risks
@@ -89,7 +91,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 3 / issue #26:** add owned browser/agent runtime contracts, implement Steel and Stagehand behind them, add test fakes, and rerun the 10-session semantic acceptance through only our interfaces.
+**Gate 4:** build the first product API on top of the owned runtimes only: `POST /v1/runs` to start an in-memory run and `GET /v1/runs/:id` to inspect it. Keep Gate 4 intentionally non-durable; PostgreSQL belongs to Gate 5.
 
 ## Gate completion rule
 
