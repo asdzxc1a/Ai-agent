@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-09-18  
 **Repository:** `asdzxc1a/Ai-agent`  
-**Phase:** Project-memory bootstrap  
-**Current gate:** Pre-Gate 0  
-**Overall status:** Persistent-memory bootstrap verified and recorded in PR #15; product implementation not started.
+**Phase:** Browser foundation  
+**Current gate:** Gate 1 — Steel alone, local  
+**Overall status:** Gate 0 passed in strict GitHub Actions CI. The repository now has a deterministic TypeScript/pnpm foundation; Gate 1 is ready to begin after the Gate 0 PR is merged.
 
 ## North star
 
@@ -46,7 +46,7 @@ Chromium
 
 ## What has been built
 
-Product code: **nothing yet**.
+Foundation code now exists: a minimal TypeScript/pnpm workspace plus the initial `@astra/contracts` package and run-status unit test.
 
 Project-memory system:
 
@@ -62,7 +62,7 @@ Project-memory system:
 
 ## What has been tested
 
-No product tests yet.
+Gate 0 evidence: GitHub Actions run `35374610693` passed with committed `pnpm-lock.yaml` and `pnpm install --frozen-lockfile`, then lint, typecheck, unit tests, and build all succeeded.
 
 Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
 
@@ -76,7 +76,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 0: repository and CI bootstrap — tracked by GitHub issue #16.**
+**Gate 1:** run Steel locally with one deterministic fixture page and prove create → navigate → click → verify → screenshot → close succeeds 10/10.
 
 Create the minimal TypeScript workspace and CI that runs:
 
