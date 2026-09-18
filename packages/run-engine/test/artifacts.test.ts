@@ -286,8 +286,12 @@ test("artifact-store failures do not change successful run result", async () => 
               actions: [action]
             };
           },
-          async extract() {
-            return {};
+          async extract<T>(
+            instruction: string,
+            schema: RuntimeSchema<T>
+          ): Promise<T> {
+            void instruction;
+            return schema.parse({});
           },
           async close() {}
         };
