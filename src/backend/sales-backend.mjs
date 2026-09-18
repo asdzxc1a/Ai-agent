@@ -90,6 +90,11 @@ export class SalesBackendAdapter {
       label: props.label,
       description: props.description,
     })
+    this.harness?.recordActionLifecycle?.({
+      sessionId,
+      type: 'sales.action.proposed',
+      proposal,
+    })
     const superseded = this.actionProposals.supersedePending?.({
       sessionId,
       kind: proposal.kind,
@@ -114,7 +119,6 @@ export class SalesBackendAdapter {
         executed: false,
       },
     }
-    this.harness?.recordActionLifecycle?.({ sessionId, type: 'sales.action.proposed', proposal })
     return proposal
   }
 
