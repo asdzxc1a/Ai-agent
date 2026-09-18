@@ -18,6 +18,12 @@ interface SteelSessionList {
   sessions: SteelSession[];
 }
 
+interface SteelLiveDetails {
+  browserState: {
+    pageCount: number;
+  };
+}
+
 export interface SteelClientOptions {
   baseUrl?: string;
   readyTimeoutMs?: number;
@@ -41,15 +47,37 @@ export class SteelClient {
 
     while (Date.now() < deadline) {
       try {
-        const response = await fetch(this.url("/v1/health"));
-        if (response.ok) {
-          const body = (await response.json()) as { status?: string };
-          if (body.status === "ok") {
-            return;
-          }
-        } else {
-          lastError = new Error(`Steel health returned HTTP ${response.status}`);
+        const health = await fetch(this.url("/v1/health"));
+        if (!health.ok) {
+          lastError = new Error(`Steel health returned HTTP ${health.status}`);
+          await delay(this.pollIntervalMs);
+          continue;
         }
+
+        const healthBody = (await health.json()) as { status?: string };
+        if (healthBody.status !== "ok") {
+          lastError = new Error(`Steel health returned status ${String(healthBody.status)}`);
+          await delay(this.pollIntervalMs);
+          continue;
+        }
+
+        const sessions = await this.listSessions();
+        const activeSession = sessions[0];
+        if (!activeSession) {
+          lastError = new Error("Steel returned no active session");
+          await delay(this.pollIntervalMs);
+          continue;
+        }
+
+        const liveDetails = await this.request<SteelLiveDetails>(
+          `/v1/sessions/${encodeURIComponent(activeSession.id)}/live-details`
+        );
+
+        if (liveDetails.browserState.pageCount > 0) {
+          return;
+        }
+
+        lastError = new Error("Steel browser has no ready pages yet");
       } catch (error) {
         lastError = error;
       }
@@ -58,7 +86,7 @@ export class SteelClient {
     }
 
     const suffix = lastError instanceof Error ? `: ${lastError.message}` : "";
-    throw new Error(`Steel did not become ready within ${this.readyTimeoutMs}ms${suffix}`);
+    throw new Error(`Steel browser did not become ready within ${this.readyTimeoutMs}ms${suffix}`);
   }
 
   async createSession(options: CreateSteelSessionOptions = {}): Promise<SteelSession> {
