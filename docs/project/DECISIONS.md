@@ -441,3 +441,46 @@ Replay correctness matters more than sub-50ms push latency at this stage. Using 
 **Evidence**
 
 PR #33 integration run `35387634903`: PostgreSQL SSE disconnect/reconnect acceptance passed with event ids `1 → [2,3]`, no duplicates, and a matching terminal run result.
+
+---
+
+## D-018 — Artifacts are best-effort evidence behind owned interfaces
+
+**Date:** 2026-09-18  
+**Status:** Accepted
+
+**Decision**
+
+Run diagnostics through owned, provider-neutral boundaries:
+
+```text
+RunEngine
+  ├ BrowserSession.captureScreenshot()
+  ├ BrowserSession.getDiagnostics()
+  ↓
+ArtifactStore
+  ├ InMemoryArtifactStore
+  └ LocalArtifactStore
+```
+
+`ArtifactStore` is optional RunEngine configuration. Artifact capture is best-effort evidence, not authoritative run state: screenshot, diagnostic, or artifact-storage failures must not turn an otherwise successful run into `FAILED`.
+
+JSON artifact values and metadata are redacted before persistence. Run summaries include action description/method/selector but never action arguments. Screenshot bytes remain binary and are never embedded in JSON logs.
+
+**Why**
+
+Debugging evidence is valuable only if it does not couple product orchestration to Steel, alter execution semantics, or compete with PostgreSQL/`run_events` as the source of truth.
+
+**Consequences**
+
+- provider-specific screenshot/log APIs stay inside browser adapters;
+- PostgreSQL remains authoritative for run state, steps, and events;
+- local filesystem storage is sufficient for Gate 7 and survives a new store instance;
+- the artifact API is read-only list/download over the owned store;
+- future remote storage may implement `ArtifactStore` without changing RunEngine or HTTP contracts;
+- S3, video, HAR, DOM archives, retention policy, external encryption, Vault, and E2B remain out of Gate 7 scope.
+
+**Evidence**
+
+PR #35: CI `35391692165`, Steel `35391691999`, and combined Stagehand/PostgreSQL/SSE `35391692005` all passed. The Steel acceptance directly proved JPEG capture plus console diagnostics against the pinned image, and the HTTP acceptance proved persisted downloadable JPEG evidence.
+
