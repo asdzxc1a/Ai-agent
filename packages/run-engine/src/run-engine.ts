@@ -261,7 +261,10 @@ export class RunEngine implements RunService {
     browser: BrowserSession | undefined,
     artifactErrors: string[]
   ): Promise<BrowserDiagnostic[]> {
-    if (browser?.getDiagnostics === undefined) {
+    if (
+      this.#artifactStore === undefined ||
+      browser?.getDiagnostics === undefined
+    ) {
       return [];
     }
 
