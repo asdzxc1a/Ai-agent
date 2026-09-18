@@ -44,7 +44,17 @@ describe("ArtifactStore", () => {
         nested: {
           authorization: "Bearer abc123",
           safe: "visible"
-        }
+        },
+        headers: [
+          "Authorization: Basic basic-secret",
+          "Cookie: sid=cookie-secret; csrf=csrf-secret",
+          "Set-Cookie: session=set-cookie-secret; HttpOnly"
+        ],
+        quoted: "password=\"space secret\"",
+        diagnostic:
+          "-----BEGIN PRIVATE KEY-----\nprivate-key-secret\n-----END PRIVATE KEY-----",
+        userinfoUrl:
+          "https://user:url-password@example.test/?signature=query-signature"
       },
       metadata: {
         api_key: "metadata-secret",
@@ -66,6 +76,14 @@ describe("ArtifactStore", () => {
     expect(json).not.toContain("super-secret");
     expect(json).not.toContain("hunter2");
     expect(json).not.toContain("abc123");
+    expect(json).not.toContain("basic-secret");
+    expect(json).not.toContain("cookie-secret");
+    expect(json).not.toContain("csrf-secret");
+    expect(json).not.toContain("set-cookie-secret");
+    expect(json).not.toContain("space secret");
+    expect(json).not.toContain("private-key-secret");
+    expect(json).not.toContain("url-password");
+    expect(json).not.toContain("query-signature");
     expect(json).toContain("[REDACTED]");
     expect(
       JSON.stringify(content!.record.metadata)
@@ -111,6 +129,47 @@ describe("ArtifactStore", () => {
       0xff,
       0xd9
     ]);
+  });
+
+  it("persists redacted JSON artifacts across store instances", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "astra-artifacts-")
+    );
+    roots.push(root);
+
+    const first = new LocalArtifactStore(root);
+    const record = await first.putJsonArtifact({
+      runId: "run_json",
+      kind: "RUN_SUMMARY",
+      name: "summary.json",
+      value: {
+        status: "COMPLETED",
+        token: "json-secret"
+      },
+      metadata: {
+        password: "metadata-password"
+      }
+    });
+
+    const second = new LocalArtifactStore(root);
+    const read = await second.readArtifact(
+      "run_json",
+      record.id
+    );
+
+    expect(read?.record.mediaType).toBe(
+      "application/json"
+    );
+
+    const text = new TextDecoder().decode(
+      read!.data
+    );
+
+    expect(text).toContain("COMPLETED");
+    expect(text).not.toContain("json-secret");
+    expect(
+      JSON.stringify(read!.record.metadata)
+    ).not.toContain("metadata-password");
   });
 
   it("rejects path traversal segments", async () => {
