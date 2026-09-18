@@ -159,7 +159,7 @@ test('SalesOS records failed actions without claiming execution', () => {
   assert.equal(event.type, 'sales.action.failed')
   assert.equal(event.data.status, 'failed')
   assert.equal(event.data.executed, false)
-  assert.equal(event.data.error, 'provider unavailable')
+  assert.equal(event.data.error, 'Action execution failed')
   assert.equal(event.data.receipt, null)
 })
 
