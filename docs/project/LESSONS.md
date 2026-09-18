@@ -139,3 +139,70 @@ Keep `strict-peer-dependencies=true`, keep `auto-install-peers=false`, and decla
 **Prevention**
 
 Treat strict peer-dependency failures as useful contract checks. Do not silence them globally to make CI green.
+
+
+---
+
+## L-007 — Configure runtime environments centrally, not per fixture
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+ESLint rejected the Node-based fixture server because `process` and `console` were not defined for generic `.mjs` files.
+
+**Cause**
+
+The lint configuration treated repository JavaScript as environment-neutral even though utility/fixture scripts intentionally run under Node.js.
+
+**Fix**
+
+Define Node script globals centrally in `eslint.config.js` for repository `.js`/`.mjs` files.
+
+**Prevention**
+
+When a runtime is an architectural choice, encode it once in tooling rather than adding inline lint exceptions to each script.
+
+---
+
+## L-008 — Installed type packages do not imply compiler inclusion under strict TypeScript
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+TypeScript could not resolve `process`, `node:fs/promises`, `node:path`, `fetch`, or `Response` even after `@types/node` was installed.
+
+**Cause**
+
+The strict TS configuration did not explicitly include Node types.
+
+**Fix**
+
+Add `"types": ["node"]` to the shared TypeScript compiler options.
+
+**Prevention**
+
+Treat runtime typings as an explicit compiler contract. Do not rely on automatic ambient-type discovery.
+
+---
+
+## L-009 — Validate external infrastructure before writing integration logic
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+A moving container tag could make browser tests non-reproducible or fail for reasons unrelated to our code.
+
+**Cause**
+
+Upstream Steel publishes its Docker workflow primarily through the moving `:latest` tag.
+
+**Fix**
+
+Resolve the image once, boot/health-check it, and pin the resulting immutable digest before writing the browser acceptance test.
+
+**Prevention**
+
+For critical external runtime images, pin by digest and record the tested digest in repository state.
