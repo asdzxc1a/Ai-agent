@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
 **Current gate:** Gate 3 — Our browser/agent interfaces  
-**Overall status:** Gate 3 is merged in PR #27. Gate 4 is in progress on branch `gate-4-first-api`, tracked by issue #28.
+**Overall status:** Gate 4 passed PR #29's code merge gates: normal CI, raw Steel regression, Stagehand semantic regression, and real HTTP API browser acceptance are green. Gate 5 is next after PR #29 merges.
 
 ## North star
 
@@ -46,7 +46,7 @@ Chromium
 
 ## What has been built
 
-Foundation code now includes owned `@astra/browser-runtime` and `@astra/agent-runtime` contracts plus provider adapters `@astra/browser-steel` and `@astra/agent-stagehand`. Application-level orchestration can create a provider-neutral `BrowserSession`, pass it into a provider-neutral `AgentRuntime`, then navigate/observe/act/extract without importing Steel or Stagehand types. Steel and Stagehand remain replaceable implementation details.
+Foundation code now includes owned browser/agent runtime contracts, Steel/Stagehand adapters, and `apps/api`, the first product-facing HTTP layer. `POST /v1/runs` creates an asynchronous in-memory run; `GET /v1/runs/:id` returns PENDING/RUNNING/COMPLETED/FAILED state. The API imports only owned runtime/contracts packages and compiles a small explicit public output-schema subset to the current runtime schema implementation.
 
 Project-memory system:
 
@@ -79,6 +79,8 @@ Gate 2 PR #25 merge evidence on the code-complete head: CI run `35379048578` —
 
 Gate 3 PR #27 evidence on head `f6d93b74912d6412cb1be76b6050265142f83094`: CI run `35381977883` — passed; Steel integration run `35381977729` — passed; Stagehand Steel integration run `35381977879` — passed. The owned-runtime semantic acceptance completed 10/10 sessions in 13.87s (14.42s total Vitest duration), including cleanup.
 
+Gate 4 PR #29 code-head evidence on `4de8a6cf7e9e48d31541cc9260238110ad0d12fa`: CI run `35384275224` — passed; Steel integration run `35384276299` — passed; Stagehand/API integration run `35384275365` — passed. The 10-session semantic regression passed in 18.96s, and the real HTTP API structured browser run passed in 1.95s (2.75s total Vitest duration), returning `{ count: 1, status: "clicked" }` with successful cleanup.
+
 Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
 
 ## Known risks
@@ -91,7 +93,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 4 / issue #28:** build the first in-memory HTTP run API on owned runtimes only, with typed validation/errors and a real Steel+Stagehand browser acceptance test. PostgreSQL remains Gate 5.
+**Gate 5:** replace the in-memory run store/lifecycle with a durable PostgreSQL-backed run engine while preserving the Gate 4 HTTP contract. Persist `runs`, `run_steps`, and `run_events`; prove state survives an API process restart before adding SSE.
 
 ## Gate completion rule
 
