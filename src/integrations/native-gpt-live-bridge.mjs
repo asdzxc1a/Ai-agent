@@ -99,8 +99,8 @@ export class NativeGptLiveBridge {
 
   async start({ sdp, timeoutMs = 30_000 } = {}) {
     if (!this.openaiApiKey) throw new Error('OPENAI_API_KEY is required for native GPT-Live')
-    const offer = String(sdp || '').trim()
-    if (!offer) throw new Error('WebRTC SDP offer is required')
+    const offer = String(sdp || '')
+    if (!offer.trim()) throw new Error('WebRTC SDP offer is required')
 
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(new Error('Timed out creating GPT-Live session')), timeoutMs)

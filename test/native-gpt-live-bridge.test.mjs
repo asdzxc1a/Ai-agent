@@ -58,7 +58,7 @@ test('native GPT-Live creates WebRTC session and routes client delegation throug
     WebSocketImpl: FakeSocket,
   })
 
-  const started = await bridge.start({ sdp: 'offer-sdp', timeoutMs: 1000 })
+  const started = await bridge.start({ sdp: 'offer-sdp\r\n', timeoutMs: 1000 })
   assert.equal(started.answerSdp, 'answer-sdp')
   assert.equal(started.sessionId, 'live_test_123')
   assert.equal(started.gatewaySessionId, 'sales-live-test')
@@ -69,7 +69,7 @@ test('native GPT-Live creates WebRTC session and routes client delegation throug
   assert.equal(fetchCalls[0].body.session.model, 'gpt-live-1')
   assert.equal(fetchCalls[0].body.session.delegation.type, 'client')
   assert.deepEqual(fetchCalls[0].body.session.client.data_channel.allowed_client_events, [])
-  assert.equal(fetchCalls[0].body.transport.sdp, 'offer-sdp')
+  assert.equal(fetchCalls[0].body.transport.sdp, 'offer-sdp\r\n')
   assert.equal(fetchCalls[0].options.headers.authorization, 'Bearer openai-test-key')
 
   const socket = FakeSocket.instances[0]
