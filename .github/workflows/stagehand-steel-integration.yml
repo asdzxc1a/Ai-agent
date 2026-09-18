@@ -1,8 +1,30 @@
 name: Stagehand Steel integration
 
 on:
-  push:
   pull_request:
+    paths:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "packages/agent-stagehand/**"
+      - "packages/browser-steel/**"
+      - "test-sites/**"
+      - "infra/steel-image.txt"
+      - "vitest.stagehand.config.ts"
+      - ".github/workflows/stagehand-steel-integration.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "packages/agent-stagehand/**"
+      - "packages/browser-steel/**"
+      - "test-sites/**"
+      - "infra/steel-image.txt"
+      - "vitest.stagehand.config.ts"
+      - ".github/workflows/stagehand-steel-integration.yml"
   workflow_dispatch:
 
 permissions:
@@ -63,7 +85,15 @@ jobs:
 
           docker pull "$IMAGE"
 
-          docker run -d --rm             --name astra-steel-stagehand             --add-host=host.docker.internal:host-gateway             -p 3000:3000             -p 9223:9223             -e DOMAIN=localhost:3000             -e CDP_DOMAIN=localhost:9223             -e CHROME_HEADLESS=true             "$IMAGE"
+          docker run -d --rm \
+            --name astra-steel-stagehand \
+            --add-host=host.docker.internal:host-gateway \
+            -p 3000:3000 \
+            -p 9223:9223 \
+            -e DOMAIN=localhost:3000 \
+            -e CDP_DOMAIN=localhost:9223 \
+            -e CHROME_HEADLESS=true \
+            "$IMAGE"
 
           for attempt in $(seq 1 60); do
             if curl --fail --silent http://127.0.0.1:3000/v1/health >/dev/null; then
