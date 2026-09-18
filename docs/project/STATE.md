@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Project-memory bootstrap  
 **Current gate:** Pre-Gate 0  
-**Overall status:** Planning system created; product implementation not started.
+**Overall status:** Persistent-memory bootstrap verified on branch and open in PR #15; product implementation not started.
 
 ## North star
 
@@ -64,7 +64,7 @@ Project-memory system:
 
 No product tests yet.
 
-The current memory bootstrap is complete when all files exist on the project branch and a PR is opened for review.
+Memory bootstrap verification: required files exist on `docs/astra-project-memory-v1`; README/AGENTS/STATE/PLAN/PR template were fetched successfully from GitHub; PR #15 is open.
 
 ## Known risks
 
@@ -76,7 +76,7 @@ The current memory bootstrap is complete when all files exist on the project bra
 
 ## Next action
 
-**Gate 0: repository and CI bootstrap.**
+**Gate 0: repository and CI bootstrap — tracked by GitHub issue #16.**
 
 Create the minimal TypeScript workspace and CI that runs:
 
