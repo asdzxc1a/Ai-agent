@@ -144,7 +144,7 @@ Acceptance:
 
 ## Gate 6 — Replayable SSE
 
-**Status:** NOT_STARTED
+**Status:** PASSED
 
 Build:
 

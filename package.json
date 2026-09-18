@@ -18,7 +18,8 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "test:api-browser": "vitest run --config vitest.api-browser.config.ts",
     "test:postgres": "vitest run --config vitest.postgres.config.ts",
-    "test:api-restart": "vitest run --config vitest.api-restart.config.ts"
+    "test:api-restart": "vitest run --config vitest.api-restart.config.ts",
+    "test:api-sse": "vitest run --config vitest.api-sse.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

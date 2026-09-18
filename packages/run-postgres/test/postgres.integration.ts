@@ -137,6 +137,18 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
     )
   ).toEqual([1, 2]);
 
+  const afterFirstEvent = await repository.listEventsAfter(
+    runId,
+    1,
+    10
+  );
+
+  expect(
+    afterFirstEvent.map(
+      (event) => event.sequenceNumber
+    )
+  ).toEqual([2]);
+
   const failedId = randomUUID();
   await repository.createRun(
     pendingRun(failedId),

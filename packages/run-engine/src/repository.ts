@@ -58,4 +58,10 @@ export interface RunRepository {
 
   listSteps(runId: string): Promise<RunStepRecord[]>;
   listEvents(runId: string): Promise<RunEventRecord[]>;
+
+  listEventsAfter(
+    runId: string,
+    afterSequence: number,
+    limit?: number
+  ): Promise<RunEventRecord[]>;
 }

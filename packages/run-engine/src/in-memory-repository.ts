@@ -150,4 +150,32 @@ export class InMemoryRunRepository implements RunRepository {
   ): Promise<RunEventRecord[]> {
     return clone(this.#events.get(runId) ?? []);
   }
+
+  public async listEventsAfter(
+    runId: string,
+    afterSequence: number,
+    limit = 100
+  ): Promise<RunEventRecord[]> {
+    if (
+      !Number.isInteger(afterSequence) ||
+      afterSequence < 0 ||
+      !Number.isInteger(limit) ||
+      limit < 1
+    ) {
+      throw new RangeError(
+        "Event cursor and limit must be positive integers."
+      );
+    }
+
+    const records = this.#events.get(runId) ?? [];
+
+    return clone(
+      records
+        .filter(
+          (record) =>
+            record.sequenceNumber > afterSequence
+        )
+        .slice(0, limit)
+    );
+  }
 }

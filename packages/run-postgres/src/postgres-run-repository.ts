@@ -382,6 +382,42 @@ export class PostgresRunRepository implements RunRepository {
     return (result.rows as StepRow[]).map(mapStep);
   }
 
+  public async listEventsAfter(
+    runId: string,
+    afterSequence: number,
+    limit = 100
+  ): Promise<RunEventRecord[]> {
+    if (
+      !Number.isInteger(afterSequence) ||
+      afterSequence < 0 ||
+      !Number.isInteger(limit) ||
+      limit < 1
+    ) {
+      throw new RangeError(
+        "Event cursor and limit must be positive integers."
+      );
+    }
+
+    const result = await this.#pool.query(
+      `
+        SELECT
+          run_id,
+          sequence_number,
+          event_type,
+          payload,
+          created_at
+        FROM run_events
+        WHERE run_id = $1
+          AND sequence_number > $2
+        ORDER BY sequence_number ASC
+        LIMIT $3
+      `,
+      [runId, afterSequence, limit]
+    );
+
+    return (result.rows as EventRow[]).map(mapEvent);
+  }
+
   public async listEvents(
     runId: string
   ): Promise<RunEventRecord[]> {
