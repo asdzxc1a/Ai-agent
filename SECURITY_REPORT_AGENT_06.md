@@ -25,12 +25,14 @@ Test suite: `test/security/action-execution-security.test.mjs`
 | 17 | Confirmed then cancelled action execute | Blocked | Critical | Cancellation must be terminal for this wave |
 | 18 | No handler configured | Fails closed with tool unavailable | Critical | Never fall back to a generic tool |
 | 19 | Sandbox attempts real network | Network tripwire remains untouched | Critical | Keep sandbox providers local-only |
-| 20 | Direct SalesOS secret/receipt injection | **Frozen base defect:** receipt was cloned wholesale; Agent 3 hardening is required | Critical | Independently allowlist receipt fields in SalesOS |
+| 20 | Direct SalesOS secret/receipt/error injection | **Frozen base defect:** receipt was cloned wholesale; post-Agent-3 review also found provider error text needs a safe audit representation | Critical | Independently allowlist receipt fields and never persist raw provider error text in SalesOS |
 
 ## Failing tests on the frozen base
 
-Case 20 is intentionally expected to fail against the frozen base because `SalesOSHarness` cloned arbitrary receipt fields. The integration branch must include the Agent 3 audit-boundary sanitization before this QA PR is merged.
+Case 20 is intentionally expected to fail against the frozen base because `SalesOSHarness` cloned arbitrary receipt fields. After Agent 3 receipt hardening, the expanded case also checks that provider error text such as authorization material cannot enter the learning bundle.
+
+The Integration Captain should use a server-owned generic failure reason or another strict allowlist for SalesOS action failures; raw provider exception messages must not be treated as audit-safe.
 
 ## Security conclusion
 
-The highest-risk invariants are explicit human confirmation, session isolation, at-most-once execution, fail-closed tool selection, and independent receipt sanitization. The QA branch changes tests/reporting only; it does not modify production code.
+The highest-risk invariants are explicit human confirmation, session isolation, at-most-once execution, fail-closed tool selection, and independent audit sanitization for both receipts and failures. The QA branch changes tests/reporting only; it does not modify production code.
