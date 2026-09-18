@@ -90,6 +90,18 @@ export class SalesBackendAdapter {
       label: props.label,
       description: props.description,
     })
+    const superseded = this.actionProposals.supersedePending?.({
+      sessionId,
+      kind: proposal.kind,
+      supersededByProposalId: proposal.id,
+    }) || []
+    for (const previous of superseded) {
+      this.harness?.recordActionLifecycle?.({
+        sessionId,
+        type: 'sales.action.superseded',
+        proposal: previous,
+      })
+    }
     decision.visual = {
       type: 'next_step',
       props: {
