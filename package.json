@@ -16,8 +16,7 @@
     "demo": "node src/demo.mjs",
     "gateway": "node --env-file=.env src/server.mjs",
     "preflight:live": "node --env-file=.env scripts/preflight-live.mjs",
-    "smoke:live": "node --env-file=.env scripts/smoke-live.mjs",
-    "test:security": "node --test test/security/*.test.mjs"
+    "smoke:live": "node --env-file=.env scripts/smoke-live.mjs"
   },
   "dependencies": {
     "livekit-client": "2.22.3",
