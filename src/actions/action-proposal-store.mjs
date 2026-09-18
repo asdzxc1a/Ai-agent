@@ -101,6 +101,9 @@ export class InMemoryActionProposalStore {
     if (replacement.sessionId !== sid || replacement.kind !== actionKind) {
       throw new ActionProposalError('Replacement proposal does not match the action scope', 'SESSION_MISMATCH')
     }
+    if (replacement.status !== 'pending') {
+      throw new ActionProposalError('Replacement proposal must still be pending', 'INVALID_TRANSITION')
+    }
 
     const now = this.clock()
     const changed = []
