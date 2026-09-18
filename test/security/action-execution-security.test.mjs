@@ -443,6 +443,7 @@ test('20. SalesOS action audit rejects private context, credentials and arbitrar
       token: 'proposal-token',
       hiddenReasoning: 'chain-of-thought-secret',
       context: { apiKey: 'private-context-secret' },
+      error: 'Authorization: Bearer failure-secret',
       receipt: {
         provider: 'sandbox',
         referenceId: 'safe-ref',
@@ -463,6 +464,7 @@ test('20. SalesOS action audit rejects private context, credentials and arbitrar
     'private-context-secret',
     'receipt-secret',
     'nested-provider-secret',
+    'failure-secret',
   ]) {
     assert.equal(serialized.includes(secret), false)
   }
