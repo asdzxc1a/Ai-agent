@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-09-18  
 **Repository:** `asdzxc1a/Ai-agent`  
-**Phase:** Foundation bootstrap  
-**Current gate:** Gate 0 — Repository + CI  
-**Overall status:** Gate 0 is in progress on branch `gate-0-workspace-ci`; the TypeScript workspace is created and CI/lockfile verification is pending.
+**Phase:** Browser foundation  
+**Current gate:** Gate 1 — Steel alone, local  
+**Overall status:** Gate 0 passed in strict GitHub Actions CI. The repository now has a deterministic TypeScript/pnpm foundation; Gate 1 is ready to begin after the Gate 0 PR is merged.
 
 ## North star
 
@@ -62,7 +62,7 @@ Project-memory system:
 
 ## What has been tested
 
-Gate 0 unit/CI acceptance is not yet complete. The first unit test has been added; dependency installation, lint, typecheck, test, and build still need to pass in GitHub Actions.
+Gate 0 evidence: GitHub Actions run `35374610693` passed with committed `pnpm-lock.yaml` and `pnpm install --frozen-lockfile`, then lint, typecheck, unit tests, and build all succeeded.
 
 Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
 
@@ -76,7 +76,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Finish Gate 0 on issue #16:** generate the real pnpm lockfile in GitHub Actions, switch CI to strict frozen-lockfile mode, then prove lint/typecheck/test/build all pass.
+**Gate 1:** run Steel locally with one deterministic fixture page and prove create → navigate → click → verify → screenshot → close succeeds 10/10.
 
 Create the minimal TypeScript workspace and CI that runs:
 
