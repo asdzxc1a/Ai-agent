@@ -5,6 +5,7 @@ const ACTION_STATUSES = new Set([
   'executing',
   'executed',
   'failed',
+  'expired',
 ])
 
 export function escapeHtml(value) {
@@ -29,6 +30,7 @@ function statusCopy(status) {
   if (status === 'executing') return 'Executing — waiting for the server result.'
   if (status === 'executed') return 'Executed — the server reports this action completed.'
   if (status === 'failed') return 'Failed — the server reports this action did not complete.'
+  if (status === 'expired') return 'Expired — this action is no longer valid and cannot be confirmed or executed.'
   return 'Unknown action status — no action can be taken.'
 }
 
