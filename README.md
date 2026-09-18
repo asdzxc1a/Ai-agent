@@ -43,11 +43,6 @@ The architecture deliberately separates five concerns:
 - explicit `salesos.experience.v1` experience bank for reusable state → strategy → outcome records
 - portable per-session `salesos.learning-bundle.v1` export for future CustomerLM, counterfactual, replay, and RL workers
 - raw PCM and hidden chain-of-thought are excluded from the SalesOS learning stream
-- server-owned action proposals with `pending → confirmed → executing → executed/failed` lifecycle plus cancellation
-- fail-closed action execution runtime controlled by `SALES_ACTION_EXECUTION_MODE=disabled|sandbox`, defaulting to `disabled`
-- sandbox action providers for the allowlisted sales actions with deterministic, sanitized receipts and no external network side effects
-- session-scoped confirm/cancel/execute control APIs with idempotent successful retries and cross-buyer isolation
-- buyer approval UI that distinguishes confirmed from executed and exposes sandbox execution only when the server advertises sandbox mode
 - SalesOS action audit events with receipt/error allowlisting so provider secrets and arbitrary payloads do not enter learning bundles
 
 ## Requirements
@@ -124,36 +119,7 @@ POST /sessions/:id/actions/:proposalId/execute
 
 Execution fails closed unless the proposal belongs to the same sales session and is explicitly confirmed. Successful retries return the stored executed result rather than repeating the provider call. SalesOS receives an independently sanitized lifecycle audit: only allowlisted receipt metadata and a generic failure marker enter the learning bundle.
 
-## Action execution safety
-
-External actions are server-owned. A model may propose a canonical `next_step`, but it cannot confirm or execute it, invent an execution receipt, or turn a model-provided URL into an action.
-
-The runtime supports only:
-
-```dotenv
-SALES_ACTION_EXECUTION_MODE=disabled
-# or, for local/testing only:
-SALES_ACTION_EXECUTION_MODE=sandbox
-```
-
-`disabled` is the default and registers no side-effect handler. `sandbox` uses local fake providers only; this wave does not send email, write CRM data, book real calendar events, take payments, or make provider network calls.
-
-The control API exposes the server-owned lifecycle:
-
-```text
-GET  /sessions/:id/actions
-POST /sessions/:id/actions/:proposalId/confirm
-POST /sessions/:id/actions/:proposalId/cancel
-POST /sessions/:id/actions/:proposalId/execute
-```
-
-Execution requires an explicitly confirmed proposal, is scoped to the owning sales session, and returns an already-executed proposal on a successful retry instead of repeating the provider call. The browser shows `confirmed` separately from `executed`; it never treats confirmation as proof that an external action happened.
-
-Run the explicit adversarial action gate with:
-
-```bash
-npm run test:security
-```
+The browser shows `confirmed` separately from `executed`, never treats model text as confirmation, and only exposes Execute Sandbox when the server advertises sandbox mode. The explicit adversarial gate is `npm run test:security`.
 
 ## SalesOS learning layer
 
