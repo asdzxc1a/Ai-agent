@@ -139,3 +139,55 @@ Keep `strict-peer-dependencies=true`, keep `auto-install-peers=false`, and decla
 **Prevention**
 
 Treat strict peer-dependency failures as useful contract checks. Do not silence them globally to make CI green.
+
+
+---
+
+## L-007 — Service health is not browser readiness
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+The first Gate 1 Steel integration saw `/v1/health` return success, then immediately resetting sessions collided with Steel's still-running default browser launch and crashed the process with Chromium lock / target-close errors.
+
+**Cause**
+
+The readiness probe only proved Steel's HTTP service was alive. It did not prove the underlying Chromium page and browser instrumentation were initialized.
+
+**Fix**
+
+Make `SteelClient.waitUntilReady()` require:
+
+1. healthy `/v1/health`;
+2. an active Steel session;
+3. successful `/v1/sessions/:id/live-details`;
+4. at least one real browser page.
+
+Remove destructive startup cleanup.
+
+**Prevention**
+
+Define readiness at the deepest dependency required by the workload. Never equate process/API liveness with resource readiness.
+
+---
+
+## L-008 — Prefer compatible browser reuse over unnecessary relaunches
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+After browser-level readiness was fixed, creating a session still crashed Steel. The session request overrode timezone/fingerprint settings and omitted Steel's default desktop device config, so Steel considered it incompatible with the initialized browser and tore that browser down to relaunch it.
+
+**Cause**
+
+Our smoke test changed browser configuration even though Gate 1 only needed a default desktop session.
+
+**Fix**
+
+Request `deviceConfig: { device: "desktop" }` and otherwise keep the session compatible with Steel's initialized default configuration. Steel then uses its browser-reuse path instead of performing an unnecessary relaunch.
+
+**Prevention**
+
+For integration smoke tests, request the minimum configuration required by the behavior under test. Treat browser relaunches as meaningful lifecycle events, not incidental implementation details.
