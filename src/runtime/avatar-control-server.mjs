@@ -8,6 +8,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const STATIC_FILES = new Map([
   ['/', { path: resolve(ROOT, 'web/index.html'), type: 'text/html; charset=utf-8' }],
   ['/app.js', { path: resolve(ROOT, 'web/app.js'), type: 'text/javascript; charset=utf-8' }],
+  ['/action-ui.js', { path: resolve(ROOT, 'web/action-ui.js'), type: 'text/javascript; charset=utf-8' }],
   ['/mic.js', { path: resolve(ROOT, 'web/mic.js'), type: 'text/javascript; charset=utf-8' }],
   ['/sales-visual.js', { path: resolve(ROOT, 'web/sales-visual.js'), type: 'text/javascript; charset=utf-8' }],
   ['/sales-intelligence.js', { path: resolve(ROOT, 'web/sales-intelligence.js'), type: 'text/javascript; charset=utf-8' }],
