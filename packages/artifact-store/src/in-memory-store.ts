@@ -26,6 +26,13 @@ export class InMemoryArtifactStore
   public async putArtifact(
     input: PutArtifactInput
   ): Promise<ArtifactRecord> {
+    const metadata =
+      input.metadata === undefined
+        ? undefined
+        : redactArtifactMetadata(
+            input.metadata
+          );
+
     const record: ArtifactRecord = {
       id: randomUUID(),
       runId: input.runId,
@@ -34,11 +41,10 @@ export class InMemoryArtifactStore
       mediaType: input.mediaType,
       byteLength: input.data.byteLength,
       createdAt: new Date().toISOString(),
-      ...(input.metadata === undefined
+      ...(metadata === undefined
         ? {}
         : {
-            metadata:
-              redactArtifactMetadata(input.metadata)
+            metadata
           })
     };
 
