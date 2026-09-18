@@ -123,7 +123,7 @@ Acceptance:
 
 ## Gate 5 — Durable run engine
 
-**Status:** IN_PROGRESS
+**Status:** PASSED
 
 Build:
 
