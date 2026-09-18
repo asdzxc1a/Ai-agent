@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-09-18  
 **Repository:** `asdzxc1a/Ai-agent`  
-**Phase:** Browser foundation  
-**Current gate:** Gate 1 — Steel alone, local  
-**Overall status:** Gate 0 passed in strict GitHub Actions CI. The repository now has a deterministic TypeScript/pnpm foundation; Gate 1 is ready to begin after the Gate 0 PR is merged.
+**Phase:** Semantic browser integration  
+**Current gate:** Gate 2 — Stagehand → Steel  
+**Overall status:** Gates 0 and 1 have passed. Gate 1 proved a pinned self-hosted Steel browser can complete the deterministic browser flow 10/10 over CDP in GitHub Actions.
 
 ## North star
 
@@ -22,7 +22,7 @@ Steel
 Chromium
 ```
 
-Only after that path is reliable:
+Only after this local path is reliable:
 
 ```text
 Stagehand
@@ -34,60 +34,84 @@ Chromium
 
 ## What is already decided
 
-- Use this repository as the working home because it was effectively empty.
 - TypeScript-first initially.
 - Do not merge/fork Stagehand, Steel, and E2B into one codebase.
-- Integrate them through our own small interfaces.
+- Integrate upstreams through our own small adapters.
 - Prove Stagehand→Steel locally before adding E2B.
 - Build one gate at a time.
 - Tests are the evidence for progress.
 - Keep durable project memory in GitHub, not in chat.
-- A fresh Astra starts with `AGENTS.md` and this file.
+- Deterministic fixture sites are the primary browser regression surface.
+- Upstream services/images are pinned rather than consumed through moving tags.
 
 ## What has been built
 
-Foundation code now exists: a minimal TypeScript/pnpm workspace plus the initial `@astra/contracts` package and run-status unit test.
+### Gate 0 foundation
 
-Project-memory system:
+- deterministic pnpm/TypeScript workspace;
+- strict lint/typecheck/unit/build CI;
+- `@astra/contracts` package with tested run-status contract.
 
-- `AGENTS.md`
-- `docs/project/CHARTER.md`
-- `docs/project/STATE.md`
-- `docs/project/PLAN.md`
-- `docs/project/DECISIONS.md`
-- `docs/project/LESSONS.md`
-- `docs/project/TEST_STRATEGY.md`
-- `docs/project/HANDOFF_PROTOCOL.md`
-- GitHub PR template
+### Gate 1 browser foundation
+
+- `@astra/browser-steel` package with a minimal self-hosted Steel API client;
+- pinned Steel Docker image by immutable digest:
+  `sha256:58fc8f1ed309a647ea7e7a53005b90cb239b8995698d195a261654ac8804974c`;
+- deterministic `test-sites/simple-button` fixture;
+- Playwright Core CDP verification;
+- 10-iteration Steel integration test;
+- failure screenshot/log artifact path;
+- Docker integration workflow;
+- explicit Steel session release and zero-live-session assertion.
 
 ## What has been tested
 
-Gate 0 evidence: GitHub Actions run `35374610693` passed with committed `pnpm-lock.yaml` and `pnpm install --frozen-lockfile`, then lint, typecheck, unit tests, and build all succeeded.
+### Gate 0
 
-Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
+Post-merge GitHub Actions on `main`: run `35375005784` passed frozen install, lint, typecheck, unit tests, and build.
+
+### Gate 1
+
+PR head `8df8f8090997c89331ab1ef70b26f7c8b01e2e06`:
+
+- normal CI run `35376655240`: **PASSED**;
+- Steel integration run `35376655354`: **PASSED**;
+- integration exercised create → CDP connect → fixture navigation → click → state verification → PNG screenshot → close/release **10/10**;
+- final assertion found zero live Steel sessions.
+
+Two earlier integration attempts failed and produced useful lifecycle fixes; see `LESSONS.md` L-007 and L-008.
 
 ## Known risks
 
-1. Upstream Stagehand/Steel/E2B APIs will evolve; adapters must isolate that churn.
-2. Live-web tests are inherently flaky; local deterministic fixture sites must be the main development benchmark.
-3. Adding E2B too early would multiply complexity.
-4. Forking upstreams too early would create unnecessary maintenance burden.
-5. Documentation can become stale if the PR process does not require state updates.
+1. Steel currently publishes a moving public `:latest` image; our runtime is protected by an immutable digest, but upgrades must be deliberate and re-evaluated.
+2. Steel startup on a cold GitHub runner pulls a large browser image and is slow; optimize CI caching later, not during correctness gates.
+3. Upstream Stagehand/Steel/E2B APIs will evolve; adapters must isolate that churn.
+4. Live-web tests remain inherently flaky; local deterministic fixtures remain the release gate.
+5. Adding E2B before the local Stagehand→Steel path is stable would multiply complexity.
 
 ## Next action
 
-**Gate 1:** run Steel locally with one deterministic fixture page and prove create → navigate → click → verify → screenshot → close succeeds 10/10.
+**Gate 2 — Stagehand → Steel.**
 
-Create the minimal TypeScript workspace and CI that runs:
+Use the existing Steel adapter, pinned Steel runtime, and deterministic fixture.
 
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
+Prove Stagehand can connect to the Steel-provided CDP endpoint and reliably perform:
+
+```text
+observe
+  ↓
+act
+  ↓
+extract structured result
 ```
 
-Do not add Stagehand, Steel, or E2B during the first Gate 0 PR unless required to prove the workspace itself.
+Acceptance remains:
+
+- deterministic fixture task 10/10;
+- structured output schema validates;
+- Steel session cleanup succeeds every time;
+- no leaked browser sessions;
+- no E2B yet.
 
 ## Gate completion rule
 
@@ -95,4 +119,4 @@ The current gate is complete only when its acceptance tests in `PLAN.md` and `TE
 
 ## Latest durable lesson
 
-Start simple: **local Stagehand→Steel first; E2B later.**
+Readiness must be defined at the deepest resource the test needs. A healthy HTTP service is not necessarily a ready browser, and a session request should reuse compatible initialized browser state rather than forcing unnecessary lifecycle churn.
