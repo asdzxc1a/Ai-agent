@@ -1,8 +1,28 @@
 name: Steel integration
 
 on:
-  push:
   pull_request:
+    paths:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "packages/browser-steel/**"
+      - "test-sites/**"
+      - "infra/steel-image.txt"
+      - "vitest.steel.config.ts"
+      - ".github/workflows/steel-integration.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "packages/browser-steel/**"
+      - "test-sites/**"
+      - "infra/steel-image.txt"
+      - "vitest.steel.config.ts"
+      - ".github/workflows/steel-integration.yml"
   workflow_dispatch:
 
 permissions:
