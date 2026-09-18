@@ -68,7 +68,7 @@ afterAll(async () => {
   }
 });
 
-describe.sequential("Steel self-hosted browser runtime", () => {
+describe("Steel self-hosted browser runtime", () => {
   it(
     "completes create → navigate → click → verify → screenshot → release 10/10",
     async () => {
