@@ -49,12 +49,9 @@ beforeAll(async () => {
 
   fixturePort = (address as AddressInfo).port;
   await steel.waitUntilReady();
-  await steel.releaseAllSessions();
 });
 
 afterAll(async () => {
-  await steel.releaseAllSessions().catch(() => undefined);
-
   if (fixtureServer) {
     await new Promise<void>((resolveClose, rejectClose) => {
       fixtureServer.close((error) => {
