@@ -38,7 +38,7 @@ Do not add browser complexity yet.
 
 ## Gate 1 — Steel alone, local
 
-**Status:** NOT_STARTED
+**Status:** IN_PROGRESS
 
 Build:
 
