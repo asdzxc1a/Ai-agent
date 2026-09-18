@@ -94,22 +94,39 @@ Structured sources must own:
 
 RAG is for documentation, case studies, FAQs, implementation material, and sales playbooks—not transactional truth.
 
-## Gate G — CRM sandbox
+## Gate G — permissioned action execution ✅ sandbox complete, production connectors pending
 
-Read first:
-- contact
-- account
-- opportunity
-- previous interactions
+Implemented:
+- server-owned `ActionProposal` IDs and lifecycle: pending, confirmed, cancelled, executing, executed, failed.
+- explicit human confirmation before execution; model messages never count as confirmation.
+- `SALES_ACTION_EXECUTION_MODE=disabled|sandbox`, with `disabled` as the fail-closed default.
+- modular allowlisted sandbox providers behind `ActionToolRegistry`.
+- no network, email, CRM, calendar, payment or filesystem side effects in sandbox mode.
+- at-most-once provider execution under Promise-level races.
+- idempotent replay after successful execution.
+- cross-session confirmation/execution isolation.
+- sanitized execution receipts and independently sanitized SalesOS action audit.
+- browser proposal UI with distinct pending/confirmed/cancelled/executing/executed/failed states.
+- sandbox execution control rendered only when the server advertises sandbox mode.
+- adversarial security coverage for retries, races, malformed IDs, fake model success/URLs, malicious receipts, concurrent buyers and 20+ simultaneous proposals.
 
-Then add writes behind explicit user confirmation:
+Next production connector work:
+1. Add read-only CRM/account/opportunity adapters first.
+2. Implement production providers behind the existing registry interface rather than changing the executor.
+3. Add provider credentials only on the server and never expose them to browser/model context.
+4. Keep the same explicit confirmation, session-isolation, at-most-once and receipt-sanitization invariants.
+5. Start with sandbox/test tenants before any production CRM/calendar/email credentials.
+6. Add recovery/idempotency keys appropriate to each external provider before enabling writes.
+
+Production actions may eventually include:
 - create/update lead
 - update opportunity
 - set next step
 - book meeting
 - send follow-up
+- create trial / human handoff
 
-Use sandbox/test CRM before production credentials.
+No production connector mode is enabled in this wave.
 
 ## Gate H — SalesOS learning/evaluation loop 🟡 harness complete, evaluator next
 
