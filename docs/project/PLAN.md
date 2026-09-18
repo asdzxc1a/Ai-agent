@@ -103,7 +103,7 @@ Acceptance:
 
 ## Gate 4 — First product API
 
-**Status:** IN_PROGRESS
+**Status:** PASSED
 
 Build:
 
