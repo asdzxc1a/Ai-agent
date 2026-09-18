@@ -1,0 +1,82 @@
+name: Steel integration
+
+on:
+  pull_request:
+    paths:
+      - "packages/browser-steel/**"
+      - "test-sites/**"
+      - "infra/steel/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vitest.steel.config.ts"
+      - ".github/workflows/steel-integration.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/browser-steel/**"
+      - "test-sites/**"
+      - "infra/steel/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vitest.steel.config.ts"
+      - ".github/workflows/steel-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steel-integration-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start pinned Steel
+        run: docker compose -f infra/steel/compose.yaml up -d
+
+      - name: Run Steel runtime integration
+        run: pnpm test:steel
+
+      - name: Capture Steel logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p artifacts/steel
+          docker compose -f infra/steel/compose.yaml logs --no-color > artifacts/steel/steel.log || true
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: steel-integration-failure
+          path: artifacts/steel
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Stop Steel
+        if: always()
+        run: docker compose -f infra/steel/compose.yaml down -v
