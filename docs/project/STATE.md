@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
 **Current gate:** Gate 3 — Our browser/agent interfaces  
-**Overall status:** Gate 2 passed all PR #25 merge gates: strict CI, raw Steel regression, and Stagehand→Steel semantic integration are green. Gate 3 is next after PR #25 merges.
+**Overall status:** Gate 2 is merged in PR #25. Gate 3 is in progress on branch `gate-3-runtime-interfaces`, tracked by issue #26.
 
 ## North star
 
@@ -89,7 +89,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 3:** introduce our own `BrowserRuntime`, `BrowserSession`, and `AgentRuntime` contracts; move all Steel-specific behavior behind a Steel adapter and all Stagehand-specific behavior behind a Stagehand adapter; then rerun the Gate 2 semantic test unchanged in behavior through those owned interfaces.
+**Gate 3 / issue #26:** add owned browser/agent runtime contracts, implement Steel and Stagehand behind them, add test fakes, and rerun the 10-session semantic acceptance through only our interfaces.
 
 ## Gate completion rule
 

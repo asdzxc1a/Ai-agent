@@ -11,15 +11,18 @@
       "default": "./dist/index.js"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@astra/agent-runtime": "workspace:*",
+    "@astra/browser-runtime": "workspace:*",
     "@browserbasehq/stagehand": "3.7.0",
     "playwright-core": "1.63.0",
     "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@astra/browser-steel": "workspace:*"
   }
 }

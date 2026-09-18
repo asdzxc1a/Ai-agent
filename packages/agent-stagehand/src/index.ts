@@ -1,27 +1,29 @@
+import type {
+  AgentRuntime,
+  AgentSession,
+  OpenAgentSessionOptions
+} from "@astra/agent-runtime";
+
 import {
-  Stagehand,
-  type LLMClient
-} from "@browserbasehq/stagehand";
+  createConfiguredStagehandRuntime,
+  type StagehandRuntimeSettings
+} from "./runtime-core.js";
 
-export interface CreateStagehandForSteelOptions {
-  cdpUrl: string;
-  llmClient: LLMClient;
-}
+export type {
+  StagehandModelSettings,
+  StagehandRuntimeSettings
+} from "./runtime-core.js";
 
-export function createStagehandForSteel({
-  cdpUrl,
-  llmClient
-}: CreateStagehandForSteelOptions): Stagehand {
-  return new Stagehand({
-    env: "LOCAL",
-    llmClient,
-    disableAPI: true,
-    localBrowserLaunchOptions: {
-      cdpUrl
-    },
-    keepAlive: true,
-    selfHeal: false,
-    verbose: 0,
-    disablePino: true
-  });
+export class StagehandAgentRuntime implements AgentRuntime {
+  readonly #runtime: AgentRuntime;
+
+  public constructor(settings: StagehandRuntimeSettings) {
+    this.#runtime = createConfiguredStagehandRuntime(settings);
+  }
+
+  public openSession(
+    options: OpenAgentSessionOptions
+  ): Promise<AgentSession> {
+    return this.#runtime.openSession(options);
+  }
 }

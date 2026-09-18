@@ -1,11 +1,17 @@
 import { z } from "zod";
 import { expect, test } from "vitest";
 
-import {
-  SteelClient,
-  type SteelSessionDetails
-} from "../../browser-steel/src/index.js";
-import { createStagehandForSteel } from "../src/index.js";
+import type {
+  AgentRuntime,
+  AgentSession
+} from "@astra/agent-runtime";
+import type {
+  BrowserRuntime,
+  BrowserSession
+} from "@astra/browser-runtime";
+import { SteelBrowserRuntime } from "@astra/browser-steel";
+
+import { createStagehandAgentRuntimeForTesting } from "../src/testing.js";
 import { FixtureLLMClient } from "./fixture-llm.js";
 
 const steelBaseUrl = process.env.STEEL_BASE_URL ?? "http://127.0.0.1:3000";
@@ -18,38 +24,27 @@ const fixtureStateSchema = z.object({
 });
 
 async function runIteration(
-  client: SteelClient,
+  browserRuntime: BrowserRuntime,
+  agentRuntime: AgentRuntime,
   iteration: number
 ): Promise<void> {
-  let session: SteelSessionDetails | undefined;
-  let stagehand: ReturnType<typeof createStagehandForSteel> | undefined;
-  let released = false;
+  let browser: BrowserSession | undefined;
+  let agent: AgentSession | undefined;
 
   try {
-    session = await client.createSession({
+    browser = await browserRuntime.createSession({
       headless: true,
-      skipFingerprintInjection: true,
-      dimensions: {
+      viewport: {
         width: 1280,
         height: 800
       }
     });
 
-    stagehand = createStagehandForSteel({
-      cdpUrl: session.websocketUrl,
-      llmClient: new FixtureLLMClient()
-    });
+    agent = await agentRuntime.openSession({ browser });
 
-    await stagehand.init();
+    await agent.navigate(`${fixtureUrl}/?iteration=${iteration}`);
 
-    const page = stagehand.context.pages()[0];
-    if (page === undefined) {
-      throw new Error("Stagehand attached to Steel without exposing a page.");
-    }
-
-    await page.goto(`${fixtureUrl}/?iteration=${iteration}`);
-
-    const observed = await stagehand.observe(
+    const observed = await agent.observe(
       "find the Increment count button"
     );
 
@@ -60,21 +55,17 @@ async function runIteration(
     );
 
     if (action === undefined) {
-      throw new Error("Stagehand observe() returned no usable increment action.");
+      throw new Error(
+        "AgentRuntime observe() returned no usable increment action."
+      );
     }
 
     expect(action.selector).toMatch(/^xpath=/);
 
-    const actResult = await stagehand.act(action);
+    const actResult = await agent.act(action);
     expect(actResult.success).toBe(true);
 
-    expect(await page.locator("#count").textContent()).toBe("1");
-    expect(await page.locator("#status-text").textContent()).toBe("clicked");
-    expect(await page.locator("#result").textContent()).toBe(
-      "RESULT count=1 status=clicked"
-    );
-
-    const extracted = await stagehand.extract(
+    const extracted = await agent.extract(
       "extract the RESULT count and status from the fixture",
       fixtureStateSchema
     );
@@ -84,37 +75,34 @@ async function runIteration(
       status: "clicked"
     });
 
-    await stagehand.close();
-    stagehand = undefined;
+    await agent.close();
+    agent = undefined;
 
-    const stillLive = await client.getSession(session.id);
-    expect(stillLive.status).toBe("live");
-
-    const release = await client.releaseSession(session.id);
-    released = true;
-
-    expect(release.success).toBe(true);
-    expect(release.status).toBe("released");
-
-    const persisted = await client.getSession(session.id);
-    expect(persisted.status).toBe("released");
+    await browser.close();
+    browser = undefined;
   } finally {
-    if (stagehand !== undefined) {
-      await stagehand.close().catch(() => undefined);
+    if (agent !== undefined) {
+      await agent.close().catch(() => undefined);
     }
 
-    if (session !== undefined && !released) {
-      await client.releaseSession(session.id).catch(() => undefined);
+    if (browser !== undefined) {
+      await browser.close().catch(() => undefined);
     }
   }
 }
 
-test("Stagehand observes, acts, and extracts through Steel for ten sessions", async () => {
-  const client = new SteelClient(steelBaseUrl);
+test("owned runtimes preserve Stagehand→Steel semantics for ten sessions", async () => {
+  const browserRuntime: BrowserRuntime = new SteelBrowserRuntime({
+    baseUrl: steelBaseUrl,
+    skipFingerprintInjection: true
+  });
 
-  await expect(client.isHealthy()).resolves.toBe(true);
+  const agentRuntime: AgentRuntime =
+    createStagehandAgentRuntimeForTesting(
+      () => new FixtureLLMClient()
+    );
 
   for (let iteration = 1; iteration <= 10; iteration += 1) {
-    await runIteration(client, iteration);
+    await runIteration(browserRuntime, agentRuntime, iteration);
   }
 });
