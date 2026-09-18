@@ -52,7 +52,7 @@ function actionEnvelope(proposal = {}) {
     executedAt: bounded(proposal.executedAt, 80) || null,
     failedAt: bounded(proposal.failedAt, 80) || null,
     receipt: actionReceiptEnvelope(proposal.receipt),
-    error: bounded(proposal.error, 500) || null,
+    error: proposal.error ? 'Action execution failed' : null,
   }
 }
 
