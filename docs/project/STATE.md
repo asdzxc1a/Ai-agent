@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
 **Current gate:** Gate 2 — Stagehand → Steel  
-**Overall status:** Gate 1 passed on branch `gate-1-steel-local` and is ready for PR merge validation. Steel browser sessions are now proven independently; Stagehand has not been added yet.
+**Overall status:** Gate 1 is merged in PR #22 and issue #21 is closed. Gate 2 is in progress on branch `gate-2-stagehand-steel`, tracked by issue #23.
 
 ## North star
 
@@ -85,7 +85,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 2:** connect Stagehand to the already-proven Steel CDP session and validate observe → act → extract against deterministic fixtures without changing the Steel runtime.
+**Gate 2 / issue #23:** pin Stagehand v3.7.3, connect it to Steel's existing CDP WebSocket, and prove observe → deterministic act of the observed action → schema-validated extract 10/10 with a secret-free fixture LLM.
 
 ## Gate completion rule
 
