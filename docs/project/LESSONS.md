@@ -274,3 +274,50 @@ Run heavy Steel/Stagehand browser workflows on pull requests, on pushes to `main
 **Prevention**
 
 Separate fast code-quality feedback from expensive environment/integration gates. Heavy tests should correspond to a merge candidate, not every intermediate documentation commit.
+
+
+---
+
+## L-010 — Source-workspace type resolution and test-runtime resolution are separate problems
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+Gate 3 initially typechecked against package exports that pointed to `dist`, which does not exist yet in a clean source checkout. After fixing TypeScript source resolution, Vitest still failed at runtime to resolve `@astra/browser-steel` before packages were built.
+
+**Cause**
+
+TypeScript and Vite/Vitest have separate module-resolution pipelines. Fixing one does not automatically configure the other.
+
+**Fix**
+
+Keep production package exports pointed at built `dist` artifacts. For repository development only:
+- root `tsconfig.json` maps owned workspace package names to source entrypoints;
+- the Stagehand Vitest config maps the same runtime dependencies to source entrypoints.
+
+**Prevention**
+
+Treat compile-time workspace resolution and test-runtime workspace resolution as separate contracts. Do not distort production package exports merely to make source-tree tests convenient.
+
+---
+
+## L-011 — Follow TypeScript 6 path-mapping migration instead of silencing deprecations
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+The first source-path fix used `baseUrl`; TypeScript 6 rejected it as deprecated. Removing it then exposed that path targets must be explicitly relative.
+
+**Cause**
+
+Applying older TypeScript path-mapping conventions to the TypeScript 6 toolchain.
+
+**Fix**
+
+Do not use deprecated `baseUrl`. Keep root `paths` targets explicitly relative, e.g. `./packages/browser-runtime/src/index.ts`.
+
+**Prevention**
+
+When compiler migrations surface deprecations, adopt the forward-compatible configuration instead of adding `ignoreDeprecations` unless migration is genuinely blocked.
