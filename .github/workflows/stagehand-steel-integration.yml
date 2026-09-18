@@ -8,9 +8,12 @@ on:
       - "pnpm-workspace.yaml"
       - "packages/agent-stagehand/**"
       - "packages/browser-steel/**"
+      - "packages/contracts/**"
+      - "apps/api/**"
       - "test-sites/**"
       - "infra/steel-image.txt"
       - "vitest.stagehand.config.ts"
+      - "vitest.api-browser.config.ts"
       - ".github/workflows/stagehand-steel-integration.yml"
   push:
     branches:
@@ -112,6 +115,12 @@ jobs:
           STEEL_BASE_URL: http://127.0.0.1:3000
           STEEL_FIXTURE_URL: http://host.docker.internal:4173
         run: pnpm test:stagehand
+
+      - name: Run HTTP API browser acceptance test
+        env:
+          STEEL_BASE_URL: http://127.0.0.1:3000
+          STEEL_FIXTURE_URL: http://host.docker.internal:4173
+        run: pnpm test:api-browser
 
       - name: Capture service logs on failure
         if: failure()

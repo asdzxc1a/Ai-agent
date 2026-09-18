@@ -278,3 +278,54 @@ Future browser provisioning (including E2B) must be replaceable without changing
 **Evidence**
 
 PR #27: CI `35381977883`, Steel `35381977729`, Stagehand semantic integration `35381977879`; all passed. The 10-session semantic test ran entirely through owned runtime interfaces.
+
+
+---
+
+## D-012 — Gate 4 API is asynchronous and intentionally in-memory
+
+**Date:** 2026-09-18  
+**Status:** Accepted
+
+**Decision**
+
+The first product API exposes:
+
+- `POST /v1/runs` → HTTP 202 + run ID;
+- `GET /v1/runs/:id` → current run snapshot.
+
+Execution continues asynchronously in the API process. Gate 4 stores run state in memory only.
+
+**Why**
+
+This proves the external contract and runtime orchestration without mixing HTTP design with database/queue engineering. Durability, recovery, steps, and events are the explicit purpose of Gate 5.
+
+**Consequences**
+
+- API process restart loses Gate 4 runs by design.
+- no claim of production durability is made yet.
+- Gate 5 must preserve the Gate 4 route/response behavior while moving authoritative state to PostgreSQL.
+
+---
+
+## D-013 — Public structured output starts as a small explicit schema subset
+
+**Date:** 2026-09-18  
+**Status:** Accepted
+
+**Decision**
+
+Gate 4 supports an object-root output schema with string/number/boolean properties, optional `const`, optional `required`, and optional `additionalProperties: false`.
+
+Unsupported schemas return typed HTTP 400 `UNSUPPORTED_OUTPUT_SCHEMA`.
+
+**Why**
+
+A small truthful contract is safer than claiming full JSON Schema while only partially implementing it. The current Stagehand adapter requires a concrete runtime schema, so the API compiles the supported public subset internally.
+
+**Consequences**
+
+- the public API contract is provider-neutral;
+- Zod remains an API/runtime implementation detail;
+- future schema expansion is explicit and testable;
+- unsupported constructs fail fast instead of being silently ignored.
