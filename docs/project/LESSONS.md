@@ -411,3 +411,26 @@ Gate 5 persists ordered `run_events` and `run_steps` before Gate 6 introduces SS
 **Prevention**
 
 For durable workflows, make the append-only event log authoritative first; streaming should be a projection of stored events, not the source of truth.
+
+---
+
+## L-016 — Secret redaction must cover carriers, not only field names
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+A first-pass artifact redactor handled sensitive object keys and simple `token=value` strings, but unstructured diagnostics could still leak credentials through Authorization headers, cookie lines, quoted passwords containing spaces, PEM private-key bodies, URL userinfo passwords, or signature-like query parameters.
+
+**Cause**
+
+Browser diagnostics mix structured data with free-form strings. Key-based redaction alone does not cover the ways credentials are serialized inside those strings.
+
+**Fix**
+
+Redact both structure and carrier syntax before JSON artifact persistence: sensitive object keys, Authorization/Cookie/Set-Cookie line values, Bearer credentials, quoted sensitive key/value pairs, PEM private-key blocks, URL passwords, and sensitive query parameters. Use distinct fake secrets in tests and assert that none occur in the final artifact bytes or metadata.
+
+**Prevention**
+
+Threat-model diagnostic strings as potentially credential-bearing input. Security tests should scan the serialized artifact output, not merely inspect the pre-serialization object.
+
