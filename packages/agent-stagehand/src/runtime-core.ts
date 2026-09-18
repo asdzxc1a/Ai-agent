@@ -80,6 +80,8 @@ class StagehandAgentSession implements AgentSession {
     instruction: string,
     schema: RuntimeSchema<T>
   ): Promise<T> {
+    const parse = schema.parse.bind(schema);
+
     if (!(schema instanceof z.ZodType)) {
       throw new TypeError(
         "StagehandAgentRuntime currently requires a Zod schema."
@@ -88,10 +90,10 @@ class StagehandAgentSession implements AgentSession {
 
     const value = await this.#stagehand.extract(
       instruction,
-      schema as z.ZodType<T>
+      schema as z.ZodType
     );
 
-    return schema.parse(value);
+    return parse(value);
   }
 
   public close(): Promise<void> {
