@@ -141,3 +141,27 @@ Docs can become stale.
 **Consequence**
 
 A memory entry that claims a feature works without corresponding test evidence is not sufficient to mark a gate complete.
+
+
+---
+
+## D-008 — Pin browser runtime images by immutable digest
+
+**Date:** 2026-09-18  
+**Status:** Accepted
+
+**Decision**
+
+The Steel runtime used by automated acceptance tests is pinned by OCI image digest in `infra/steel-image.txt`.
+
+**Why**
+
+A moving image tag makes a green test non-reproducible and can introduce upstream changes without a repository diff.
+
+**Consequence**
+
+Upgrading Steel becomes an explicit, testable change: resolve a new digest, run the complete browser acceptance suite, then commit the new digest.
+
+**Current tested digest**
+
+`ghcr.io/steel-dev/steel-browser@sha256:58fc8f1ed309a647ea7e7a53005b90cb239b8995698d195a261654ac8804974c`
