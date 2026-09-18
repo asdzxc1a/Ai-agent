@@ -60,6 +60,8 @@ export class InMemoryActionProposalStore {
       createdAt: now,
       confirmedAt: null,
       cancelledAt: null,
+      supersededAt: null,
+      supersededByProposalId: null,
       executedAt: null,
       failedAt: null,
       receipt: null,
@@ -84,6 +86,33 @@ export class InMemoryActionProposalStore {
       .filter(record => !wantedStatus || record.status === wantedStatus)
       .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
       .map(clone)
+  }
+
+  supersedePending({ sessionId, kind, supersededByProposalId } = {}) {
+    const sid = clean(sessionId, 200)
+    const actionKind = clean(kind, 80)
+    const replacementId = clean(supersededByProposalId, 240)
+    if (!sid) throw new ActionProposalError('Superseding actions requires sessionId', 'INVALID_SESSION')
+    if (!ALLOWED_KINDS.has(actionKind)) throw new ActionProposalError(`Unsupported action kind: ${actionKind}`, 'UNSUPPORTED_ACTION')
+    if (!replacementId || !this.#records.has(replacementId)) {
+      throw new ActionProposalError('Superseding actions requires a valid replacement proposal', 'NOT_FOUND')
+    }
+    const replacement = this.#records.get(replacementId)
+    if (replacement.sessionId !== sid || replacement.kind !== actionKind) {
+      throw new ActionProposalError('Replacement proposal does not match the action scope', 'SESSION_MISMATCH')
+    }
+
+    const now = this.clock()
+    const changed = []
+    for (const record of this.#records.values()) {
+      if (record.id === replacementId) continue
+      if (record.sessionId !== sid || record.kind !== actionKind || record.status !== 'pending') continue
+      record.status = 'superseded'
+      record.supersededAt = now
+      record.supersededByProposalId = replacementId
+      changed.push(clone(record))
+    }
+    return changed
   }
 
   confirm(id, { sessionId } = {}) {
