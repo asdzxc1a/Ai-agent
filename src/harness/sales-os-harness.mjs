@@ -49,6 +49,8 @@ function actionEnvelope(proposal = {}) {
     createdAt: bounded(proposal.createdAt, 80) || null,
     confirmedAt: bounded(proposal.confirmedAt, 80) || null,
     cancelledAt: bounded(proposal.cancelledAt, 80) || null,
+    supersededAt: bounded(proposal.supersededAt, 80) || null,
+    supersededByProposalId: bounded(proposal.supersededByProposalId, 240) || null,
     executedAt: bounded(proposal.executedAt, 80) || null,
     failedAt: bounded(proposal.failedAt, 80) || null,
     receipt: actionReceiptEnvelope(proposal.receipt),
