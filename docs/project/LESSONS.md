@@ -206,3 +206,26 @@ Resolve the image once, boot/health-check it, and pin the resulting immutable di
 **Prevention**
 
 For critical external runtime images, pin by digest and record the tested digest in repository state.
+
+
+---
+
+## L-007 — Runtime-aware lint and type environments must be explicit
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+The first Gate 1 quality run failed because the Node fixture script was linted without Node globals, and TypeScript code using Node APIs needed the Node type environment explicitly enabled.
+
+**Cause**
+
+The repository-level lint/type configuration assumed TypeScript library code and did not yet describe executable Node scripts.
+
+**Fix**
+
+Declare Node globals for repository `.js/.mjs` scripts and set `types: ["node"]` in the shared TypeScript config with a Node-24-compatible `@types/node` pin.
+
+**Prevention**
+
+Whenever a new runtime class is introduced (Node script, browser, worker, edge runtime), encode that runtime explicitly in lint/type configuration rather than disabling safety rules.
