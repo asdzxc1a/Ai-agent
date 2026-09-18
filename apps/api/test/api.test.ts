@@ -37,8 +37,9 @@ class FakeBrowserRuntime implements BrowserRuntime {
   public readonly session = new FakeBrowserSession();
 
   public async createSession(
-    _options?: BrowserSessionOptions
+    options?: BrowserSessionOptions
   ): Promise<BrowserSession> {
+    void options;
     return this.session;
   }
 }
@@ -51,11 +52,14 @@ class FakeAgentSession implements AgentSession {
     private readonly extraction: unknown
   ) {}
 
-  public async navigate(_url: string): Promise<void> {}
+  public async navigate(url: string): Promise<void> {
+    void url;
+  }
 
   public async observe(
-    _instruction: string
+    instruction: string
   ): Promise<AgentAction[]> {
+    void instruction;
     return [
       {
         selector: "xpath=//button",
@@ -80,9 +84,10 @@ class FakeAgentSession implements AgentSession {
   }
 
   public async extract<T>(
-    _instruction: string,
+    instruction: string,
     schema: RuntimeSchema<T>
   ): Promise<T> {
+    void instruction;
     return schema.parse(this.extraction);
   }
 
@@ -103,8 +108,9 @@ class FakeAgentRuntime implements AgentRuntime {
   ) {}
 
   public async openSession(
-    _options: OpenAgentSessionOptions
+    options: OpenAgentSessionOptions
   ): Promise<AgentSession> {
+    void options;
     const session = new FakeAgentSession(
       this.failAction,
       this.extraction
