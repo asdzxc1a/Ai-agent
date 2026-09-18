@@ -87,9 +87,9 @@ async function runSteelIteration(iteration: number): Promise<void> {
 
   try {
     session = await steel.createSession({
-      headless: true,
-      timezone: "UTC",
-      skipFingerprintInjection: true
+      deviceConfig: {
+        device: "desktop"
+      }
     });
 
     expect(session.status).toBe("live");
