@@ -150,6 +150,22 @@ test('skill benchmark: invalid replacement cannot supersede another action scope
   assert.equal(store.list({ sessionId: 'buyer-a' })[0].status, 'pending')
 })
 
+test('skill adversary: an older replacement cannot supersede proposals created after it', () => {
+  const store = new InMemoryActionProposalStore()
+  const olderReplacement = store.create({ sessionId: 'buyer-a', kind: 'book_demo' })
+  const newer = store.create({ sessionId: 'buyer-a', kind: 'book_demo' })
+
+  const changed = store.supersedePending({
+    sessionId: 'buyer-a',
+    kind: 'book_demo',
+    supersededByProposalId: olderReplacement.id,
+  })
+
+  assert.deepEqual(changed, [])
+  assert.equal(store.get(olderReplacement.id).status, 'pending')
+  assert.equal(store.get(newer.id).status, 'pending')
+})
+
 test('skill adversary: terminal proposal cannot be used to supersede live work', () => {
   const store = new InMemoryActionProposalStore()
   const live = store.create({ sessionId: 'buyer-a', kind: 'book_demo' })
