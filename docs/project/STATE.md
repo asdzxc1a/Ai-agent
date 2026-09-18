@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-18  
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
-**Current gate:** Gate 3 — Our browser/agent interfaces  
-**Overall status:** Gate 4 is merged in PR #29. Gate 5 is in progress on branch `gate-5-postgres-durability`, tracked by issue #30.
+**Current gate:** Gate 6 — Replayable SSE  
+**Overall status:** Gate 5 passed PR #31 merge gates: normal CI, raw Steel regression, Stagehand/API regression, PostgreSQL repository acceptance, and durable API restart acceptance are green. Gate 6 is next after PR #31 merges.
 
 ## North star
 
@@ -46,7 +46,7 @@ Chromium
 
 ## What has been built
 
-Foundation code now includes owned browser/agent runtime contracts, Steel/Stagehand adapters, and `apps/api`, the first product-facing HTTP layer. `POST /v1/runs` creates an asynchronous in-memory run; `GET /v1/runs/:id` returns PENDING/RUNNING/COMPLETED/FAILED state. The API imports only owned runtime/contracts packages and compiles a small explicit public output-schema subset to the current runtime schema implementation.
+Foundation code now includes owned browser/agent runtimes, the product HTTP API, a provider-neutral `RunEngine`/`RunRepository` boundary, `InMemoryRunRepository` for fast tests, and `PostgresRunRepository` as the durable implementation. PostgreSQL persists `runs`, `run_steps`, and `run_events`; the Gate 4 HTTP contract is unchanged, and a completed browser run survives a fresh DB pool and API instance.
 
 Project-memory system:
 
@@ -81,6 +81,8 @@ Gate 3 PR #27 evidence on head `f6d93b74912d6412cb1be76b6050265142f83094`: CI ru
 
 Gate 4 PR #29 code-head evidence on `4de8a6cf7e9e48d31541cc9260238110ad0d12fa`: CI run `35384275224` — passed; Steel integration run `35384276299` — passed; Stagehand/API integration run `35384275365` — passed. The 10-session semantic regression passed in 18.96s, and the real HTTP API structured browser run passed in 1.95s (2.75s total Vitest duration), returning `{ count: 1, status: "clicked" }` with successful cleanup.
 
+Gate 5 PR #31 evidence on head `90ef1dde8cb062c731e6c2ee9f8e49d776c2715e`: CI run `35385727058` — passed; Steel integration run `35385726966` — passed; combined Stagehand/PostgreSQL run `35385727172` — passed. In that combined run, the 10-session semantic regression passed in 18.68s, the Gate 4 HTTP browser acceptance passed in 1.98s, PostgreSQL repository acceptance passed in 285ms, and the full API restart acceptance passed in 2.14s (2.95s total), proving the same COMPLETED result, persisted steps, and ordered events survive a fresh pool/API instance. PostgreSQL image: `postgres@sha256:6c538e7206ea40ff740ef27883529390a690b6ead6ba96b44c67a9f7c638e8fd`.
+
 Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
 
 ## Known risks
@@ -93,7 +95,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 5 / issue #30:** pin PostgreSQL 18 by digest, split execution from storage behind `RunRepository`, add a raw-SQL Postgres repository/migrations, and prove a completed API run survives a fresh DB pool/API instance.
+**Gate 6:** expose persisted `run_events` as replayable SSE at `GET /v1/runs/:id/events`, with monotonic event IDs and reconnect using `Last-Event-ID`. The event table from Gate 5 becomes the source of truth; do not introduce a separate ephemeral event bus yet.
 
 ## Gate completion rule
 
