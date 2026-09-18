@@ -1,4 +1,4 @@
-name: Steel integration
+name: Stagehand Steel integration
 
 on:
   pull_request:
@@ -6,11 +6,12 @@ on:
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
+      - "packages/agent-stagehand/**"
       - "packages/browser-steel/**"
       - "test-sites/**"
       - "infra/steel-image.txt"
-      - "vitest.steel.config.ts"
-      - ".github/workflows/steel-integration.yml"
+      - "vitest.stagehand.config.ts"
+      - ".github/workflows/stagehand-steel-integration.yml"
   push:
     branches:
       - main
@@ -18,24 +19,25 @@ on:
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
+      - "packages/agent-stagehand/**"
       - "packages/browser-steel/**"
       - "test-sites/**"
       - "infra/steel-image.txt"
-      - "vitest.steel.config.ts"
-      - ".github/workflows/steel-integration.yml"
+      - "vitest.stagehand.config.ts"
+      - ".github/workflows/stagehand-steel-integration.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: steel-integration-${{ github.workflow }}-${{ github.ref }}
+  group: stagehand-steel-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  steel:
+  stagehand-steel:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -84,7 +86,7 @@ jobs:
           docker pull "$IMAGE"
 
           docker run -d --rm \
-            --name astra-steel \
+            --name astra-steel-stagehand \
             --add-host=host.docker.internal:host-gateway \
             -p 3000:3000 \
             -p 9223:9223 \
@@ -101,32 +103,22 @@ jobs:
             sleep 2
           done
 
-          docker logs astra-steel || true
+          docker logs astra-steel-stagehand || true
           echo "Steel failed to become healthy." >&2
           exit 1
 
-      - name: Run ten-session Steel acceptance test
+      - name: Run ten-session Stagehand → Steel acceptance test
         env:
           STEEL_BASE_URL: http://127.0.0.1:3000
           STEEL_FIXTURE_URL: http://host.docker.internal:4173
-          STEEL_ARTIFACT_DIR: artifacts/gate1
-        run: pnpm test:steel
-
-      - name: Upload Gate 1 screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gate-1-steel-screenshots
-          path: artifacts/gate1/
-          if-no-files-found: warn
-          retention-days: 14
+        run: pnpm test:stagehand
 
       - name: Capture service logs on failure
         if: failure()
         shell: bash
         run: |
           echo "=== Steel logs ==="
-          docker logs astra-steel || true
+          docker logs astra-steel-stagehand || true
           echo "=== Fixture logs ==="
           cat /tmp/astra-fixture.log || true
 
@@ -134,7 +126,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          docker stop astra-steel >/dev/null 2>&1 || true
+          docker stop astra-steel-stagehand >/dev/null 2>&1 || true
 
           if [[ -f /tmp/astra-fixture.pid ]]; then
             kill "$(cat /tmp/astra-fixture.pid)" >/dev/null 2>&1 || true

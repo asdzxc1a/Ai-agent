@@ -229,3 +229,48 @@ Declare Node globals for repository `.js/.mjs` scripts and set `types: ["node"]`
 **Prevention**
 
 Whenever a new runtime class is introduced (Node script, browser, worker, edge runtime), encode that runtime explicitly in lint/type configuration rather than disabling safety rules.
+
+
+---
+
+## L-008 — Third-party optional providers can create contradictory peer contracts
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+Strict pnpm install for Stagehand v3 failed in opposite directions: its Ollama adapter required Zod 4 while OpenAI 4.104.0 declared Zod 3.
+
+**Cause**
+
+Stagehand statically imports a broad provider layer. The framework itself supports both Zod 3 and Zod 4, but transitive provider packages do not all agree on the same peer range.
+
+**Fix**
+
+Keep strict peer checking globally. Pin Stagehand to the pre-refresh v3.7.0 compatibility release, use Zod 4.4.3 (supported by Stagehand and required by Ollama), and add one exact pnpm `peerDependencyRules.allowedVersions` exception for `openai@4.104.0>zod`. OpenAI's own package metadata marks Zod as an optional peer, and Gate 2 uses a custom LLMClient rather than OpenAI's Zod helper surface.
+
+**Prevention**
+
+For dependency conflicts, inspect upstream package manifests and runtime imports before weakening package-manager safety. Prefer a version pin plus a package-scoped, source-justified exception over global `strictPeerDependencies=false`.
+
+---
+
+## L-009 — Heavy browser CI should run once per merge candidate
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+Docker-backed browser workflows ran on both feature-branch pushes and pull requests, causing duplicate multi-hundred-megabyte image pulls and stale jobs occupying concurrency slots.
+
+**Cause**
+
+The heavy workflows used unrestricted `push` plus `pull_request` triggers.
+
+**Fix**
+
+Run heavy Steel/Stagehand browser workflows on pull requests, on pushes to `main`, or manually. Add path filters so documentation-only changes do not restart browser infrastructure tests. Keep lightweight normal CI on every push.
+
+**Prevention**
+
+Separate fast code-quality feedback from expensive environment/integration gates. Heavy tests should correspond to a merge candidate, not every intermediate documentation commit.

@@ -187,3 +187,59 @@ Steel publishes a moving `:latest` image. A moving tag makes browser behavior ch
 **Consequence**
 
 Runtime upgrades are explicit engineering changes: resolve a new digest, smoke-test it, run the full browser acceptance suite, then update `infra/steel-image.txt`.
+
+
+---
+
+## D-009 — Pin Stagehand v3.7.3 for direct Steel CDP compatibility
+
+**Date:** 2026-09-18  
+**Status:** Accepted
+
+**Decision**
+
+Use `@browserbasehq/stagehand@3.7.3` for the Stagehand→Steel compatibility layer in Gate 2.
+
+**Why**
+
+V3 explicitly supports attaching to an already-running browser through `localBrowserLaunchOptions.cdpUrl`. Stagehand v4 moved local browser operation to an extension-resident runtime; its default `localBrowser.connect()` path assumes the Stagehand extension is available to the browser process. Our Stagehand SDK runs on the host while Steel's Chromium runs in Docker, so v4 would require extension injection/mounting before we have evidence that complexity is valuable.
+
+**Consequence**
+
+Stagehand is treated as a replaceable compatibility layer. Gate 2 does not adopt v4 extension plumbing.
+
+**Revisit when**
+
+We intentionally build a browser image/runtime that preloads the Stagehand v4 extension, or our own semantic/runtime layer makes Stagehand replaceable entirely.
+
+
+---
+
+## D-010 — Supersede D-009 with Stagehand 3.7.0 + scoped peer exception
+
+**Date:** 2026-09-18  
+**Status:** Accepted; supersedes D-009
+
+**Decision**
+
+Use `@browserbasehq/stagehand@3.7.0` inside `@astra/agent-stagehand`, with `zod@4.4.3`.
+
+Keep pnpm strict peer validation enabled globally. Allow exactly this optional-peer mismatch:
+
+```yaml
+peerDependencyRules:
+  allowedVersions:
+    "openai@4.104.0>zod": "4.4.3"
+```
+
+**Why**
+
+Stagehand 3.7.0 is the latest published v3 release before 3.7.3's supporting-dependency refresh and retains the direct existing-browser `cdpUrl` path we need. Stagehand itself declares Zod 3 or Zod 4 support. Its Ollama adapter requires Zod 4, while OpenAI 4.104.0 declares Zod 3 as an optional peer. OpenAI's package metadata confirms that peer is optional, and our Gate 2 runtime uses a custom `LLMClient`, not OpenAI's Zod helper APIs.
+
+**Consequence**
+
+The exception is intentionally narrow and auditable. Any Stagehand/OpenAI/Zod upgrade must remove or re-justify it; broad peer-check disabling remains forbidden.
+
+**Revisit when**
+
+Stagehand v4 is intentionally integrated through a browser image that contains its extension, or a later compatible Stagehand/provider set removes the peer conflict.

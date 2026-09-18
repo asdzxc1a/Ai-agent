@@ -1,2 +1,9 @@
 packages:
   - "packages/*"
+
+peerDependencyRules:
+  allowedVersions:
+    # OpenAI 4.104.0 declares Zod 3 as an optional peer. Gate 2 uses a custom
+    # Stagehand LLMClient and never imports OpenAI's Zod helper surface.
+    # Stagehand 3.7.0 itself supports Zod 4, and its Ollama adapter requires it.
+    "openai@4.104.0>zod": "4.4.3"
