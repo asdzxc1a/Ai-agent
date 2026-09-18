@@ -16,7 +16,7 @@ import {
   compileOutputSchema,
   parseCreateRunRequest
 } from "./schema.js";
-import { InMemoryRunService } from "./run-service.js";
+import type { InMemoryRunService } from "./run-service.js";
 
 const MAX_REQUEST_BYTES = 64 * 1024;
 
