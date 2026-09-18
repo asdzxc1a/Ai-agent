@@ -163,7 +163,7 @@ Acceptance:
 
 ## Gate 7 — Artifacts + debugging
 
-**Status:** IN_PROGRESS
+**Status:** PASSED
 
 Build:
 
