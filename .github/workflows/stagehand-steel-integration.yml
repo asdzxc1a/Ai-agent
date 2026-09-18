@@ -1,0 +1,103 @@
+name: Stagehand Steel integration
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stagehand-steel-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stagehand-steel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start deterministic fixture
+        shell: bash
+        run: |
+          node test-sites/simple-button/server.mjs > /tmp/astra-fixture.log 2>&1 &
+          echo $! > /tmp/astra-fixture.pid
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/health >/dev/null; then
+              echo "Fixture is healthy."
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat /tmp/astra-fixture.log || true
+          echo "Fixture failed to become healthy." >&2
+          exit 1
+
+      - name: Start pinned Steel
+        shell: bash
+        run: |
+          IMAGE="$(cat infra/steel-image.txt)"
+          test -n "$IMAGE"
+
+          docker pull "$IMAGE"
+
+          docker run -d --rm             --name astra-steel-stagehand             --add-host=host.docker.internal:host-gateway             -p 3000:3000             -p 9223:9223             -e DOMAIN=localhost:3000             -e CDP_DOMAIN=localhost:9223             -e CHROME_HEADLESS=true             "$IMAGE"
+
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/v1/health >/dev/null; then
+              echo "Steel is healthy."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          docker logs astra-steel-stagehand || true
+          echo "Steel failed to become healthy." >&2
+          exit 1
+
+      - name: Run ten-session Stagehand → Steel acceptance test
+        env:
+          STEEL_BASE_URL: http://127.0.0.1:3000
+          STEEL_FIXTURE_URL: http://host.docker.internal:4173
+        run: pnpm test:stagehand
+
+      - name: Capture service logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo "=== Steel logs ==="
+          docker logs astra-steel-stagehand || true
+          echo "=== Fixture logs ==="
+          cat /tmp/astra-fixture.log || true
+
+      - name: Cleanup services
+        if: always()
+        shell: bash
+        run: |
+          docker stop astra-steel-stagehand >/dev/null 2>&1 || true
+
+          if [[ -f /tmp/astra-fixture.pid ]]; then
+            kill "$(cat /tmp/astra-fixture.pid)" >/dev/null 2>&1 || true
+          fi
