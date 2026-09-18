@@ -62,6 +62,60 @@ function messageFromZod(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Invalid input.";
 }
 
+function normalizeProperty(
+  property: z.infer<typeof outputPropertySchema>
+): OutputPropertySchema {
+  switch (property.type) {
+    case "string":
+      return property.const === undefined
+        ? { type: "string" }
+        : {
+            type: "string",
+            const: property.const
+          };
+    case "number":
+      return property.const === undefined
+        ? { type: "number" }
+        : {
+            type: "number",
+            const: property.const
+          };
+    case "boolean":
+      return property.const === undefined
+        ? { type: "boolean" }
+        : {
+            type: "boolean",
+            const: property.const
+          };
+  }
+}
+
+function normalizeOutputSchema(
+  schema: z.infer<typeof objectOutputSchema>
+): ObjectOutputSchema {
+  const properties: Record<string, OutputPropertySchema> = {};
+
+  for (const [name, property] of Object.entries(schema.properties)) {
+    properties[name] = normalizeProperty(property);
+  }
+
+  return {
+    type: "object",
+    properties,
+    ...(schema.required === undefined
+      ? {}
+      : {
+          required: [...schema.required]
+        }),
+    ...(schema.additionalProperties === undefined
+      ? {}
+      : {
+          additionalProperties: false
+        })
+  };
+}
+
+
 export function parseCreateRunRequest(input: unknown): CreateRunRequest {
   const envelope = requestEnvelopeSchema.safeParse(input);
 
@@ -110,7 +164,7 @@ export function parseCreateRunRequest(input: unknown): CreateRunRequest {
   return {
     url: envelope.data.url,
     goal: envelope.data.goal,
-    outputSchema: output.data
+    outputSchema: normalizeOutputSchema(output.data)
   };
 }
 
