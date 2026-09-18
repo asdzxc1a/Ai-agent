@@ -109,6 +109,61 @@ test('skill benchmark: backend supersedes old next-step and audits both lifecycl
   assert.equal(actionEvents[2].data.supersededByProposalId, current.id)
 })
 
+test('skill adversary: concurrent same-kind next steps leave exactly one pending proposal', async () => {
+  const sessions = new InMemorySalesSessionStore()
+  const actionProposals = new InMemoryActionProposalStore()
+  const harness = new SalesOSHarness()
+  const releases = []
+  const reasoner = {
+    async decide() {
+      await new Promise(resolve => releases.push(resolve))
+      return {
+        statePatch: { nextStep: 'book_demo' },
+        content: 'Offer a demo.',
+        visual: {
+          type: 'next_step',
+          kind: 'book_demo',
+          props: { label: 'Book a demo' },
+        },
+        confidence: 0.9,
+      }
+    },
+  }
+  const backend = new SalesBackendAdapter({
+    sessions,
+    catalog: new ProductCatalog(),
+    actionProposals,
+    harness,
+    reasoner,
+  })
+
+  const first = backend.submit({
+    taskId: 'race-1',
+    ownerId: 'buyer',
+    sessionId: 'sales-race',
+    instruction: 'Offer a demo',
+  })
+  const second = backend.submit({
+    taskId: 'race-2',
+    ownerId: 'buyer',
+    sessionId: 'sales-race',
+    instruction: 'Offer a demo again',
+  })
+
+  while (releases.length < 2) await new Promise(resolve => setImmediate(resolve))
+  releases[1]()
+  await new Promise(resolve => setImmediate(resolve))
+  releases[0]()
+  await Promise.all([first, second])
+
+  const proposals = actionProposals.list({ sessionId: 'sales-race' })
+  assert.equal(proposals.filter(item => item.status === 'pending').length, 1)
+  assert.equal(proposals.filter(item => item.status === 'superseded').length, 1)
+  const current = proposals.find(item => item.status === 'pending')
+  const old = proposals.find(item => item.status === 'superseded')
+  assert.equal(old.supersededByProposalId, current.id)
+})
+
 test('skill benchmark: superseded proposal cannot execute or reach provider', async () => {
   const store = new InMemoryActionProposalStore()
   let providerCalls = 0
