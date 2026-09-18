@@ -17,10 +17,14 @@
       ],
       "@astra/agent-stagehand": [
         "./packages/agent-stagehand/src/index.ts"
+      ],
+      "@astra/api": [
+        "./apps/api/src/index.ts"
       ]
     }
   },
   "include": [
-    "packages/**/*.ts"
+    "packages/**/*.ts",
+    "apps/**/*.ts"
   ]
 }

@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
 **Current gate:** Gate 3 — Our browser/agent interfaces  
-**Overall status:** Gate 3 passed all PR #27 merge gates: strict CI, raw Steel regression, and the 10-session Stagehand semantic flow through our owned runtime interfaces are green. Gate 4 is next after PR #27 merges.
+**Overall status:** Gate 3 is merged in PR #27. Gate 4 is in progress on branch `gate-4-first-api`, tracked by issue #28.
 
 ## North star
 
@@ -91,7 +91,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 4:** build the first product API on top of the owned runtimes only: `POST /v1/runs` to start an in-memory run and `GET /v1/runs/:id` to inspect it. Keep Gate 4 intentionally non-durable; PostgreSQL belongs to Gate 5.
+**Gate 4 / issue #28:** build the first in-memory HTTP run API on owned runtimes only, with typed validation/errors and a real Steel+Stagehand browser acceptance test. PostgreSQL remains Gate 5.
 
 ## Gate completion rule
 

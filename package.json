@@ -15,7 +15,8 @@
     "test:steel": "vitest run --config vitest.steel.config.ts",
     "test:stagehand": "vitest run --config vitest.stagehand.config.ts",
     "build": "pnpm --recursive --if-present build",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "test:api-browser": "vitest run --config vitest.api-browser.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
