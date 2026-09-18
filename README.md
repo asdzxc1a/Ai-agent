@@ -31,13 +31,19 @@ The architecture deliberately separates five concerns:
 - Qwen-standard sales visual artifact contract
 - browser sales visual rendering with HTML escaping and canonical pricing/comparison/product truth
 - local session/control API
-- local browser test console with LiveKit video, text input, 24 kHz mic streaming, interruption, transcripts, sales visuals, and runtime metrics
+- server-owned `ActionProposal` lifecycle with explicit human confirmation before execution
+- fail-closed `SALES_ACTION_EXECUTION_MODE=disabled|sandbox` runtime; default is `disabled`
+- modular local-only sandbox action providers with sanitized receipts and no external network side effects
+- at-most-once action execution with idempotent replay after successful execution and cross-session isolation
+- browser buyer-approval UI that keeps `confirmed` visually distinct from `executed`
+- local browser test console with LiveKit video, text input, 24 kHz mic streaming, interruption, transcripts, sales visuals, action controls, and runtime metrics
 - guarded paid smoke test that refuses to spend credits unless explicitly confirmed
 - append-only `salesos.event.v1` trajectory capture from backend decisions and selected realtime events
 - multi-component `salesos.reward.v1` with factuality/compliance hard gates before a trajectory becomes training-eligible
 - explicit `salesos.experience.v1` experience bank for reusable state → strategy → outcome records
 - portable per-session `salesos.learning-bundle.v1` export for future CustomerLM, counterfactual, replay, and RL workers
 - raw PCM and hidden chain-of-thought are excluded from the SalesOS learning stream
+- SalesOS action audit events with receipt/error allowlisting so provider secrets and arbitrary payloads do not enter learning bundles
 
 ## Requirements
 
@@ -60,10 +66,17 @@ npm test
 npm run demo
 ```
 
-Run the focused free integration gate:
+Run the full free foundation gate, including the adversarial action-security suite:
+
+```bash
+npm run verify:foundation
+```
+
+Focused gates are also available:
 
 ```bash
 npm run smoke:offline
+npm run test:security
 ```
 
 `smoke:offline` exercises:
@@ -75,6 +88,38 @@ npm run smoke:offline
 - browser visual rendering and escaping
 
 The Qwen source dependency and LiveKit browser SDK are pinned so upstream changes cannot silently change the test environment.
+
+## Permissioned action execution
+
+The model may propose a canonical `next_step`, but it cannot confirm or execute it. The server creates an opaque action proposal and owns the lifecycle:
+
+```text
+pending -> confirmed -> executing -> executed
+   \-> cancelled          \-> failed
+```
+
+Execution is controlled by:
+
+```dotenv
+SALES_ACTION_EXECUTION_MODE=disabled
+# or, for local fake providers only:
+SALES_ACTION_EXECUTION_MODE=sandbox
+```
+
+`disabled` is the default and exposes no executor. `sandbox` registers only local fake handlers for the allowlisted action kinds; they do not call email, calendar, CRM, payments, the filesystem, or external networks.
+
+The control API exposes server-owned proposal state and mutations:
+
+```text
+GET  /sessions/:id/actions
+POST /sessions/:id/actions/:proposalId/confirm
+POST /sessions/:id/actions/:proposalId/cancel
+POST /sessions/:id/actions/:proposalId/execute
+```
+
+Execution fails closed unless the proposal belongs to the same sales session and is explicitly confirmed. Successful retries return the stored executed result rather than repeating the provider call. SalesOS receives an independently sanitized lifecycle audit: only allowlisted receipt metadata and a generic failure marker enter the learning bundle.
+
+The browser shows `confirmed` separately from `executed`, never treats model text as confirmation, and only exposes Execute Sandbox when the server advertises sandbox mode. The explicit adversarial gate is `npm run test:security`.
 
 ## SalesOS learning layer
 
@@ -156,6 +201,9 @@ The test console can:
 - show whether `spawn_thinking` actually delegated to the sales backend
 - show final buyer/salesperson transcripts and audio-chunk metrics
 - render structured sales recommendation artifacts next to the avatar
+- show pending action proposals with explicit Confirm/Cancel controls
+- show confirmed actions as **not executed yet**, and show executed/failed only from server state
+- expose Execute Sandbox only when the server advertises `SALES_ACTION_EXECUTION_MODE=sandbox`
 
 This console is a validation harness, not the final sales product UI.
 

@@ -12,38 +12,58 @@ Browser mic
       -> delegated hard turn -> SalesBackendAdapter
          -> DOGA strategy selector
          -> deterministic SalesSessionState
-         -> product/CRM/pricing tools
+         -> canonical product/pricing/comparison/ROI truth
          -> OpenAI-compatible reasoner (DeepSeek / GLM / Qwen / OpenAI)
       -> normalized factual result + visual artifact
    -> browser overlays + spoken response
 ```
 
+External actions use a separate server-owned control path:
+
+```text
+model proposes canonical next_step
+   -> InMemoryActionProposalStore creates server ID (pending)
+   -> buyer explicitly confirms (confirmed)
+   -> SalesActionExecutor
+   -> allowlisted ActionToolRegistry handler
+   -> sandbox provider in this wave
+   -> sanitized receipt
+   -> proposal executed/failed
+   -> sanitized SalesOS lifecycle audit
+```
+
 ## Rules
 
 1. **One visible salesperson.** Specialists never become user-facing personas.
-2. **Server owns truth.** Pricing, product facts, CRM state, consent, and deal state never live only in model memory.
-3. **Models advise; tools act.** High-consequence writes use explicit confirmation before execution.
-4. **No exposed chain-of-thought.** The controller stores structured stage/strategy/decision fields, not private reasoning transcripts.
-5. **Vendor-neutral brain.** DeepSeek/GLM/Qwen/OpenAI all plug into the same `decide()` contract.
-6. **Qwen upstream-first.** Integrate via Backend Adapter SDK, knowledge/memory providers, custom client and realtime-provider contracts wherever possible.
-7. **HeyGen is a renderer.** Avatar transport is isolated from sales policy.
+2. **Server owns truth.** Pricing, product facts, CRM state, consent, proposal identity, and action state never live only in model memory.
+3. **Models advise; tools act.** A model can propose a next step but cannot confirm, execute, choose arbitrary tools, or author a successful receipt.
+4. **Human confirmation is explicit.** Execution begins only from a server-owned proposal in `confirmed` state.
+5. **Execution fails closed.** `SALES_ACTION_EXECUTION_MODE` supports only `disabled` and `sandbox`; the default is `disabled`.
+6. **Sandbox means local-only.** Sandbox action providers perform no network, email, CRM, calendar, payment, or filesystem side effects.
+7. **At-most-once success.** A successful retry returns the stored `executed` result without rerunning the provider.
+8. **Session isolation is mandatory.** Confirmation, cancellation, and execution are scoped to the proposal's owning sales session.
+9. **No exposed chain-of-thought or provider secrets.** SalesOS keeps structured lifecycle fields and allowlisted receipt metadata, not raw provider payloads, credentials, arbitrary context, or private reasoning.
+10. **Vendor-neutral brain.** DeepSeek/GLM/Qwen/OpenAI all plug into the same `decide()` contract.
+11. **Qwen upstream-first.** Integrate via Backend Adapter SDK, knowledge/memory providers, custom client and realtime-provider contracts wherever possible.
+12. **HeyGen is a renderer.** Avatar transport is isolated from sales policy and action execution.
 
-## What is implemented in milestone 1
+## Implemented foundation
 
-- deterministic `SalesSessionState`
-- DOGA-style turn strategy selection
-- deterministic product catalog/recommendation tool
-- Qwen-`BackendPort`-shaped `SalesBackendAdapter`
-- generic OpenAI-compatible model adapter
-- HeyGen audio-sink boundary
-- Qwen Gateway composition seam
-- zero-key mock demo and tests
+- deterministic `SalesSessionState` and DOGA-style turn strategy
+- deterministic product/pricing/comparison/case-study/ROI truth
+- Qwen-`BackendPort`-shaped `SalesBackendAdapter` and conformance tests
+- OpenAI-compatible hidden reasoner plus native GPT-Live and Qwen/HeyGen transport paths
+- browser sales visuals and realtime validation cockpit
+- server-owned `ActionProposal` lifecycle: pending, confirmed, cancelled, executing, executed, failed
+- fail-closed action execution runtime factory with disabled/sandbox modes
+- modular local sandbox providers behind `ActionToolRegistry`
+- session-scoped action list/confirm/cancel/execute API
+- buyer confirmation UI where confirmed is visibly different from executed
+- SalesOS action lifecycle auditing with sanitized receipts and generic safe failure audit text
+- Promise-level race, retry, isolation, malicious-receipt, and no-network adversarial tests
 
-## What comes next
+## Production boundary
 
-1. Install/pin Qwen Audio Agent and run its public backend conformance suite against `SalesBackendAdapter`.
-2. Wire the existing Qwen OpenAI realtime frontend to GPT-Live.
-3. Port the proven HeyGen LITE media-server sink from `heygen-com/liveavatar-gpt-live-demos`.
-4. Convert `product_card` artifact events into browser overlays.
-5. Add read-only product/pricing tools, then CRM sandbox reads.
-6. Add explicit approval flow for calendar/CRM writes.
+Production connectors are intentionally **not** part of this wave. Replacing a sandbox booking/email/CRM/trial provider with a real provider must not require changes to Qwen, GPT-Live, HeyGen, DOGA, the proposal store, or `SalesActionExecutor`.
+
+Before any production connector is enabled, it needs its own credentials boundary, provider-specific permissioning, idempotency contract, receipt sanitizer, integration tests, and a real live human smoke test. PR #2 remains draft until the real GPT-Live + HeyGen live smoke/human test succeeds.

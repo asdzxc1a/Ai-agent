@@ -49,23 +49,20 @@ Live acceptance:
 - repeated barge-in tests must clear buffered avatar audio immediately.
 - reconnect test must recover without replaying abandoned speech.
 
-## Gate D — sales visuals 🟡 canonical product/pricing/comparison path implemented
+## Gate D — sales visuals + next-step proposal boundary ✅
 
 Completed:
 - standard Gateway artifact MIME contract: `application/vnd.sales-avatar.visual+json`.
-- product, pricing, and comparison visuals are re-hydrated from structured catalog truth before display.
+- product, pricing, comparison, case-study, ROI and `next_step` visuals are canonicalized before display.
+- product/pricing/comparison data is re-hydrated from structured catalog truth.
+- case-study and ROI output use approved/server-owned proof and assumptions.
+- `next_step` is reduced to allowlisted proposal fields and cannot claim execution, disable confirmation, or smuggle URLs/calendar slots/CRM writes.
 - canonical sales artifacts survive the real Qwen backend runtime.
 - the headless bridge extracts/deduplicates visual artifacts.
-- browser test console renders canonical visuals next to the avatar.
-- renderer escapes untrusted display strings.
+- browser renderers escape untrusted display strings.
 - products shown are tracked in server-owned sales state across canonical visual types.
 
-Next visual types:
-- `case_study`
-- `roi`
-- `next_step`
-
-Each new type must have its own structured hydrator/data source before it becomes frontend-authoritative. Unknown model-authored visual types are dropped by the backend.
+Unknown model-authored visual types are dropped by the backend.
 
 ## Gate E — real hidden supervisor 🟡 adapter and security boundary complete
 
@@ -94,22 +91,39 @@ Structured sources must own:
 
 RAG is for documentation, case studies, FAQs, implementation material, and sales playbooks—not transactional truth.
 
-## Gate G — CRM sandbox
+## Gate G — permissioned action execution ✅ sandbox complete, production connectors pending
 
-Read first:
-- contact
-- account
-- opportunity
-- previous interactions
+Implemented:
+- server-owned `ActionProposal` IDs and lifecycle: pending, confirmed, cancelled, executing, executed, failed.
+- explicit human confirmation before execution; model messages never count as confirmation.
+- `SALES_ACTION_EXECUTION_MODE=disabled|sandbox`, with `disabled` as the fail-closed default.
+- modular allowlisted sandbox providers behind `ActionToolRegistry`.
+- no network, email, CRM, calendar, payment or filesystem side effects in sandbox mode.
+- at-most-once provider execution under Promise-level races.
+- idempotent replay after successful execution.
+- cross-session confirmation/execution isolation.
+- sanitized execution receipts and independently sanitized SalesOS action audit.
+- browser proposal UI with distinct pending/confirmed/cancelled/executing/executed/failed states.
+- sandbox execution control rendered only when the server advertises sandbox mode.
+- adversarial security coverage for retries, races, malformed IDs, fake model success/URLs, malicious receipts, concurrent buyers and 20+ simultaneous proposals.
 
-Then add writes behind explicit user confirmation:
+Next production connector work:
+1. Add read-only CRM/account/opportunity adapters first.
+2. Implement production providers behind the existing registry interface rather than changing the executor.
+3. Add provider credentials only on the server and never expose them to browser/model context.
+4. Keep the same explicit confirmation, session-isolation, at-most-once and receipt-sanitization invariants.
+5. Start with sandbox/test tenants before any production CRM/calendar/email credentials.
+6. Add recovery/idempotency keys appropriate to each external provider before enabling writes.
+
+Production actions may eventually include:
 - create/update lead
 - update opportunity
 - set next step
 - book meeting
 - send follow-up
+- create trial / human handoff
 
-Use sandbox/test CRM before production credentials.
+No production connector mode is enabled in this wave.
 
 ## Gate H — SalesOS learning/evaluation loop 🟡 harness complete, evaluator next
 

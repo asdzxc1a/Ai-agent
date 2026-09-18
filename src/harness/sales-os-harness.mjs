@@ -3,6 +3,7 @@ import { createSalesRewardVector } from './reward.mjs'
 import { InMemoryTrajectoryStore } from './trajectory-store.mjs'
 
 function clean(value) { return String(value || '').trim() }
+function bounded(value, max = 500) { return [...clean(value)].slice(0, max).join('') }
 function clone(value) { return value == null ? value : structuredClone(value) }
 
 function realtimeEnvelope(event) {
@@ -25,22 +26,33 @@ function realtimeEnvelope(event) {
   return null
 }
 
+function actionReceiptEnvelope(receipt) {
+  if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) return null
+  return {
+    provider: bounded(receipt.provider, 120) || 'unknown',
+    referenceId: bounded(receipt.referenceId, 240) || null,
+    status: bounded(receipt.status, 80) || 'completed',
+    summary: bounded(receipt.summary, 500),
+    sandbox: receipt.sandbox === true,
+  }
+}
+
 function actionEnvelope(proposal = {}) {
   return {
-    proposalId: clean(proposal.id) || null,
-    taskId: clean(proposal.taskId) || null,
-    kind: clean(proposal.kind) || null,
-    label: clean(proposal.label) || null,
-    status: clean(proposal.status) || null,
+    proposalId: bounded(proposal.id, 240) || null,
+    taskId: bounded(proposal.taskId, 200) || null,
+    kind: bounded(proposal.kind, 80) || null,
+    label: bounded(proposal.label, 160) || null,
+    status: bounded(proposal.status, 80) || null,
     requiresConfirmation: proposal.requiresConfirmation === true,
     executed: proposal.executed === true,
-    createdAt: clean(proposal.createdAt) || null,
-    confirmedAt: clean(proposal.confirmedAt) || null,
-    cancelledAt: clean(proposal.cancelledAt) || null,
-    executedAt: clean(proposal.executedAt) || null,
-    failedAt: clean(proposal.failedAt) || null,
-    receipt: proposal.receipt ? clone(proposal.receipt) : null,
-    error: clean(proposal.error) || null,
+    createdAt: bounded(proposal.createdAt, 80) || null,
+    confirmedAt: bounded(proposal.confirmedAt, 80) || null,
+    cancelledAt: bounded(proposal.cancelledAt, 80) || null,
+    executedAt: bounded(proposal.executedAt, 80) || null,
+    failedAt: bounded(proposal.failedAt, 80) || null,
+    receipt: actionReceiptEnvelope(proposal.receipt),
+    error: proposal.error ? 'Action execution failed' : null,
   }
 }
 

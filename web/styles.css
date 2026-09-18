@@ -189,6 +189,32 @@ textarea:focus { border-color: rgba(217,189,134,.37); background: #101012; }
 .comparison-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
 .comparison-item { padding: 11px; border: 1px solid var(--line); border-radius: 12px; background: rgba(0,0,0,.13); }
 
+.action-list { display: grid; gap: 10px; }
+.action-list-empty { color: #67635f; font-size: 12px; line-height: 1.5; }
+.action-proposal {
+  border: 1px solid var(--line); border-left-width: 3px; border-radius: 14px; padding: 13px;
+  background: rgba(255,255,255,.025);
+}
+.action-proposal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.action-label { color: #ece6dd; font-size: 13px; font-weight: 680; }
+.action-description { margin-top: 5px; color: #9d9993; font-size: 11px; line-height: 1.46; overflow-wrap: anywhere; }
+.action-status {
+  flex: 0 0 auto; padding: 4px 7px; border: 1px solid var(--line); border-radius: 999px;
+  color: #aaa59e; font-size: 9px; font-weight: 780; text-transform: uppercase; letter-spacing: .08em;
+}
+.action-status-copy { margin-top: 10px; color: #aaa59e; font-size: 11px; line-height: 1.45; }
+.action-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.action-controls .btn { min-height: 34px; padding: 0 12px; font-size: 11px; }
+.action-result { margin-top: 10px; padding: 9px 10px; border-radius: 10px; background: var(--green-soft); color: #c8f0d8; font-size: 11px; line-height: 1.45; }
+.action-result-error { background: var(--red-soft); color: #ffd0d0; }
+.action-pending { border-left-color: var(--amber); }
+.action-confirmed { border-left-color: var(--gold); background: var(--gold-soft); }
+.action-cancelled { border-left-color: #6f6c68; opacity: .76; }
+.action-executing { border-left-color: #9ebedb; }
+.action-executed { border-left-color: var(--green); background: var(--green-soft); }
+.action-failed { border-left-color: var(--red); background: var(--red-soft); }
+.action-unknown { border-left-color: var(--red); }
+
 .system-card { padding: 0; }
 .system-card summary { list-style: none; cursor: pointer; padding: 15px 17px; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #aaa59e; font-size: 12px; user-select: none; }
 .system-card summary::-webkit-details-marker { display: none; }

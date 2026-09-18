@@ -105,6 +105,7 @@ test('avatar control server serves Arcana SalesOS and routes session inputs', as
 
     for (const [path, pattern] of [
       ['/app.js', /summarizeLearningBundle/],
+      ['/action-ui.js', /actionProposalMarkup/],
       ['/sales-visual.js', /salesVisualMarkup/],
       ['/sales-intelligence.js', /summarizeLearningBundle/],
       ['/styles.css', /\.workspace/],
@@ -145,7 +146,7 @@ test('avatar control server serves Arcana SalesOS and routes session inputs', as
     assert.equal(cancelled.executed, false)
 
     const noExecute = await fetch(`${origin}/sessions/session-1/actions/action-1/execute`, { method: 'POST' })
-    assert.equal(noExecute.status, 404, 'control API intentionally exposes no action execution route')
+    assert.equal(noExecute.status, 404, 'manager without executeAction fails closed')
 
     const textResponse = await fetch(`${origin}/sessions/session-1/text`, {
       method: 'POST',

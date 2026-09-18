@@ -2,6 +2,7 @@ import { Room, RoomEvent, Track } from '/vendor/livekit-client.esm.mjs'
 import { startMicCapture } from './mic.js'
 import { renderSalesVisual } from './sales-visual.js'
 import { formatConfidence, formatStage, summarizeLearningBundle } from './sales-intelligence.js'
+import { actionProposalMarkup } from './action-ui.js'
 
 const $ = id => document.getElementById(id)
 const state = {
@@ -21,6 +22,7 @@ const state = {
   callStartedAt: null,
   timer: null,
   learningPolls: 0,
+  actionKey: '',
 }
 
 function isNativeLive() { return state.configuration?.voiceMode === 'native-gpt-live' }
@@ -96,6 +98,36 @@ function resetVisual() {
   state.visualKey = ''
   renderSalesVisual($('salesVisual'), null)
   $('visualArtifacts').textContent = '0'
+}
+
+function resetActions() {
+  state.actionKey = ''
+  const container = $('actionProposal')
+  if (!container) return
+  container.className = 'action-list action-list-empty'
+  container.textContent = 'No action awaiting your approval.'
+}
+
+function renderActions(actions = []) {
+  const container = $('actionProposal')
+  if (!container) return
+  const rows = Array.isArray(actions) ? actions : []
+  if (!rows.length) return resetActions()
+  let key = ''
+  try { key = JSON.stringify(rows) } catch { key = String(rows.length) }
+  if (key === state.actionKey) return
+  state.actionKey = key
+  container.className = 'action-list'
+  container.innerHTML = rows.map(action => actionProposalMarkup(action, {
+    executionMode: state.configuration?.actionExecutionMode || 'disabled',
+  })).join('')
+  container.querySelectorAll('[data-action-command]').forEach(button => {
+    button.addEventListener('click', () => {
+      const card = button.closest('[data-proposal-id]')
+      if (!card) return
+      void mutateAction(card.dataset.proposalId, button.dataset.actionCommand)
+    })
+  })
 }
 
 function maybeRenderVisual(visual) {
@@ -350,6 +382,38 @@ async function pollLearning() {
   }
 }
 
+async function pollActions() {
+  if (!state.session) return
+  try {
+    const actions = await jsonFetch(`/sessions/${encodeURIComponent(state.session.id)}/actions`)
+    renderActions(actions)
+  } catch (error) {
+    console.debug('action proposals not ready', error.message)
+  }
+}
+
+async function mutateAction(proposalId, command) {
+  if (!state.session) return
+  if (!['confirm', 'cancel', 'execute'].includes(command)) return
+  if (command === 'execute' && state.configuration?.actionExecutionMode !== 'sandbox') {
+    setState('Execution is disabled; the action remains confirmed only.', 'warn')
+    return
+  }
+  try {
+    await jsonFetch(`/sessions/${encodeURIComponent(state.session.id)}/actions/${encodeURIComponent(proposalId)}/${command}`, {
+      method: 'POST',
+      body: '{}',
+    })
+    if (command === 'confirm') setState('Action confirmed — nothing has executed yet.', 'ok')
+    if (command === 'cancel') setState('Action cancelled — nothing was executed.', 'warn')
+    if (command === 'execute') setState('Sandbox execution requested — waiting for the server result.', 'warn')
+    await pollActions()
+  } catch (error) {
+    setState(error.message, 'error')
+    await pollActions()
+  }
+}
+
 async function pollStatus() {
   if (!state.session) return
   try {
@@ -365,7 +429,10 @@ async function pollStatus() {
     if (metrics.lastUserTranscript) setTranscript('userTranscript', metrics.lastUserTranscript, 'Waiting for the buyer…')
     if (metrics.lastAssistantTranscript) setTranscript('assistantTranscript', metrics.lastAssistantTranscript, "The salesperson's spoken response will appear here.")
     state.learningPolls += 1
-    if (state.learningPolls % 2 === 0) void pollLearning()
+    if (state.learningPolls % 2 === 0) {
+      void pollLearning()
+      void pollActions()
+    }
   } catch (error) {
     console.warn(error)
     setBackendStatus('Connection issue', 'warn')
@@ -378,6 +445,7 @@ function startPolling() {
   state.pollTimer = setInterval(pollStatus, 800)
   void pollStatus()
   void pollLearning()
+  void pollActions()
 }
 
 async function startSession() {
@@ -385,6 +453,7 @@ async function startSession() {
   setBackendStatus('Connecting', 'warn')
   $('start').disabled = true
   resetVisual()
+  resetActions()
   resetIntelligence()
   setTranscript('userTranscript', '', 'Waiting for the buyer…')
   setTranscript('assistantTranscript', '', "The salesperson's spoken response will appear here.")
@@ -484,6 +553,7 @@ async function stopSession() {
     await jsonFetch(`/sessions/${encodeURIComponent(session.id)}`, { method: 'DELETE' }).catch(console.warn)
   }
   stopTimer()
+  resetActions()
   setLive(false)
   setButtons(false, state.configuration.liveReady !== false)
   setBackendStatus(state.configuration.liveReady === false ? 'Preview mode' : 'System ready', state.configuration.liveReady === false ? 'warn' : 'ok')
@@ -512,6 +582,7 @@ window.addEventListener('beforeunload', () => {
 
 setButtons(false, false)
 resetVisual()
+resetActions()
 resetIntelligence()
 setLive(false)
 void checkHealth()
