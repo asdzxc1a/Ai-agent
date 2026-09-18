@@ -122,8 +122,8 @@ export class NativeGptLiveBridge {
     }
 
     this.liveSessionId = clean(body?.session?.id, 240)
-    const answerSdp = String(body?.transport?.sdp || '').trim()
-    if (!this.liveSessionId || !answerSdp) throw new Error('GPT-Live returned an incomplete WebRTC session')
+    const answerSdp = String(body?.transport?.sdp || '')
+    if (!this.liveSessionId || !answerSdp.trim()) throw new Error('GPT-Live returned an incomplete WebRTC session')
     await this.#connectSideband({ timeoutMs })
 
     return {

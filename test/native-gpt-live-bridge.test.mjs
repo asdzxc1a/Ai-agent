@@ -52,14 +52,14 @@ test('native GPT-Live creates WebRTC session and routes client delegation throug
       fetchCalls.push({ url, options, body: JSON.parse(options.body) })
       return fakeResponse({
         session: { id: 'live_test_123' },
-        transport: { type: 'webrtc', sdp: 'answer-sdp' },
+        transport: { type: 'webrtc', sdp: 'answer-sdp\r\n' },
       })
     },
     WebSocketImpl: FakeSocket,
   })
 
   const started = await bridge.start({ sdp: 'offer-sdp\r\n', timeoutMs: 1000 })
-  assert.equal(started.answerSdp, 'answer-sdp')
+  assert.equal(started.answerSdp, 'answer-sdp\r\n')
   assert.equal(started.sessionId, 'live_test_123')
   assert.equal(started.gatewaySessionId, 'sales-live-test')
   assert.equal(started.voiceMode, 'native-gpt-live')
