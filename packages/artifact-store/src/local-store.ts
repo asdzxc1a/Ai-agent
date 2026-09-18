@@ -118,11 +118,10 @@ export class LocalArtifactStore
       mediaType: input.mediaType,
       byteLength: input.data.byteLength,
       createdAt: new Date().toISOString(),
-      ...(input.metadata === undefined
+      ...(metadata === undefined
         ? {}
         : {
-            metadata:
-              redactArtifactMetadata(input.metadata)
+            metadata
           })
     };
 
