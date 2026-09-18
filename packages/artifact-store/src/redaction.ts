@@ -32,7 +32,7 @@ function redactString(value: string): string {
   let redacted = redactUrl(value);
 
   redacted = redacted.replace(
-    /\bBearer\s+[A-Za-z0-9._~+\/=:-]+/gi,
+    /\bBearer\s+[^\s]+/gi,
     "Bearer [REDACTED]"
   );
 
