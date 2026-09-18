@@ -2,7 +2,7 @@ name: test
 
 on:
   push:
-    branches: [main, codex/sales-avatar-foundation]
+    branches: [main, codex/sales-avatar-foundation, integration/action-execution-v1]
   pull_request:
 
 jobs:
