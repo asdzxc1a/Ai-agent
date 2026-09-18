@@ -8,24 +8,27 @@ const html = `<!doctype html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Astra Gate 1 Fixture</title>
+    <title>Astra Browser Fixture</title>
   </head>
   <body>
     <main>
-      <h1>Steel deterministic fixture</h1>
+      <h1>Deterministic browser fixture</h1>
       <button id="increment" type="button">Increment count</button>
       <p id="status" data-state="idle">
         Count: <span id="count">0</span>
+        Status: <span id="status-text">idle</span>
       </p>
     </main>
     <script>
       const button = document.querySelector("#increment");
       const count = document.querySelector("#count");
       const status = document.querySelector("#status");
+      const statusText = document.querySelector("#status-text");
 
       button.addEventListener("click", () => {
         count.textContent = String(Number(count.textContent) + 1);
         status.dataset.state = "clicked";
+        statusText.textContent = "clicked";
       });
     </script>
   </body>
