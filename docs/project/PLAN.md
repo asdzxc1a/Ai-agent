@@ -82,7 +82,7 @@ Acceptance:
 
 ## Gate 3 — Our browser/agent interfaces
 
-**Status:** IN_PROGRESS
+**Status:** PASSED
 
 Build:
 
