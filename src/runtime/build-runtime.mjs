@@ -94,7 +94,8 @@ export function createSalesBackendFromEnv(env = process.env) {
   })
   const reasoner = createSalesReasonerFromEnv(env)
   const harness = new SalesOSHarness()
-  const actionProposals = new InMemoryActionProposalStore()
+  const actionProposalTtlMs = Math.max(0, optionalNumber(env, 'SALES_ACTION_PROPOSAL_TTL_MS', 0))
+  const actionProposals = new InMemoryActionProposalStore({ proposalTtlMs: actionProposalTtlMs })
   const actionExecution = createActionExecutionRuntime({ env, store: actionProposals, harness })
   const backend = new SalesBackendAdapter({
     reasoner,
@@ -113,6 +114,7 @@ export function createSalesBackendFromEnv(env = process.env) {
     caseStudies,
     roiCalculator,
     actionProposals,
+    actionProposalTtlMs,
     actionExecution,
     actionExecutor: actionExecution.executor,
     reasoner,
