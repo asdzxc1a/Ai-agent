@@ -101,11 +101,12 @@ test('skill benchmark: backend supersedes old next-step and audits both lifecycl
     .filter(event => event.type.startsWith('sales.action.'))
   assert.deepEqual(actionEvents.map(event => event.type), [
     'sales.action.proposed',
-    'sales.action.superseded',
     'sales.action.proposed',
+    'sales.action.superseded',
   ])
-  assert.equal(actionEvents[1].data.proposalId, first.id)
-  assert.equal(actionEvents[1].data.supersededByProposalId, current.id)
+  assert.equal(actionEvents[1].data.proposalId, current.id)
+  assert.equal(actionEvents[2].data.proposalId, first.id)
+  assert.equal(actionEvents[2].data.supersededByProposalId, current.id)
 })
 
 test('skill benchmark: superseded proposal cannot execute or reach provider', async () => {
