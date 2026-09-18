@@ -329,3 +329,79 @@ A small truthful contract is safer than claiming full JSON Schema while only par
 - Zod remains an API/runtime implementation detail;
 - future schema expansion is explicit and testable;
 - unsupported constructs fail fast instead of being silently ignored.
+
+
+---
+
+## D-014 — PostgreSQL is authoritative run state behind RunRepository
+
+**Date:** 2026-09-18  
+**Status:** Accepted
+
+**Decision**
+
+Execution and storage are separated:
+
+```text
+RunEngine → RunRepository
+             ├ InMemoryRunRepository
+             └ PostgresRunRepository
+```
+
+The HTTP layer depends on `RunService`, not SQL or PostgreSQL. PostgreSQL is the authoritative durable implementation for production-style Gate 5 acceptance.
+
+**Why**
+
+The external API and browser/agent orchestration should not change when storage changes. Repository separation also keeps fast unit tests deterministic.
+
+**Consequences**
+
+- `apps/api` contains no SQL.
+- PostgreSQL implementation lives in `@astra/run-postgres`.
+- fast tests can use `InMemoryRunRepository`.
+- Gate 6 can stream the already-persisted event log without redesigning execution.
+
+---
+
+## D-015 — Use raw parameterized SQL and transactional migrations before adding an ORM
+
+**Date:** 2026-09-18  
+**Status:** Accepted
+
+**Decision**
+
+Gate 5 uses `pg@8.23.0`, raw parameterized SQL, and explicit migrations. PostgreSQL 18.6 is pinned by immutable digest:
+
+`postgres@sha256:6c538e7206ea40ff740ef27883529390a690b6ead6ba96b44c67a9f7c638e8fd`
+
+Migrations run transactionally and use a PostgreSQL advisory transaction lock. Per-run step/event sequence allocation is performed transactionally in the repository.
+
+**Why**
+
+The schema is small and well understood. An ORM would add another abstraction before we have evidence it is useful, while raw SQL makes sequence/concurrency semantics explicit and testable.
+
+**Consequences**
+
+- all data values are parameterized;
+- migration behavior is explicit and idempotent;
+- ORM adoption, if any, requires a later evidence-backed decision;
+- runtime image upgrades are explicit digest changes with acceptance tests.
+
+---
+
+## D-016 — Persist terminal event before terminal run status
+
+**Date:** 2026-09-18  
+**Status:** Accepted
+
+**Decision**
+
+`RUN_COMPLETED` / `RUN_FAILED` is appended to the durable event log before the corresponding terminal status update on the `runs` row.
+
+**Why**
+
+A client observing terminal run state should never discover that the durable terminal event is missing. This ordering makes Gate 6 event replay consistent with the run snapshot.
+
+**Consequence**
+
+Gate 6 may treat the persisted event sequence as the authoritative replay source for SSE.

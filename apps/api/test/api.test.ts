@@ -19,9 +19,12 @@ import type {
 import type { RunSnapshot } from "@astra/contracts";
 
 import {
-  createApiServer,
-  InMemoryRunService
+  createApiServer
 } from "../src/index.js";
+import {
+  InMemoryRunRepository,
+  RunEngine
+} from "../../../packages/run-engine/src/index.js";
 
 class FakeBrowserSession implements BrowserSession {
   public readonly id = "browser-1";
@@ -126,12 +129,13 @@ async function startServer(
   browserRuntime: BrowserRuntime,
   agentRuntime: AgentRuntime
 ): Promise<string> {
-  const server = createApiServer(
-    new InMemoryRunService(
-      browserRuntime,
-      agentRuntime
-    )
-  );
+  const runService = new RunEngine({
+    repository: new InMemoryRunRepository(),
+    browserRuntime,
+    agentRuntime
+  });
+
+  const server = createApiServer(runService);
   servers.push(server);
 
   await new Promise<void>((resolve, reject) => {

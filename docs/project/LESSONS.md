@@ -366,3 +366,48 @@ Keep raw Steel as its own provider regression. In the Stagehand/Steel semantic w
 **Prevention**
 
 When integration tests need the same expensive environment, isolate logical assertions but share the environment lifecycle when it does not reduce fault localization.
+
+
+---
+
+## L-014 — Integration test configs must isolate environment contracts
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+The first Gate 5 combined workflow failed during the Gate 4 API-browser step even though that browser test itself passed. Vitest also loaded `api-restart.integration.ts`, which immediately failed because `TEST_DATABASE_URL` was intentionally absent from the Gate 4 browser step.
+
+**Cause**
+
+The API-browser test config used a pattern broad enough to include a new integration suite with a different environment contract.
+
+**Fix**
+
+Give browser-only and restart/durability tests separate Vitest configs and commands. Gate 4 browser acceptance runs without a database; Gate 5 restart acceptance runs later with PostgreSQL explicitly configured.
+
+**Prevention**
+
+Treat each integration suite's required external services as part of its test contract. Test globs must not silently broaden when new integration files are added.
+
+---
+
+## L-015 — Persist lifecycle history before building streaming on top of it
+
+**Date:** 2026-09-18
+
+**Symptom**
+
+It would be easy to implement SSE using only in-memory emitters and later discover that disconnected clients cannot replay missed progress.
+
+**Cause**
+
+Conflating real-time delivery with authoritative event storage.
+
+**Fix**
+
+Gate 5 persists ordered `run_events` and `run_steps` before Gate 6 introduces SSE. Terminal events are persisted before terminal run status is written.
+
+**Prevention**
+
+For durable workflows, make the append-only event log authoritative first; streaming should be a projection of stored events, not the source of truth.

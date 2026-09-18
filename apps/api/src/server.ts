@@ -16,7 +16,7 @@ import {
   compileOutputSchema,
   parseCreateRunRequest
 } from "./schema.js";
-import type { InMemoryRunService } from "./run-service.js";
+import type { RunService } from "@astra/run-engine";
 
 const MAX_REQUEST_BYTES = 64 * 1024;
 
@@ -108,7 +108,7 @@ function apiError(
 async function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
-  runService: InMemoryRunService
+  runService: RunService
 ): Promise<void> {
   const requestUrl = new URL(
     request.url ?? "/",
@@ -136,9 +136,8 @@ async function handleRequest(
       throw error;
     }
 
-    const run = runService.createRun({
-      url: parsed.url,
-      goal: parsed.goal,
+    const run = await runService.createRun({
+      request: parsed,
       ...(parsed.outputSchema === undefined
         ? {}
         : {
@@ -162,7 +161,7 @@ async function handleRequest(
   );
 
   if (request.method === "GET" && runMatch?.[1]) {
-    const run = runService.getRun(
+    const run = await runService.getRun(
       decodeURIComponent(runMatch[1])
     );
 
@@ -197,7 +196,7 @@ async function handleRequest(
 }
 
 export function createApiServer(
-  runService: InMemoryRunService
+  runService: RunService
 ): Server {
   return createServer((request, response) => {
     void handleRequest(

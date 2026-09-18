@@ -20,6 +20,12 @@
       ],
       "@astra/api": [
         "./apps/api/src/index.ts"
+      ],
+      "@astra/run-engine": [
+        "./packages/run-engine/src/index.ts"
+      ],
+      "@astra/run-postgres": [
+        "./packages/run-postgres/src/index.ts"
       ]
     }
   },

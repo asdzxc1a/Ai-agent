@@ -1,5 +1,5 @@
 {
-  "name": "@astra/api",
+  "name": "@astra/run-engine",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,16 +11,13 @@
       "default": "./dist/index.js"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@astra/agent-runtime": "workspace:*",
-    "@astra/contracts": "workspace:*",
-    "zod": "4.4.3",
-    "@astra/run-engine": "workspace:*"
+    "@astra/browser-runtime": "workspace:*",
+    "@astra/contracts": "workspace:*"
   }
 }

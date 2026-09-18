@@ -9,10 +9,15 @@ on:
       - "packages/agent-stagehand/**"
       - "packages/browser-steel/**"
       - "packages/contracts/**"
+      - "packages/run-engine/**"
+      - "packages/run-postgres/**"
       - "apps/api/**"
       - "test-sites/**"
       - "infra/steel-image.txt"
+      - "infra/postgres-image.txt"
       - "vitest.stagehand.config.ts"
+      - "vitest.postgres.config.ts"
+      - "vitest.api-restart.config.ts"
       - "vitest.api-browser.config.ts"
       - ".github/workflows/stagehand-steel-integration.yml"
   push:
@@ -26,7 +31,10 @@ on:
       - "packages/browser-steel/**"
       - "test-sites/**"
       - "infra/steel-image.txt"
+      - "infra/postgres-image.txt"
       - "vitest.stagehand.config.ts"
+      - "vitest.postgres.config.ts"
+      - "vitest.api-restart.config.ts"
       - ".github/workflows/stagehand-steel-integration.yml"
   workflow_dispatch:
 
@@ -110,6 +118,33 @@ jobs:
           echo "Steel failed to become healthy." >&2
           exit 1
 
+      - name: Start pinned PostgreSQL
+        shell: bash
+        run: |
+          IMAGE="$(cat infra/postgres-image.txt)"
+          test -n "$IMAGE"
+
+          docker pull "$IMAGE"
+
+          docker run -d --rm \
+            --name astra-postgres \
+            -p 5432:5432 \
+            -e POSTGRES_PASSWORD=astra \
+            -e POSTGRES_DB=astra \
+            "$IMAGE"
+
+          for attempt in $(seq 1 60); do
+            if docker exec astra-postgres pg_isready -U postgres -d astra >/dev/null 2>&1; then
+              echo "PostgreSQL is healthy."
+              exit 0
+            fi
+            sleep 1
+          done
+
+          docker logs astra-postgres || true
+          echo "PostgreSQL failed to become healthy." >&2
+          exit 1
+
       - name: Run ten-session Stagehand → Steel acceptance test
         env:
           STEEL_BASE_URL: http://127.0.0.1:3000
@@ -122,6 +157,18 @@ jobs:
           STEEL_FIXTURE_URL: http://host.docker.internal:4173
         run: pnpm test:api-browser
 
+      - name: Run PostgreSQL repository acceptance test
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:astra@127.0.0.1:5432/astra
+        run: pnpm test:postgres
+
+      - name: Run durable API restart acceptance test
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:astra@127.0.0.1:5432/astra
+          STEEL_BASE_URL: http://127.0.0.1:3000
+          STEEL_FIXTURE_URL: http://host.docker.internal:4173
+        run: pnpm test:api-restart
+
       - name: Capture service logs on failure
         if: failure()
         shell: bash
@@ -130,12 +177,15 @@ jobs:
           docker logs astra-steel-stagehand || true
           echo "=== Fixture logs ==="
           cat /tmp/astra-fixture.log || true
+          echo "=== PostgreSQL logs ==="
+          docker logs astra-postgres || true
 
       - name: Cleanup services
         if: always()
         shell: bash
         run: |
           docker stop astra-steel-stagehand >/dev/null 2>&1 || true
+          docker stop astra-postgres >/dev/null 2>&1 || true
 
           if [[ -f /tmp/astra-fixture.pid ]]; then
             kill "$(cat /tmp/astra-fixture.pid)" >/dev/null 2>&1 || true

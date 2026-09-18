@@ -3,10 +3,10 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: [
-      "apps/api/test/api-browser.integration.ts"
+      "packages/run-postgres/test/**/*.integration.ts"
     ],
     maxWorkers: 1,
-    testTimeout: 120_000,
+    testTimeout: 60_000,
     hookTimeout: 30_000
   }
 });
