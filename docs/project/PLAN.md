@@ -11,7 +11,7 @@ Only one gate should normally be `IN_PROGRESS`.
 
 ## Gate 0 — Repository + CI
 
-**Status:** NOT_STARTED
+**Status:** IN_PROGRESS
 
 Build:
 
