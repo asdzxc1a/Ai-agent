@@ -110,6 +110,13 @@ export class LocalArtifactStore
       recursive: true
     });
 
+    const metadata =
+      input.metadata === undefined
+        ? undefined
+        : redactArtifactMetadata(
+            input.metadata
+          );
+
     const record: ArtifactRecord = {
       id: artifactId,
       runId: input.runId,
