@@ -4,19 +4,19 @@
     "noEmit": true,
     "paths": {
       "@astra/contracts": [
-        "packages/contracts/src/index.ts"
+        "./packages/contracts/src/index.ts"
       ],
       "@astra/browser-runtime": [
-        "packages/browser-runtime/src/index.ts"
+        "./packages/browser-runtime/src/index.ts"
       ],
       "@astra/browser-steel": [
-        "packages/browser-steel/src/index.ts"
+        "./packages/browser-steel/src/index.ts"
       ],
       "@astra/agent-runtime": [
-        "packages/agent-runtime/src/index.ts"
+        "./packages/agent-runtime/src/index.ts"
       ],
       "@astra/agent-stagehand": [
-        "packages/agent-stagehand/src/index.ts"
+        "./packages/agent-stagehand/src/index.ts"
       ]
     }
   },
