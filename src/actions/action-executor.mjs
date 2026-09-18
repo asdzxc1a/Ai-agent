@@ -1,8 +1,8 @@
-import { randomUUID } from 'node:crypto'
 import {
   ActionProposalError,
   SALES_ACTION_KINDS,
 } from './action-proposal-store.mjs'
+import { createSandboxActionHandlers } from './providers/sandbox-action-providers.mjs'
 
 const ALLOWED_KINDS = new Set(SALES_ACTION_KINDS)
 
@@ -83,18 +83,10 @@ export class SalesActionExecutor {
   }
 }
 
-export function createSandboxActionToolRegistry({ idFactory = () => randomUUID() } = {}) {
+export function createSandboxActionToolRegistry({ idFactory } = {}) {
   const registry = new ActionToolRegistry()
-  for (const kind of SALES_ACTION_KINDS) {
-    registry.register(kind, async ({ proposal }) => ({
-      provider: 'sandbox',
-      referenceId: `sandbox_${kind}_${idFactory()}`,
-      status: 'completed',
-      summary: `Sandbox acknowledged ${proposal.label || kind}; no external side effect occurred.`,
-      sandbox: true,
-      // Deliberately ignored by sanitizeActionReceipt if a test/custom handler
-      // adds arbitrary fields, credentials, PII, or provider payloads.
-    }))
+  for (const [kind, handler] of createSandboxActionHandlers({ idFactory })) {
+    registry.register(kind, handler)
   }
   return registry
 }
