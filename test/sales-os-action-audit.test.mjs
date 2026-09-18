@@ -196,6 +196,8 @@ test('SalesOS action audit ignores unrelated lifecycle names and arbitrary propo
     'receipt',
     'requiresConfirmation',
     'status',
+    'supersededAt',
+    'supersededByProposalId',
     'taskId',
   ].sort())
   const serialized = JSON.stringify(event)
