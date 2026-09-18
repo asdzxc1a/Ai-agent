@@ -29,6 +29,7 @@ class EvidenceBrowserSession
   public readonly id = "browser-evidence";
   public readonly cdpUrl =
     "ws://browser.test/evidence";
+  public diagnosticCalls = 0;
 
   public async captureScreenshot(): Promise<Uint8Array> {
     return new Uint8Array([
@@ -40,6 +41,8 @@ class EvidenceBrowserSession
   }
 
   public async getDiagnostics(): Promise<BrowserDiagnostic[]> {
+    this.diagnosticCalls += 1;
+
     return [
       {
         kind: "console",
@@ -61,11 +64,14 @@ class EvidenceBrowserSession
 
 class EvidenceBrowserRuntime
   implements BrowserRuntime {
+  public readonly session =
+    new EvidenceBrowserSession();
+
   public async createSession(
     options?: BrowserSessionOptions
   ): Promise<BrowserSession> {
     void options;
-    return new EvidenceBrowserSession();
+    return this.session;
   }
 }
 
@@ -260,6 +266,29 @@ test("failed run leaves redacted debugging artifacts", async () => {
   expect(diagnosticsText).not.toContain(
     "super-secret"
   );
+});
+
+test("does not request browser diagnostics when artifact collection is disabled", async () => {
+  const browserRuntime =
+    new EvidenceBrowserRuntime();
+  const engine = new RunEngine({
+    repository: new InMemoryRunRepository(),
+    browserRuntime,
+    agentRuntime: new FailingAgentRuntime()
+  });
+
+  const started = await engine.createRun({
+    request: {
+      url: "https://fixture.test/",
+      goal: "Fail without collecting artifacts."
+    }
+  });
+
+  await waitForTerminal(engine, started.id);
+
+  expect(
+    browserRuntime.session.diagnosticCalls
+  ).toBe(0);
 });
 
 test("configured artifact store captures successful lifecycle evidence", async () => {
