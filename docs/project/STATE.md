@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-18  
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
-**Current gate:** Gate 7 — Artifacts + debugging  
-**Overall status:** Gate 7 acceptance is PASSED on PR #35 head `a816ff6c3dc8c471d00ec48718b74b8fec6f5362`; squash merge is the remaining Gate 7 workflow step.
+**Current gate:** Gate 8 — Deterministic eval suite  
+**Overall status:** Gate 7 is PASSED and squash-merged in PR #35 at `653e07246857ddf5e95e5589bdac947ee58e511a`. Gate 8 is next and has not started.
 
 ## North star
 
@@ -103,7 +103,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 7 / PR #35:** acceptance is green. Squash-merge PR #35; only after merge, advance `STATE.md` to Gate 8.
+**Gate 8 — Deterministic eval suite:** create/focus the Gate 8 issue and focused branch from latest `main`, then follow the Gate 8 acceptance criteria. No Gate 8 implementation has started.
 
 ## Gate completion rule
 
