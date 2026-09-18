@@ -10,15 +10,24 @@ import type {
   BrowserSession
 } from "@astra/browser-runtime";
 import type {
+  CreateRunRequest,
   RunFailure,
   RunFailureCode,
   RunSnapshot
 } from "@astra/contracts";
 
-export interface CreateRunInput {
-  url: string;
-  goal: string;
+import type {
+  RunRepository
+} from "./repository.js";
+
+export interface StartRunInput {
+  request: CreateRunRequest;
   outputSchema?: RuntimeSchema<Record<string, unknown>>;
+}
+
+export interface RunService {
+  createRun(input: StartRunInput): Promise<RunSnapshot>;
+  getRun(runId: string): Promise<RunSnapshot | undefined>;
 }
 
 class RunExecutionError extends Error {
@@ -29,17 +38,6 @@ class RunExecutionError extends Error {
     this.name = "RunExecutionError";
     this.code = code;
   }
-}
-
-function cloneSnapshot(snapshot: RunSnapshot): RunSnapshot {
-  return {
-    ...snapshot,
-    ...(snapshot.error === undefined
-      ? {}
-      : {
-          error: { ...snapshot.error }
-        })
-  };
 }
 
 function failureFrom(error: unknown): RunFailure {
@@ -59,20 +57,30 @@ function failureFrom(error: unknown): RunFailure {
   };
 }
 
-export class InMemoryRunService {
+export interface RunEngineOptions {
+  repository: RunRepository;
+  browserRuntime: BrowserRuntime;
+  agentRuntime: AgentRuntime;
+}
+
+export class RunEngine implements RunService {
+  readonly #repository: RunRepository;
   readonly #browserRuntime: BrowserRuntime;
   readonly #agentRuntime: AgentRuntime;
-  readonly #runs = new Map<string, RunSnapshot>();
 
-  public constructor(
-    browserRuntime: BrowserRuntime,
-    agentRuntime: AgentRuntime
-  ) {
+  public constructor({
+    repository,
+    browserRuntime,
+    agentRuntime
+  }: RunEngineOptions) {
+    this.#repository = repository;
     this.#browserRuntime = browserRuntime;
     this.#agentRuntime = agentRuntime;
   }
 
-  public createRun(input: CreateRunInput): RunSnapshot {
+  public async createRun(
+    input: StartRunInput
+  ): Promise<RunSnapshot> {
     const now = new Date().toISOString();
     const snapshot: RunSnapshot = {
       id: randomUUID(),
@@ -81,46 +89,47 @@ export class InMemoryRunService {
       updatedAt: now
     };
 
-    this.#runs.set(snapshot.id, snapshot);
+    await this.#repository.createRun(
+      snapshot,
+      input.request
+    );
+
+    await this.#repository.appendEvent(
+      snapshot.id,
+      "RUN_CREATED",
+      {
+        status: "PENDING"
+      }
+    );
 
     queueMicrotask(() => {
       void this.#execute(snapshot.id, input);
     });
 
-    return cloneSnapshot(snapshot);
+    return snapshot;
   }
 
-  public getRun(runId: string): RunSnapshot | undefined {
-    const snapshot = this.#runs.get(runId);
-    return snapshot === undefined
-      ? undefined
-      : cloneSnapshot(snapshot);
-  }
-
-  #update(
-    runId: string,
-    update: Partial<Omit<RunSnapshot, "id" | "createdAt">>
-  ): void {
-    const current = this.#runs.get(runId);
-
-    if (current === undefined) {
-      return;
-    }
-
-    this.#runs.set(runId, {
-      ...current,
-      ...update,
-      updatedAt: new Date().toISOString()
-    });
+  public getRun(
+    runId: string
+  ): Promise<RunSnapshot | undefined> {
+    return this.#repository.getRun(runId);
   }
 
   async #execute(
     runId: string,
-    input: CreateRunInput
+    input: StartRunInput
   ): Promise<void> {
-    this.#update(runId, {
+    await this.#repository.updateRun(runId, {
       status: "RUNNING"
     });
+
+    await this.#repository.appendEvent(
+      runId,
+      "RUN_STARTED",
+      {
+        status: "RUNNING"
+      }
+    );
 
     let browser: BrowserSession | undefined;
     let agent: AgentSession | undefined;
@@ -132,13 +141,48 @@ export class InMemoryRunService {
         headless: true
       });
 
+      await this.#repository.appendStep(
+        runId,
+        "BROWSER_CREATED",
+        {
+          browserId: browser.id,
+          viewerAvailable: browser.viewerUrl !== undefined
+        }
+      );
+
       agent = await this.#agentRuntime.openSession({
         browser
       });
 
-      await agent.navigate(input.url);
+      await this.#repository.appendStep(
+        runId,
+        "AGENT_OPENED",
+        {}
+      );
 
-      const observed = await agent.observe(input.goal);
+      await agent.navigate(input.request.url);
+
+      await this.#repository.appendStep(
+        runId,
+        "NAVIGATE",
+        {
+          url: input.request.url
+        }
+      );
+
+      const observed = await agent.observe(
+        input.request.goal
+      );
+
+      await this.#repository.appendStep(
+        runId,
+        "OBSERVE",
+        {
+          actionCount: observed.length,
+          actions: observed
+        }
+      );
+
       const action = observed.find(
         (candidate) =>
           candidate.method !== undefined &&
@@ -147,6 +191,15 @@ export class InMemoryRunService {
 
       if (action !== undefined) {
         const actionResult = await agent.act(action);
+
+        await this.#repository.appendStep(
+          runId,
+          "ACT",
+          {
+            action,
+            result: actionResult
+          }
+        );
 
         if (!actionResult.success) {
           throw new RunExecutionError(
@@ -171,18 +224,29 @@ export class InMemoryRunService {
 
       if (input.outputSchema !== undefined) {
         result = await agent.extract(
-          input.goal,
+          input.request.goal,
           input.outputSchema
+        );
+
+        await this.#repository.appendStep(
+          runId,
+          "EXTRACT",
+          {
+            result
+          }
         );
       }
     } catch (error) {
       failure = failureFrom(error);
     } finally {
       const cleanupErrors: string[] = [];
+      let agentClosed = false;
+      let browserClosed = false;
 
       if (agent !== undefined) {
         try {
           await agent.close();
+          agentClosed = true;
         } catch (error) {
           cleanupErrors.push(
             error instanceof Error
@@ -195,11 +259,32 @@ export class InMemoryRunService {
       if (browser !== undefined) {
         try {
           await browser.close();
+          browserClosed = true;
         } catch (error) {
           cleanupErrors.push(
             error instanceof Error
               ? error.message
               : "browser cleanup failed"
+          );
+        }
+      }
+
+      try {
+        await this.#repository.appendStep(
+          runId,
+          "CLEANUP",
+          {
+            agentClosed,
+            browserClosed,
+            cleanupErrors
+          }
+        );
+      } catch (error) {
+        if (failure === undefined) {
+          cleanupErrors.push(
+            error instanceof Error
+              ? error.message
+              : "cleanup persistence failed"
           );
         }
       }
@@ -213,14 +298,30 @@ export class InMemoryRunService {
     }
 
     if (failure !== undefined) {
-      this.#update(runId, {
+      await this.#repository.appendEvent(
+        runId,
+        "RUN_FAILED",
+        {
+          error: failure
+        }
+      );
+
+      await this.#repository.updateRun(runId, {
         status: "FAILED",
         error: failure
       });
       return;
     }
 
-    this.#update(runId, {
+    await this.#repository.appendEvent(
+      runId,
+      "RUN_COMPLETED",
+      {
+        result
+      }
+    );
+
+    await this.#repository.updateRun(runId, {
       status: "COMPLETED",
       result
     });

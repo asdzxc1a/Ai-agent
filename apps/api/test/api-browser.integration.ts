@@ -4,7 +4,8 @@ import { expect, test } from "vitest";
 
 import type { RunSnapshot } from "@astra/contracts";
 
-import { createApiServer, InMemoryRunService } from "../src/index.js";
+import { createApiServer } from "../src/index.js";
+import { InMemoryRunRepository, RunEngine } from "../../../packages/run-engine/src/index.js";
 import { createStagehandAgentRuntimeForTesting } from "../../../packages/agent-stagehand/src/testing.js";
 import { FixtureLLMClient } from "../../../packages/agent-stagehand/test/fixture-llm.js";
 import { SteelBrowserRuntime } from "../../../packages/browser-steel/src/index.js";
@@ -24,10 +25,11 @@ test("HTTP API executes a real structured browser run", async () => {
   );
 
   const server = createApiServer(
-    new InMemoryRunService(
+    new RunEngine({
+      repository: new InMemoryRunRepository(),
       browserRuntime,
       agentRuntime
-    )
+    })
   );
 
   await new Promise<void>((resolve, reject) => {
