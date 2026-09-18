@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
 **Current gate:** Gate 1 — Steel alone, local  
-**Overall status:** Gate 0 passed in strict GitHub Actions CI. The repository now has a deterministic TypeScript/pnpm foundation; Gate 1 is ready to begin after the Gate 0 PR is merged.
+**Overall status:** Gate 0 is merged and closed. Gate 1 is in progress on branch `gate-1-steel-local`, tracked by issue #21.
 
 ## North star
 
@@ -62,7 +62,7 @@ Project-memory system:
 
 ## What has been tested
 
-Gate 0 evidence: GitHub Actions run `35374610693` passed with committed `pnpm-lock.yaml` and `pnpm install --frozen-lockfile`, then lint, typecheck, unit tests, and build all succeeded.
+Gate 0 evidence: PR #19 merged after PR-triggered GitHub Actions run `35375643603` passed install, lint, typecheck, unit tests, and build with the committed lockfile.
 
 Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
 
@@ -76,18 +76,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 1:** run Steel locally with one deterministic fixture page and prove create → navigate → click → verify → screenshot → close succeeds 10/10.
-
-Create the minimal TypeScript workspace and CI that runs:
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-```
-
-Do not add Stagehand, Steel, or E2B during the first Gate 0 PR unless required to prove the workspace itself.
+**Gate 1 / issue #21:** pin an immutable Steel Docker image, add one deterministic fixture, then prove Steel session create → CDP connect → navigate → click → verify → screenshot → release succeeds 10/10 in CI.
 
 ## Gate completion rule
 
