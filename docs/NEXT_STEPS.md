@@ -49,23 +49,20 @@ Live acceptance:
 - repeated barge-in tests must clear buffered avatar audio immediately.
 - reconnect test must recover without replaying abandoned speech.
 
-## Gate D — sales visuals 🟡 canonical product/pricing/comparison path implemented
+## Gate D — sales visuals + next-step proposal boundary ✅
 
 Completed:
 - standard Gateway artifact MIME contract: `application/vnd.sales-avatar.visual+json`.
-- product, pricing, and comparison visuals are re-hydrated from structured catalog truth before display.
+- product, pricing, comparison, case-study, ROI and `next_step` visuals are canonicalized before display.
+- product/pricing/comparison data is re-hydrated from structured catalog truth.
+- case-study and ROI output use approved/server-owned proof and assumptions.
+- `next_step` is reduced to allowlisted proposal fields and cannot claim execution, disable confirmation, or smuggle URLs/calendar slots/CRM writes.
 - canonical sales artifacts survive the real Qwen backend runtime.
 - the headless bridge extracts/deduplicates visual artifacts.
-- browser test console renders canonical visuals next to the avatar.
-- renderer escapes untrusted display strings.
+- browser renderers escape untrusted display strings.
 - products shown are tracked in server-owned sales state across canonical visual types.
 
-Next visual types:
-- `case_study`
-- `roi`
-- `next_step`
-
-Each new type must have its own structured hydrator/data source before it becomes frontend-authoritative. Unknown model-authored visual types are dropped by the backend.
+Unknown model-authored visual types are dropped by the backend.
 
 ## Gate E — real hidden supervisor 🟡 adapter and security boundary complete
 
