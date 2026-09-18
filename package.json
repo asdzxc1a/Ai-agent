@@ -11,11 +11,12 @@
     "test:ui": "node --test test/avatar-control-server.test.mjs test/sales-intelligence.test.mjs test/sales-visual-renderer.test.mjs",
     "test:actions": "node --test test/action-proposal-store.test.mjs test/action-proposal-backend.test.mjs test/action-proposal-session.test.mjs test/action-execution-runtime.test.mjs test/action-executor.test.mjs test/action-session-execution.test.mjs test/next-step-security.test.mjs",
     "smoke:offline": "node --test test/qwen-websocket-e2e.test.mjs test/sales-decision-security.test.mjs test/sales-visual-renderer.test.mjs",
-    "verify:foundation": "npm test && npm run test:qwen && npm run smoke:offline && npm run test:actions",
+    "verify:foundation": "npm test && npm run test:qwen && npm run smoke:offline && npm run test:actions && npm run test:security",
     "demo": "node src/demo.mjs",
     "gateway": "node --env-file=.env src/server.mjs",
     "preflight:live": "node --env-file=.env scripts/preflight-live.mjs",
-    "smoke:live": "node --env-file=.env scripts/smoke-live.mjs"
+    "smoke:live": "node --env-file=.env scripts/smoke-live.mjs",
+    "test:security": "node --test test/security/*.test.mjs"
   },
   "dependencies": {
     "livekit-client": "2.22.3",
