@@ -22,12 +22,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup pnpm and Node.js
-        uses: pnpm/setup@v1
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
         with:
-          version: 12.4.2
-          runtime: node@24.21.0
-          install: false
+          version: 10.34.5
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
 
       - name: Install dependencies and generate lockfile
         run: pnpm install --no-frozen-lockfile
@@ -51,7 +56,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add pnpm-lock.yaml
-            git commit -m "chore: generate pnpm lockfile"
+            git commit -m "chore: regenerate pnpm 10 lockfile"
             git push
           else
             echo "pnpm-lock.yaml is already current."
