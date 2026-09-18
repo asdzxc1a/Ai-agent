@@ -243,3 +243,38 @@ The exception is intentionally narrow and auditable. Any Stagehand/OpenAI/Zod up
 **Revisit when**
 
 Stagehand v4 is intentionally integrated through a browser image that contains its extension, or a later compatible Stagehand/provider set removes the peer conflict.
+
+
+---
+
+## D-011 — Own runtime contracts; providers are adapters
+
+**Date:** 2026-09-18  
+**Status:** Accepted
+
+**Decision**
+
+The application boundary is now:
+
+```text
+BrowserRuntime → BrowserSession
+AgentRuntime   → AgentSession
+```
+
+Steel implements `BrowserRuntime`. Stagehand implements `AgentRuntime`. The agent runtime receives our `BrowserSession`, not a Steel response object or provider-specific session type.
+
+**Why**
+
+Future browser provisioning (including E2B) must be replaceable without changing agent logic or product API code. Likewise, Stagehand must be replaceable without changing browser provisioning.
+
+**Consequences**
+
+- Steel types stay inside `@astra/browser-steel`.
+- Stagehand types stay inside `@astra/agent-stagehand`.
+- product/application code depends on `@astra/browser-runtime` and `@astra/agent-runtime`.
+- provider-neutral test fakes exist for both contracts.
+- current Stagehand extraction still requires Zod internally, but that implementation detail is checked inside the adapter rather than exposed as the runtime contract.
+
+**Evidence**
+
+PR #27: CI `35381977883`, Steel `35381977729`, Stagehand semantic integration `35381977879`; all passed. The 10-session semantic test ran entirely through owned runtime interfaces.

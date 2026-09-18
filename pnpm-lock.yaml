@@ -33,8 +33,20 @@ importers:
         specifier: 5.0.1
         version: 5.0.1(@opentelemetry/api@1.9.0)(@types/node@24.13.5)(vite@8.3.0(@types/node@24.13.5))
 
+  packages/agent-runtime:
+    dependencies:
+      '@astra/browser-runtime':
+        specifier: workspace:*
+        version: link:../browser-runtime
+
   packages/agent-stagehand:
     dependencies:
+      '@astra/agent-runtime':
+        specifier: workspace:*
+        version: link:../agent-runtime
+      '@astra/browser-runtime':
+        specifier: workspace:*
+        version: link:../browser-runtime
       '@browserbasehq/stagehand':
         specifier: 3.7.0
         version: 3.7.0(playwright-core@1.63.0)(zod@4.4.3)
@@ -44,8 +56,18 @@ importers:
       zod:
         specifier: 4.4.3
         version: 4.4.3
+    devDependencies:
+      '@astra/browser-steel':
+        specifier: workspace:*
+        version: link:../browser-steel
 
-  packages/browser-steel: {}
+  packages/browser-runtime: {}
+
+  packages/browser-steel:
+    dependencies:
+      '@astra/browser-runtime':
+        specifier: workspace:*
+        version: link:../browser-runtime
 
   packages/contracts: {}
 

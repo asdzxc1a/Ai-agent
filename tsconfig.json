@@ -1,7 +1,24 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@astra/contracts": [
+        "./packages/contracts/src/index.ts"
+      ],
+      "@astra/browser-runtime": [
+        "./packages/browser-runtime/src/index.ts"
+      ],
+      "@astra/browser-steel": [
+        "./packages/browser-steel/src/index.ts"
+      ],
+      "@astra/agent-runtime": [
+        "./packages/agent-runtime/src/index.ts"
+      ],
+      "@astra/agent-stagehand": [
+        "./packages/agent-stagehand/src/index.ts"
+      ]
+    }
   },
   "include": [
     "packages/**/*.ts"
