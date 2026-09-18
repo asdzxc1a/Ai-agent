@@ -18,17 +18,20 @@ const html = `<!doctype html>
         Count: <span id="count">0</span>
         Status: <span id="status-text">idle</span>
       </p>
+      <p id="result">RESULT count=0 status=idle</p>
     </main>
     <script>
       const button = document.querySelector("#increment");
       const count = document.querySelector("#count");
       const status = document.querySelector("#status");
       const statusText = document.querySelector("#status-text");
+      const result = document.querySelector("#result");
 
       button.addEventListener("click", () => {
         count.textContent = String(Number(count.textContent) + 1);
         status.dataset.state = "clicked";
         statusText.textContent = "clicked";
+        result.textContent = "RESULT count=1 status=clicked";
       });
     </script>
   </body>

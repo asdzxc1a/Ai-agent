@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { expect, test } from "vitest";
 
-import { SteelClient, type SteelSessionDetails } from "../../browser-steel/src/index.js";
+import {
+  SteelClient,
+  type SteelSessionDetails
+} from "../../browser-steel/src/index.js";
 import { createStagehandForSteel } from "../src/index.js";
 import { FixtureLLMClient } from "./fixture-llm.js";
 
@@ -10,8 +13,8 @@ const fixtureUrl =
   process.env.STEEL_FIXTURE_URL ?? "http://host.docker.internal:4173";
 
 const fixtureStateSchema = z.object({
-  count: z.number(),
-  status: z.string()
+  count: z.number().int(),
+  status: z.literal("clicked")
 });
 
 async function runIteration(
@@ -60,14 +63,19 @@ async function runIteration(
       throw new Error("Stagehand observe() returned no usable increment action.");
     }
 
+    expect(action.selector).toMatch(/^xpath=/);
+
     const actResult = await stagehand.act(action);
     expect(actResult.success).toBe(true);
 
     expect(await page.locator("#count").textContent()).toBe("1");
     expect(await page.locator("#status-text").textContent()).toBe("clicked");
+    expect(await page.locator("#result").textContent()).toBe(
+      "RESULT count=1 status=clicked"
+    );
 
     const extracted = await stagehand.extract(
-      "extract the current count and status from the fixture",
+      "extract the RESULT count and status from the fixture",
       fixtureStateSchema
     );
 
@@ -78,6 +86,9 @@ async function runIteration(
 
     await stagehand.close();
     stagehand = undefined;
+
+    const stillLive = await client.getSession(session.id);
+    expect(stillLive.status).toBe("live");
 
     const release = await client.releaseSession(session.id);
     released = true;

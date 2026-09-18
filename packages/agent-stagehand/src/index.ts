@@ -15,6 +15,7 @@ export function createStagehandForSteel({
   return new Stagehand({
     env: "LOCAL",
     llmClient,
+    disableAPI: true,
     localBrowserLaunchOptions: {
       cdpUrl
     },

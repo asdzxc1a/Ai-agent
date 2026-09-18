@@ -35,134 +35,125 @@ function messageText(
   return chunks.join("\n");
 }
 
-function findIncrementElementId(prompt: string): string | undefined {
+function findIncrementElementId(prompt: string): string {
   const lines = prompt.split(/\r?\n/);
 
-  for (const line of lines) {
-    if (!line.toLowerCase().includes("increment count")) {
-      continue;
-    }
+  const targetLine = lines.find(
+    (line) =>
+      line.toLowerCase().includes("increment count") &&
+      /\b\d+-\d+\b/.test(line)
+  );
 
-    const match = line.match(/\[(\d+-\d+)\]/);
-    if (match?.[1]) {
-      return match[1];
-    }
+  const match = targetLine?.match(/\b(\d+-\d+)\b/);
+  if (!match?.[1]) {
+    throw new Error(
+      "Fixture LLM could not find a real Stagehand encoded ID for the Increment count button."
+    );
   }
 
-  const fallback = prompt.match(/\[(\d+-\d+)\][\s\S]{0,240}?increment count/i);
-  return fallback?.[1];
+  return match[1];
 }
 
-function responseCandidates(elementId: string): unknown[] {
-  const action = {
-    elementId,
-    description: "Increment count button",
-    method: "click",
-    arguments: []
-  };
+function extractFixtureState(prompt: string): {
+  count: number;
+  status: "idle" | "clicked";
+} {
+  const withoutEncodedIds = prompt.replace(/\[\d+-\d+\]/g, " ");
+  const match = withoutEncodedIds.match(
+    /RESULT\s+count=(\d+)\s+status=(idle|clicked)/i
+  );
 
-  return [
-    {
-      elements: [action]
-    },
-    {
-      action,
-      twoStep: false
-    },
-    {
-      element: action,
-      twoStep: false
-    },
-    {
-      count: 1,
-      status: "clicked"
-    },
-    {
-      value: {
-        count: 1,
-        status: "clicked"
-      }
-    },
-    {
-      progress: "The requested fixture state has been extracted.",
-      completed: true
-    },
-    {
-      completed: true,
-      progress: "The requested fixture state has been extracted."
-    },
-    {
-      count: 1,
-      status: "clicked",
-      metadata: {
-        completed: true
-      }
-    },
-    {
-      metadata: {
-        progress: "The requested fixture state has been extracted.",
-        completed: true
-      }
-    }
-  ];
+  if (!match?.[1] || !match[2]) {
+    throw new Error(
+      "Fixture LLM could not derive RESULT state from Stagehand's extraction prompt."
+    );
+  }
+
+  return {
+    count: Number(match[1]),
+    status: match[2].toLowerCase() as "idle" | "clicked"
+  };
 }
 
 function chooseStructuredData(
   responseModel: StructuredResponseModel,
   prompt: string
 ): unknown {
-  const elementId = findIncrementElementId(prompt) ?? "0-1";
+  let candidate: unknown;
 
-  for (const candidate of responseCandidates(elementId)) {
-    const result = responseModel.schema.safeParse(candidate);
-    if (result.success) {
-      return result.data;
+  switch (responseModel.name) {
+    case "Observation": {
+      const elementId = findIncrementElementId(prompt);
+      candidate = {
+        elements: [
+          {
+            elementId,
+            description: "Increment count button",
+            method: "click",
+            arguments: []
+          }
+        ]
+      };
+      break;
     }
+
+    case "Extraction":
+      candidate = extractFixtureState(prompt);
+      break;
+
+    case "Metadata":
+      candidate = {
+        progress: "The requested fixture state has been extracted.",
+        completed: true
+      };
+      break;
+
+    case "act":
+      throw new Error(
+        "Gate 2 must execute Stagehand's observed Action deterministically; an act inference call was unexpected."
+      );
+
+    default:
+      throw new Error(
+        `Fixture LLM does not support Stagehand response model "${responseModel.name}".`
+      );
   }
 
-  throw new Error(
-    `Fixture LLM has no schema-valid response for Stagehand model "${responseModel.name}".`
-  );
+  const result = responseModel.schema.safeParse(candidate);
+  if (!result.success) {
+    throw new Error(
+      `Fixture LLM produced schema-invalid data for "${responseModel.name}": ${result.error.message}`
+    );
+  }
+
+  return result.data;
 }
 
 export class FixtureLLMClient extends LLMClient {
-  public type = "fixture" as const;
+  public override type = "fixture" as const;
+  public override hasVision = false;
+  public override clientOptions = {};
 
   public constructor() {
-    super("openai/gpt-4o" as AvailableModel);
+    super("fixture/deterministic" as AvailableModel);
   }
 
-  public async createChatCompletion<T>({
+  public override async createChatCompletion<T>({
     options
   }: CreateChatCompletionOptions): Promise<T> {
-    if (options.response_model) {
-      const data = chooseStructuredData(
-        options.response_model,
-        messageText(options.messages)
+    if (!options.response_model) {
+      throw new Error(
+        "Gate 2 fixture LLM only supports Stagehand structured inference calls."
       );
-
-      return {
-        data,
-        usage: zeroUsage
-      } as T;
     }
 
+    const data = chooseStructuredData(
+      options.response_model,
+      messageText(options.messages)
+    );
+
     return {
-      id: "fixture-completion",
-      object: "chat.completion",
-      created: 0,
-      model: "fixture/deterministic",
-      choices: [
-        {
-          index: 0,
-          message: {
-            role: "assistant",
-            content: "",
-            tool_calls: []
-          },
-          finish_reason: "stop"
-        }
-      ],
+      data,
       usage: zeroUsage
     } as T;
   }
