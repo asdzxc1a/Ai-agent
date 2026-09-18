@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-09-18  
 **Repository:** `asdzxc1a/Ai-agent`  
-**Phase:** Project-memory bootstrap  
-**Current gate:** Pre-Gate 0  
-**Overall status:** Persistent-memory bootstrap verified and recorded in PR #15; product implementation not started.
+**Phase:** Foundation bootstrap  
+**Current gate:** Gate 0 — Repository + CI  
+**Overall status:** Gate 0 is in progress on branch `gate-0-workspace-ci`; the TypeScript workspace is created and CI/lockfile verification is pending.
 
 ## North star
 
@@ -46,7 +46,7 @@ Chromium
 
 ## What has been built
 
-Product code: **nothing yet**.
+Foundation code now exists: a minimal TypeScript/pnpm workspace plus the initial `@astra/contracts` package and run-status unit test.
 
 Project-memory system:
 
@@ -62,7 +62,7 @@ Project-memory system:
 
 ## What has been tested
 
-No product tests yet.
+Gate 0 unit/CI acceptance is not yet complete. The first unit test has been added; dependency installation, lint, typecheck, test, and build still need to pass in GitHub Actions.
 
 Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
 
@@ -76,7 +76,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 0: repository and CI bootstrap — tracked by GitHub issue #16.**
+**Finish Gate 0 on issue #16:** generate the real pnpm lockfile in GitHub Actions, switch CI to strict frozen-lockfile mode, then prove lint/typecheck/test/build all pass.
 
 Create the minimal TypeScript workspace and CI that runs:
 
