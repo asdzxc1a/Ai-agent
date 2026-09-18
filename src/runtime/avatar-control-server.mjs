@@ -68,6 +68,7 @@ function actionMutationPath(pathname) {
 
 function actionErrorStatus(error) {
   if (['NOT_FOUND', 'SESSION_MISMATCH'].includes(error?.code)) return 404
+  if (error?.code === 'ACTION_EXPIRED') return 410
   if (['INVALID_TRANSITION', 'CONFIRMATION_REQUIRED', 'UNSUPPORTED_ACTION'].includes(error?.code)) return 409
   if (['ACTION_EXECUTION_DISABLED', 'ACTION_TOOL_UNAVAILABLE'].includes(error?.code)) return 503
   return 500
