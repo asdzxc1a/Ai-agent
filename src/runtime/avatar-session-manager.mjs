@@ -117,13 +117,17 @@ export class AvatarSessionManager {
     return proposal
   }
 
-  async executeAction(id, proposalId) {
+  async executeAction(id, proposalId, context = {}) {
     const sessionId = this.resolveLearningSessionId(id)
     if (!sessionId) throw new Error(`Unknown action session: ${id}`)
     if (!this.actionExecutor?.execute) throw executionDisabledError()
+    const callerContext = context && typeof context === 'object' && !Array.isArray(context)
+      ? structuredClone(context)
+      : {}
     return this.actionExecutor.execute(proposalId, {
       sessionId,
       context: {
+        ...callerContext,
         avatarSessionId: id,
         gatewaySessionId: sessionId,
       },
