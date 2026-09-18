@@ -66,7 +66,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts/steel
-          docker compose -f infra/steel/compose.yaml logs --no-color > artifacts/steel/steel.log || true
+          docker compose -f infra/steel/compose.yaml logs --no-color | tee artifacts/steel/steel.log || true
 
       - name: Upload failure artifacts
         if: failure()
