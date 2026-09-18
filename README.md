@@ -48,3 +48,30 @@ We deliberately **do not** merge or fork Stagehand, Steel, and E2B. They remain 
 **One gate at a time. A gate does not pass until its automated acceptance tests pass.**
 
 The immediate next action is always recorded in [STATE.md](./docs/project/STATE.md).
+
+
+## Development
+
+Gate 0 pins the foundation to:
+
+- Node.js `24.21.0`
+- pnpm `10.34.5`
+- TypeScript `6.0.3`
+
+From a clean checkout:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+Or run the same validation sequence with:
+
+```bash
+pnpm check
+```
+
+GitHub Actions runs the strict frozen-lockfile path on every push and pull request.
