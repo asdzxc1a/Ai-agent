@@ -75,3 +75,32 @@ pnpm check
 ```
 
 GitHub Actions runs the strict frozen-lockfile path on every push and pull request.
+
+
+## Browser foundation
+
+Gate 1 proves Steel independently of Stagehand.
+
+The tested Steel image is pinned in:
+
+```text
+infra/steel-image.txt
+```
+
+The permanent integration test:
+
+1. starts the deterministic fixture;
+2. starts pinned Steel in Docker;
+3. creates a Steel browser session through REST;
+4. connects `playwright-core` over Steel's returned CDP WebSocket;
+5. navigates, clicks, verifies state, and captures a screenshot;
+6. releases the session;
+7. repeats the complete sequence ten times.
+
+Run the browser acceptance test when Steel and the fixture are already available:
+
+```bash
+pnpm test:steel
+```
+
+GitHub Actions performs the full Docker-backed setup in `.github/workflows/steel-integration.yml`.

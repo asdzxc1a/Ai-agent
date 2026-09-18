@@ -1,0 +1,121 @@
+name: Steel integration
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steel-integration-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  steel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start deterministic fixture
+        shell: bash
+        run: |
+          node test-sites/simple-button/server.mjs > /tmp/astra-fixture.log 2>&1 &
+          echo $! > /tmp/astra-fixture.pid
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/health >/dev/null; then
+              echo "Fixture is healthy."
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat /tmp/astra-fixture.log || true
+          echo "Fixture failed to become healthy." >&2
+          exit 1
+
+      - name: Start pinned Steel
+        shell: bash
+        run: |
+          IMAGE="$(cat infra/steel-image.txt)"
+          test -n "$IMAGE"
+
+          docker pull "$IMAGE"
+
+          docker run -d --rm \
+            --name astra-steel \
+            --add-host=host.docker.internal:host-gateway \
+            -p 3000:3000 \
+            -p 9223:9223 \
+            -e DOMAIN=localhost:3000 \
+            -e CDP_DOMAIN=localhost:9223 \
+            -e CHROME_HEADLESS=true \
+            "$IMAGE"
+
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/v1/health >/dev/null; then
+              echo "Steel is healthy."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          docker logs astra-steel || true
+          echo "Steel failed to become healthy." >&2
+          exit 1
+
+      - name: Run ten-session Steel acceptance test
+        env:
+          STEEL_BASE_URL: http://127.0.0.1:3000
+          STEEL_FIXTURE_URL: http://host.docker.internal:4173
+          STEEL_ARTIFACT_DIR: artifacts/gate1
+        run: pnpm test:steel
+
+      - name: Upload Gate 1 screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-1-steel-screenshots
+          path: artifacts/gate1/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Capture service logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo "=== Steel logs ==="
+          docker logs astra-steel || true
+          echo "=== Fixture logs ==="
+          cat /tmp/astra-fixture.log || true
+
+      - name: Cleanup services
+        if: always()
+        shell: bash
+        run: |
+          docker stop astra-steel >/dev/null 2>&1 || true
+
+          if [[ -f /tmp/astra-fixture.pid ]]; then
+            kill "$(cat /tmp/astra-fixture.pid)" >/dev/null 2>&1 || true
+          fi

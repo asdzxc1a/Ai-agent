@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-18  
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
-**Current gate:** Gate 1 — Steel alone, local  
-**Overall status:** Gate 0 passed in strict GitHub Actions CI. The repository now has a deterministic TypeScript/pnpm foundation; Gate 1 is ready to begin after the Gate 0 PR is merged.
+**Current gate:** Gate 2 — Stagehand → Steel  
+**Overall status:** Gate 1 passed on branch `gate-1-steel-local` and is ready for PR merge validation. Steel browser sessions are now proven independently; Stagehand has not been added yet.
 
 ## North star
 
@@ -46,7 +46,7 @@ Chromium
 
 ## What has been built
 
-Foundation code now exists: a minimal TypeScript/pnpm workspace plus the initial `@astra/contracts` package and run-status unit test.
+Foundation code includes the TypeScript/pnpm workspace, `@astra/contracts`, and a new `@astra/browser-steel` package with a minimal typed Steel REST client. A deterministic fixture server and real CDP integration test are in place.
 
 Project-memory system:
 
@@ -62,7 +62,16 @@ Project-memory system:
 
 ## What has been tested
 
-Gate 0 evidence: GitHub Actions run `35374610693` passed with committed `pnpm-lock.yaml` and `pnpm install --frozen-lockfile`, then lint, typecheck, unit tests, and build all succeeded.
+Gate 1 evidence:
+- quality CI run `35376572552`: frozen install, lint, typecheck, unit tests, build — passed;
+- Steel integration run `35376572583`: pinned Steel container healthy, deterministic fixture healthy, **10 consecutive create → CDP connect → navigate → click → verify → screenshot → release cycles passed**;
+- screenshot artifact `10560622294` uploaded successfully;
+- cleanup completed successfully;
+- tested Steel image: `ghcr.io/steel-dev/steel-browser@sha256:58fc8f1ed309a647ea7e7a53005b90cb239b8995698d195a261654ac8804974c`.
+
+Gate 0 evidence: PR #19 merged after PR-triggered GitHub Actions run `35375643603` passed install, lint, typecheck, unit tests, and build with the committed lockfile.
+
+Gate 1 evidence: GitHub Actions run `35376572583` passed against immutable Steel image `ghcr.io/steel-dev/steel-browser@sha256:58fc8f1ed309a647ea7e7a53005b90cb239b8995698d195a261654ac8804974c`. The 10-session acceptance test passed in 15.86s, uploaded 10 screenshots as artifact `10560622294`, and cleanup succeeded. Artifact digest: `sha256:92b4c1cfcb614252256343088ded29be71e6483e7277e0b64c2d190dbb15a176`.
 
 Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
 
@@ -76,18 +85,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 1:** run Steel locally with one deterministic fixture page and prove create → navigate → click → verify → screenshot → close succeeds 10/10.
-
-Create the minimal TypeScript workspace and CI that runs:
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-```
-
-Do not add Stagehand, Steel, or E2B during the first Gate 0 PR unless required to prove the workspace itself.
+**Gate 2:** connect Stagehand to the already-proven Steel CDP session and validate observe → act → extract against deterministic fixtures without changing the Steel runtime.
 
 ## Gate completion rule
 
