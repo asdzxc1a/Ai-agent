@@ -4,7 +4,11 @@ import { resolve } from "node:path";
 import { chromium, type Browser } from "playwright-core";
 import { expect, test } from "vitest";
 
-import { SteelClient, type SteelSessionDetails } from "../src/index.js";
+import {
+  SteelBrowserRuntime,
+  SteelClient,
+  type SteelSessionDetails
+} from "../src/index.js";
 
 const steelBaseUrl = process.env.STEEL_BASE_URL ?? "http://127.0.0.1:3000";
 const fixtureUrl =
@@ -91,5 +95,118 @@ test("Steel completes ten consecutive deterministic browser sessions", async () 
 
   for (let iteration = 1; iteration <= 10; iteration += 1) {
     await runIteration(client, iteration);
+  }
+});
+
+
+test("Steel browser adapter captures JPEG and console diagnostics", async () => {
+  const runtime = new SteelBrowserRuntime({
+    baseUrl: steelBaseUrl,
+    skipFingerprintInjection: true
+  });
+  const session = await runtime.createSession({
+    headless: true,
+    viewport: {
+      width: 1280,
+      height: 800
+    }
+  });
+  let browser: Browser | undefined;
+  let closed = false;
+
+  try {
+    browser = await chromium.connectOverCDP(
+      session.cdpUrl
+    );
+
+    const context = browser.contexts()[0];
+    if (context === undefined) {
+      throw new Error(
+        "Steel adapter exposed no browser context."
+      );
+    }
+
+    const page =
+      context.pages()[0] ??
+      (await context.newPage());
+
+    await page.goto(
+      `${fixtureUrl}/?gate=7&adapter=diagnostics`,
+      {
+        waitUntil: "domcontentloaded"
+      }
+    );
+
+    const diagnosticMarker =
+      `gate7-console-${session.id}`;
+
+    await page.evaluate((message) => {
+      console.error(message);
+    }, diagnosticMarker);
+
+    if (
+      session.captureScreenshot === undefined ||
+      session.getDiagnostics === undefined
+    ) {
+      throw new Error(
+        "Steel BrowserSession artifact capabilities are unavailable."
+      );
+    }
+
+    const screenshot =
+      await session.captureScreenshot({
+        fullPage: true
+      });
+
+    expect([
+      screenshot[0],
+      screenshot[1],
+      screenshot[2]
+    ]).toEqual([
+      0xff,
+      0xd8,
+      0xff
+    ]);
+
+    let diagnostics =
+      await session.getDiagnostics();
+
+    for (
+      let attempt = 0;
+      attempt < 30 &&
+      !diagnostics.some((entry) =>
+        entry.message.includes(diagnosticMarker)
+      );
+      attempt += 1
+    ) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 100);
+      });
+      diagnostics =
+        await session.getDiagnostics();
+    }
+
+    expect(
+      diagnostics.some(
+        (entry) =>
+          entry.kind === "console" &&
+          entry.message.includes(diagnosticMarker)
+      )
+    ).toBe(true);
+
+    await session.close();
+    closed = true;
+  } finally {
+    if (!closed) {
+      await session.close().catch(
+        () => undefined
+      );
+    }
+
+    if (browser !== undefined) {
+      await browser.close().catch(
+        () => undefined
+      );
+    }
   }
 });

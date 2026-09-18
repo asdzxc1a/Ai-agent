@@ -12,6 +12,9 @@ import type {
   RuntimeSchema
 } from "@astra/agent-runtime";
 import type {
+  ArtifactStore
+} from "@astra/artifact-store";
+import type {
   BrowserRuntime,
   BrowserSession,
   BrowserSessionOptions
@@ -22,6 +25,9 @@ import {
   createApiServer
 } from "../src/index.js";
 import {
+  InMemoryArtifactStore
+} from "../../../packages/artifact-store/src/index.js";
+import {
   InMemoryRunRepository,
   RunEngine
 } from "../../../packages/run-engine/src/index.js";
@@ -30,6 +36,15 @@ class FakeBrowserSession implements BrowserSession {
   public readonly id = "browser-1";
   public readonly cdpUrl = "ws://browser.test/1";
   public closeCalls = 0;
+
+  public async captureScreenshot(): Promise<Uint8Array> {
+    return new Uint8Array([
+      0xff,
+      0xd8,
+      0xff,
+      0xd9
+    ]);
+  }
 
   public async close(): Promise<void> {
     this.closeCalls += 1;
@@ -127,12 +142,18 @@ const servers: Server[] = [];
 
 async function startServer(
   browserRuntime: BrowserRuntime,
-  agentRuntime: AgentRuntime
+  agentRuntime: AgentRuntime,
+  artifactStore?: ArtifactStore
 ): Promise<string> {
   const runService = new RunEngine({
     repository: new InMemoryRunRepository(),
     browserRuntime,
-    agentRuntime
+    agentRuntime,
+    ...(artifactStore === undefined
+      ? {}
+      : {
+          artifactStore
+        })
   });
 
   const server = createApiServer(runService);
@@ -285,6 +306,104 @@ describe("first product API", () => {
     expect(terminal.error?.code).toBe("ACTION_FAILED");
     expect(browserRuntime.session.closeCalls).toBe(1);
     expect(agentRuntime.sessions[0]?.closeCalls).toBe(1);
+  });
+
+  it("lists and downloads artifacts with typed missing-artifact errors", async () => {
+    const artifactStore =
+      new InMemoryArtifactStore();
+    const baseUrl = await startServer(
+      new FakeBrowserRuntime(),
+      new FakeAgentRuntime(),
+      artifactStore
+    );
+
+    const acceptedResponse = await fetch(
+      `${baseUrl}/v1/runs`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          url: "http://fixture.test/",
+          goal: "Click the fixture button."
+        })
+      }
+    );
+
+    const accepted = await acceptedResponse.json() as {
+      runId: string;
+    };
+
+    await waitForTerminal(
+      baseUrl,
+      accepted.runId
+    );
+
+    const listedResponse = await fetch(
+      `${baseUrl}/v1/runs/${accepted.runId}/artifacts`
+    );
+
+    expect(listedResponse.status).toBe(200);
+
+    const listed = await listedResponse.json() as {
+      artifacts: Array<{
+        id: string;
+        name: string;
+        mediaType: string;
+      }>;
+    };
+
+    const screenshot = listed.artifacts.find(
+      (artifact) =>
+        artifact.name === "after-navigation.jpg"
+    );
+
+    expect(screenshot).toBeDefined();
+
+    const download = await fetch(
+      `${baseUrl}/v1/runs/${accepted.runId}/artifacts/${screenshot!.id}`
+    );
+
+    expect(download.status).toBe(200);
+    expect(
+      download.headers.get("content-type")
+    ).toBe("image/jpeg");
+    expect(
+      download.headers.get("cache-control")
+    ).toBe("no-store");
+    expect([
+      ...new Uint8Array(
+        await download.arrayBuffer()
+      )
+    ]).toEqual([
+      0xff,
+      0xd8,
+      0xff,
+      0xd9
+    ]);
+
+    const missingArtifact = await fetch(
+      `${baseUrl}/v1/runs/${accepted.runId}/artifacts/does-not-exist`
+    );
+
+    expect(missingArtifact.status).toBe(404);
+    expect(
+      (await missingArtifact.json() as {
+        error: { code: string };
+      }).error.code
+    ).toBe("ARTIFACT_NOT_FOUND");
+
+    const missingRun = await fetch(
+      `${baseUrl}/v1/runs/does-not-exist/artifacts`
+    );
+
+    expect(missingRun.status).toBe(404);
+    expect(
+      (await missingRun.json() as {
+        error: { code: string };
+      }).error.code
+    ).toBe("RUN_NOT_FOUND");
   });
 
   it("returns typed 400 and 404 errors", async () => {

@@ -26,6 +26,9 @@
       ],
       "@astra/run-postgres": [
         "./packages/run-postgres/src/index.ts"
+      ],
+      "@astra/artifact-store": [
+        "./packages/artifact-store/src/index.ts"
       ]
     }
   },

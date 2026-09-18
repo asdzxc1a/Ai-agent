@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
 **Current gate:** Gate 7 — Artifacts + debugging  
-**Overall status:** Gate 6 passed PR #33 merge gates: normal CI, raw Steel regression, Stagehand/API/PostgreSQL regressions, durable restart, and PostgreSQL-backed SSE disconnect/reconnect replay are green. Gate 7 is next after PR #33 merges.
+**Overall status:** Gate 7 acceptance is PASSED on PR #35 head `a816ff6c3dc8c471d00ec48718b74b8fec6f5362`; squash merge is the remaining Gate 7 workflow step.
 
 ## North star
 
@@ -85,6 +85,12 @@ Gate 5 PR #31 evidence on head `90ef1dde8cb062c731e6c2ee9f8e49d776c2715e`: CI ru
 
 Gate 6 PR #33 evidence on head `6a4c7a6134d28106696c5d050298cd8b3852d384`: CI run `35387635098` — passed; Steel run `35387634898` — passed; combined Stagehand/PostgreSQL/SSE run `35387634903` — passed. The PostgreSQL replay test disconnected after `RUN_CREATED` (event id 1), confirmed the run continued, reconnected with `Last-Event-ID: 1`, and received exactly ids 2–3 (`RUN_STARTED`, `RUN_COMPLETED`) with no duplicates. The SSE test passed in 643ms (877ms total Vitest duration), and the durable restart regression remained green.
 
+Gate 7 PR #35 acceptance evidence on head `a816ff6c3dc8c471d00ec48718b74b8fec6f5362`:
+- CI run `35391692165` — passed frozen install, lint, strict TypeScript, **20/20 unit tests across 7 files**, and all workspace builds. Artifact-store tests cover redacted JSON/metadata plus local binary and JSON round-trips across fresh store instances; RunEngine tests cover success/failure lifecycle artifacts, diagnostic opt-in, redaction, action-argument omission, and best-effort storage failures; API tests cover artifact list/download and typed 404s.
+- Steel integration run `35391691999` — passed against pinned Steel `ghcr.io/steel-dev/steel-browser@sha256:58fc8f1ed309a647ea7e7a53005b90cb239b8995698d195a261654ac8804974c`. The original 10-session lifecycle regression passed in 20.270s, and the owned Steel browser adapter independently captured a JPEG and retrieved a generated console diagnostic in 1.832s. Workflow cleanup passed.
+- Combined Stagehand/PostgreSQL run `35391692005` — passed against pinned Steel and PostgreSQL `postgres@sha256:6c538e7206ea40ff740ef27883529390a690b6ead6ba96b44c67a9f7c638e8fd`. The 10-session owned-runtime Stagehand→Steel semantic regression passed in 16.546s; the real HTTP browser artifact acceptance passed in 2.012s and proved artifact listing/download, readable JPEG magic bytes, and summary URL-secret redaction; PostgreSQL repository acceptance passed in 82ms; SSE disconnect/replay passed in 632ms; durable API restart passed in 1.951s; cleanup passed.
+- Raw Steel workflow artifact `10565318496` uploaded the 10 regression screenshots; digest `sha256:7e219bc7efc372d8f78f83bc51a245e12e6c27fc1d118bfc92c0150441be07fa`.
+
 Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
 
 ## Known risks
@@ -97,7 +103,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 7:** add an artifact/debugging layer without changing execution semantics: persist screenshots and diagnostic metadata behind an `ArtifactStore` abstraction, keep secrets/redaction rules explicit, and make intentionally failing fixture runs diagnosable from stored artifacts.
+**Gate 7 / PR #35:** acceptance is green. Squash-merge PR #35; only after merge, advance `STATE.md` to Gate 8.
 
 ## Gate completion rule
 
