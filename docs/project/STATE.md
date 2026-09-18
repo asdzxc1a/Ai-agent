@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation  
 **Current gate:** Gate 3 — Our browser/agent interfaces  
-**Overall status:** Gate 4 passed PR #29's code merge gates: normal CI, raw Steel regression, Stagehand semantic regression, and real HTTP API browser acceptance are green. Gate 5 is next after PR #29 merges.
+**Overall status:** Gate 4 is merged in PR #29. Gate 5 is in progress on branch `gate-5-postgres-durability`, tracked by issue #30.
 
 ## North star
 
@@ -93,7 +93,7 @@ Memory bootstrap verification: required files were created and fetched successfu
 
 ## Next action
 
-**Gate 5:** replace the in-memory run store/lifecycle with a durable PostgreSQL-backed run engine while preserving the Gate 4 HTTP contract. Persist `runs`, `run_steps`, and `run_events`; prove state survives an API process restart before adding SSE.
+**Gate 5 / issue #30:** pin PostgreSQL 18 by digest, split execution from storage behind `RunRepository`, add a raw-SQL Postgres repository/migrations, and prove a completed API run survives a fresh DB pool/API instance.
 
 ## Gate completion rule
 
