@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@12.4.2",
+  "packageManager": "pnpm@10.34.5",
   "engines": {
     "node": ">=24.21.0 <25",
-    "pnpm": ">=12.4.2 <13"
+    "pnpm": ">=10.34.5 <11"
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",
