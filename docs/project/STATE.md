@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Project-memory bootstrap  
 **Current gate:** Pre-Gate 0  
-**Overall status:** Persistent-memory bootstrap verified on branch and open in PR #15; product implementation not started.
+**Overall status:** Persistent-memory bootstrap verified and recorded in PR #15; product implementation not started.
 
 ## North star
 
@@ -64,7 +64,7 @@ Project-memory system:
 
 No product tests yet.
 
-Memory bootstrap verification: required files exist on `docs/astra-project-memory-v1`; README/AGENTS/STATE/PLAN/PR template were fetched successfully from GitHub; PR #15 is open.
+Memory bootstrap verification: required files were created and fetched successfully from GitHub; the bootstrap change is recorded in PR #15.
 
 ## Known risks
 
