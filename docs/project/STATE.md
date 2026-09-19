@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Proven browser foundation → Astra autonomous sales product  
 **Current gate:** Gate 8 — Sales domain contract + SalesBench baseline  
-**Overall status:** Gates 0–7 remain PASSED and are preserved as Astra's browser/research/run foundation. The product mission has now changed: Astra is our company's autonomous consultative sales agent and public proof of the AI-native company/workforce transformation service it sells. No Gate 8 sales-product implementation has started yet. The Git-centered memory system is already hardened and remains the canonical handoff mechanism.
+**Overall status:** Gates 0–7 remain PASSED and are preserved as Astra's browser/research/run foundation. The autonomous-sales product pivot is merged in PR #47 at `68c568c09920c223d690884dd6007a8e180cb190`. Gate 8 has not started implementation yet; issue #48 is the active working-memory anchor. The Git-centered memory system remains the canonical handoff mechanism.
 
 ## North star
 
@@ -118,7 +118,7 @@ The memory system uses:
 
 - `AGENTS.md` as the bootloader;
 - this file as the single hot-memory hub;
-- active GitHub issue #43 as short-lived working memory for the pivot/current gate;
+- active GitHub issue #48 as short-lived working memory for Gate 8;
 - `PLAN.md` for future gates;
 - `DECISIONS.md` for durable rationale;
 - `LESSONS.md` for reusable learning;
@@ -148,7 +148,7 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 8 — Sales domain contract + SalesBench baseline:** define the service/claim boundary, owned sales-domain schemas, first AI-native transformation ontology, consultative policy, and deterministic sales scenarios before any live prospect outreach or voice integration.
+**Gate 8 — Sales domain contract + SalesBench baseline (issue #48):** implement the service/claim boundary, owned sales-domain schemas, first AI-native transformation ontology, consultative policy, deterministic SalesBench, and honest Baseline 0 before any live prospect outreach or voice integration.
 
 ## Gate completion rule
 
