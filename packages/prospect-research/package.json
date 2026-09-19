@@ -11,7 +11,9 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
@@ -19,6 +21,7 @@
     "@astra/artifact-store": "workspace:*",
     "@astra/sales-domain": "workspace:*",
     "@astra/sandbox-runtime": "workspace:*",
-    "zod": "4.4.3"
+    "zod": "4.4.3",
+    "@astra/run-engine": "workspace:*"
   }
 }

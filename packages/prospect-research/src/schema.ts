@@ -269,6 +269,64 @@ export const ProspectResearchEvidenceSchema =
       }
     );
 
+export const ProspectResearchEvidenceResultSchema =
+  z.object({
+    id: IdentifierSchema,
+    sourceUrl:
+      z.string().url(),
+    observation:
+      TextSchema.max(2000),
+    uncertainty:
+      z.enum(
+        RESEARCH_UNCERTAINTY
+      ),
+    uncertaintyNote:
+      z.string()
+        .trim()
+        .min(1)
+        .max(1000)
+        .nullable(),
+    artifactIds:
+      z.array(
+        IdentifierSchema
+      ).min(1).max(32)
+  }).strict()
+    .superRefine(
+      (evidence, context) => {
+        if (
+          evidence.uncertainty ===
+            "none" &&
+          evidence.uncertaintyNote !==
+            null
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "uncertaintyNote"
+            ],
+            message:
+              "uncertaintyNote must be null when uncertainty is none"
+          });
+        }
+
+        if (
+          evidence.uncertainty !==
+            "none" &&
+          evidence.uncertaintyNote ===
+            null
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "uncertaintyNote"
+            ],
+            message:
+              "limited or material uncertainty requires a note"
+          });
+        }
+      }
+    );
+
 const ClaimBase = {
   id: IdentifierSchema,
   statement:
@@ -319,6 +377,43 @@ export const ProspectResearchUnknownSchema =
       TextSchema.max(200),
     reason:
       TextSchema.max(1000)
+  }).strict();
+
+export const GroundedResearchValueSchema =
+  z.object({
+    value:
+      TextSchema.max(240),
+    evidenceIds:
+      z.array(
+        IdentifierSchema
+      ).min(1).max(32)
+  }).strict();
+
+export const ProspectResearchResultSchema =
+  z.object({
+    companyName:
+      GroundedResearchValueSchema
+        .nullable(),
+    companySummary:
+      z.array(
+        ProspectResearchClaimSchema
+      ).min(1).max(32),
+    transformationOpportunities:
+      z.array(
+        HypothesisResearchClaimSchema
+      ).max(32),
+    buyingSignals:
+      z.array(
+        ProspectResearchClaimSchema
+      ).max(32),
+    unknowns:
+      z.array(
+        ProspectResearchUnknownSchema
+      ).max(64),
+    evidence:
+      z.array(
+        ProspectResearchEvidenceResultSchema
+      ).min(1).max(128)
   }).strict();
 
 export const ProspectResearchReportSchema =
@@ -433,6 +528,18 @@ export type ProspectResearchEvidence =
   z.infer<
     typeof ProspectResearchEvidenceSchema
   >;
+export type ProspectResearchEvidenceResult =
+  z.infer<
+    typeof ProspectResearchEvidenceResultSchema
+  >;
+export type GroundedResearchValue =
+  z.infer<
+    typeof GroundedResearchValueSchema
+  >;
+export type ProspectResearchResult =
+  z.infer<
+    typeof ProspectResearchResultSchema
+  >;
 export type ObservedResearchClaim =
   z.infer<
     typeof ObservedResearchClaimSchema
@@ -457,6 +564,8 @@ export type ProspectResearchFailure =
   z.infer<
     typeof ProspectResearchFailureSchema
   >;
+export type LiveResearchFailureCode =
+  typeof LIVE_RESEARCH_FAILURE_CODES[number];
 export type CompletedProspectResearchAttempt =
   z.infer<
     typeof CompletedProspectResearchAttemptSchema
