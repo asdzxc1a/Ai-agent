@@ -221,20 +221,14 @@ export class ProspectResearchService {
         "research target was not approved before the attempt"
       );
 
-    let attempt:
-      CompletedProspectResearchAttempt;
+    let result;
 
     try {
-      attempt =
-        buildCompletedProspectResearchAttempt({
+      result =
+        validateProspectResearchResult(
           target,
-          runId:
-            input.runId,
-          researchedAt:
-            this.#timestamp(),
-          result:
-            input.result
-        });
+          input.result
+        );
     } catch (error) {
       throw new ProspectResearchValidationError([
         error instanceof Error
@@ -244,13 +238,13 @@ export class ProspectResearchService {
     }
 
     await this.#assertAttemptAvailable(
-      attempt.id
+      input.runId
     );
 
     const artifacts =
       await this.#artifacts
         .listArtifacts(
-          attempt.report.runId
+          input.runId
         );
     const artifactById =
       new Map(
@@ -260,12 +254,15 @@ export class ProspectResearchService {
         )
       );
     const errors: string[] = [];
+    const capturedAtByEvidenceId =
+      new Map<string, string>();
 
     for (
       const evidence of
-      attempt.report.evidence
+      result.evidence
     ) {
-      let hasScreenshot = false;
+      const screenshotCaptureTimes:
+        string[] = [];
 
       for (
         const artifactId of
@@ -290,22 +287,57 @@ export class ProspectResearchService {
           artifact.kind ===
           "SCREENSHOT"
         ) {
-          hasScreenshot = true;
+          screenshotCaptureTimes.push(
+            artifact.createdAt
+          );
         }
       }
 
-      if (!hasScreenshot) {
+      if (
+        screenshotCaptureTimes
+          .length === 0
+      ) {
         errors.push(
           "research evidence requires a screenshot artifact: " +
             evidence.id
         );
+        continue;
       }
+
+      screenshotCaptureTimes
+        .sort();
+      capturedAtByEvidenceId.set(
+        evidence.id,
+        screenshotCaptureTimes[0]!
+      );
     }
 
     if (errors.length > 0) {
       throw new ProspectResearchValidationError(
         errors
       );
+    }
+
+    let attempt:
+      CompletedProspectResearchAttempt;
+
+    try {
+      attempt =
+        buildCompletedProspectResearchAttempt({
+          target,
+          runId:
+            input.runId,
+          researchedAt:
+            this.#timestamp(),
+          capturedAtByEvidenceId,
+          result
+        });
+    } catch (error) {
+      throw new ProspectResearchValidationError([
+        error instanceof Error
+          ? error.message
+          : "research attempt failed validation"
+      ]);
     }
 
     await this.#artifacts
