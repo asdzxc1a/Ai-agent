@@ -72,6 +72,8 @@ The branch is **not merged into main**, the real GPT-Live + HeyGen live acceptan
 
 Astra does not yet have:
 
+- an owned multi-step agent loop; the current RunEngine foundation still reflects the earlier one-observe/select/act capability limit;
+- explicit completion/effect semantics, cancellation propagation, and execution budgets for broader autonomy;
 - a canonical definition of the service it is allowed to sell;
 - an AI-native company/workforce transformation ontology;
 - owned `Prospect`, `Buyer`, `Opportunity`, `QualificationState`, `SalesDecision`, `Outcome`, or `PublicProof` contracts on `main`;
@@ -135,13 +137,14 @@ pnpm check:memory
 
 ## Known risks
 
-1. **Product-definition risk:** the service offer must be explicit before Astra is allowed to invent value propositions, pricing, proof, or guarantees.
-2. **Scope risk:** the existing browser foundation and draft voice branch are large assets; combining them wholesale would create integration debt. Reuse must be contract-by-contract.
-3. **Evaluation risk:** a persuasive agent can still be wrong or spammy. SalesBench must score factuality, evidence, relevance, information gain, pressure, qualification, and next-step quality separately.
-4. **Reputation risk:** outreach and social publishing change external reputation. Drafting is not authorization to send/post.
-5. **Platform/compliance risk:** LinkedIn/X/email/telephony automation has provider rules, consent, rate-limit, anti-spam, and account-risk constraints that must be encoded before autonomous use.
-6. **Voice risk:** PR #2 contains substantial transport code, but neither the intended GPT-Live + HeyGen route nor a canonical alternative is accepted for this product yet.
-7. **Memory risk:** this pivot will fail if future agents read old browser-product intent as current mission. Current STATE/AGENTS/PLAN now outrank that history.
+1. **Capability risk:** browser/runtime reliability is proven more strongly than broad multi-step agent capability; Gates 8–11 must measure and close that gap before live prospecting expands.
+2. **Product-definition risk:** the service offer must be explicit before Astra is allowed to invent value propositions, pricing, proof, or guarantees.
+3. **Scope risk:** the existing browser foundation and draft voice branch are large assets; combining them wholesale would create integration debt. Reuse must be contract-by-contract.
+4. **Evaluation risk:** a persuasive agent can still be wrong or spammy. SalesBench must score factuality, evidence, relevance, information gain, pressure, qualification, and next-step quality separately.
+5. **Reputation risk:** outreach and social publishing change external reputation. Drafting is not authorization to send/post.
+6. **Platform/compliance risk:** LinkedIn/X/email/telephony automation has provider rules, consent, rate-limit, anti-spam, and account-risk constraints that must be encoded before autonomous use.
+7. **Voice risk:** PR #2 contains substantial transport code, but neither the intended GPT-Live + HeyGen route nor a canonical alternative is accepted for this product yet.
+8. **Memory risk:** this pivot will fail if future agents read old browser-product intent as current mission. Current STATE/AGENTS/PLAN now outrank that history.
 
 ## Next action
 
