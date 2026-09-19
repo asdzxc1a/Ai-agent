@@ -20,6 +20,9 @@ export default defineConfig({
       ),
       "@astra/sales-bench": workspaceSource(
         "./packages/sales-bench/src/index.ts"
+      ),
+      "@astra/research-bench": workspaceSource(
+        "./packages/research-bench/src/index.ts"
       )
     }
   }

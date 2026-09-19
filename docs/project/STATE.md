@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-09-19  
 **Repository:** `asdzxc1a/Ai-agent`  
-**Phase:** Bounded verified execution → deterministic research qualification
-**Current gate:** Gate 11 — Deterministic prospect-research qualification
-**Overall status:** Gates 0–10 are PASSED. Gate 10 completed in PR #60: `COMPLETED` now requires verifier acceptance, autonomous execution is bounded by action/time/model budgets and loop detection, irreversible-effect uncertainty blocks retry, cancellation propagates through owned runtime boundaries, and real Steel cancellation proves browser release. Gate 11 is active in issue #61.
+**Phase:** Deterministic research qualification → sandbox/network isolation
+**Current gate:** Gate 12 — Sandbox + network safety for external research
+**Overall status:** Gates 0–11 are PASSED. Gate 11 completed in PR #62: frozen ResearchBench v1 qualifies the owned Stagehand→Steel research loop at 30/30 first-attempt tasks, with 20/20 core, 10/10 hard, zero false completions, zero unsupported claims, evidence/source attribution checks, and released Steel sessions. Gate 12 is active in issue #63.
 
 ## North star
 
@@ -70,6 +70,14 @@ Gate 9 acceptance proves three real Stagehand→Steel browser actions before exp
 The owned loop now enforces action/step limits, wall-clock cancellation, model token/cost budgets, repeated-action loop detection, and explicit `none | committed | unknown` action-effect semantics. Irreversible actions with uncertain or already-committed failure effects are blocked rather than blindly retried.
 
 Abort signals propagate through browser/agent contracts into Stagehand/Steel operations. `POST /v1/runs/:id/cancel` produces durable cancellation state and cleanup, and the pinned Steel acceptance proves the underlying session reaches `released`.
+
+### Gate 11 deterministic research qualification
+
+`@astra/research-bench` freezes 30 deterministic prospect-research tasks: 20 core and 10 hard, with two scenarios in each required Gate 11 category. Candidate input excludes fixture pages and expected answers; evaluator ground truth remains separate from the browser candidate.
+
+The evaluator rejects fabricated evidence, unsupported findings, wrong source attribution, unknown→fact promotion, and false completion. The owned Stagehand→Steel candidate stores only evidence actually observed through the browser path, resolves dated conflicts by recency, and preserves missing/ambiguous fields as explicit unknowns.
+
+Final qualification on the frozen suite is 30/30: core 20/20, hard 10/10, zero false completions, zero unsupported claims, and every run's Steel session reaches `released`. Earlier 28/30 and 27/30 measurements are preserved in Gate 11 history as harness-failure evidence rather than hidden or used to rewrite the suite.
 
 ### Gate 8 sales-domain foundation
 
@@ -149,7 +157,6 @@ D-023 requires selective reuse behind current owned contracts rather than a whol
 
 Astra does not yet have:
 
-- deterministic multi-page prospect-research qualification;
 - sandbox/network isolation for untrusted live research;
 - live prospect research;
 - durable ICP/prospect queue;
@@ -177,6 +184,7 @@ Astra does not yet have:
 | 8 — Sales domain + SalesBench baseline | PASSED | PR #51 / CI 35452463916 |
 | 9 — Owned multi-step sales-agent loop | PASSED | PR #55 / CI 35454706979 |
 | 10 — Completion, effects, cancellation + budgets | PASSED | PR #60 / CI 35458628400 |
+| 11 — Deterministic prospect-research qualification | PASSED | PR #62 / Stagehand 35461483407 |
 
 Gate 8 regression evidence:
 
@@ -191,6 +199,7 @@ Detailed evidence:
 - `docs/project/history/2026-09-19-gate8-sales-domain-salesbench.md`
 - `docs/project/history/2026-09-19-gate9-owned-multistep-loop.md`
 - `docs/project/history/2026-09-19-gate10-completion-effects-cancellation-budgets.md`
+- `docs/project/history/2026-09-19-gate11-deterministic-research-qualification.md`
 
 Tests/current code remain stronger evidence than this summary.
 
@@ -200,7 +209,7 @@ The memory system uses:
 
 - `AGENTS.md` as the bootloader;
 - this file as the single hot-memory hub;
-- active GitHub issue #61 as short-lived working memory for Gate 11;
+- active GitHub issue #63 as short-lived working memory for Gate 12;
 - `PLAN.md` for future gates;
 - `DECISIONS.md` for durable rationale;
 - `LESSONS.md` for reusable learning;
@@ -215,7 +224,7 @@ pnpm check:memory
 
 ## Known risks
 
-1. **Capability risk:** Gate 10 proves verified bounded execution and cleanup, but broader deterministic prospect-research reliability is still unproven. Gate 11 must qualify that capability before sandbox/live research expands.
+1. **Isolation risk:** Gate 11 proves deterministic local research reliability, but untrusted external websites are not yet isolated from sensitive networks/runtime state. Gate 12 must establish the sandbox/network boundary before live-web research expands.
 2. **Sales-policy risk:** Baseline 0 is only 32/40. Known weaknesses include evidence requests without evidence, weak-fit handoff, and re-asking known qualification facts.
 3. **External-model evidence risk:** no paid hosted-model benchmark is claimed yet.
 4. **Scope risk:** the browser foundation and draft voice branch are large assets; reuse must remain contract-by-contract.
@@ -226,9 +235,9 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 11 — Deterministic prospect-research qualification (issue #61):** freeze a representative 25–50-task local research suite, split core vs hard tasks, and measure first-attempt evidence-backed research reliability without changing failing tasks to improve the score.
+**Gate 12 — Sandbox + network safety for external research (issue #63):** define a provider-neutral sandbox/network-policy boundary, prove local isolation and private-network blocking first, then place E2B or another provider behind that owned contract only if it passes the same tests.
 
-Do not start live prospect research at scale, outreach/email/LinkedIn/X, voice/avatar, CRM/calendar/social actions, E2B/sandbox expansion, or new irreversible external side effects in Gate 11.
+Do not start live prospect research at scale, outreach/email/LinkedIn/X, voice/avatar, CRM/calendar/social actions, or new irreversible external side effects in Gate 12.
 
 ## Gate completion rule
 
