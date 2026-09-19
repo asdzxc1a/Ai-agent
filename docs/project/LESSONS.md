@@ -1,6 +1,6 @@
 # Lessons / Mistakes Ledger
 
-Append only. Record reusable lessons, not ordinary progress.
+Append reusable lessons, not ordinary progress. Preserve entry substance; identifier-only legacy repairs may add a letter suffix when an old duplicate ID must be disambiguated.
 
 Format:
 
@@ -210,7 +210,7 @@ For critical external runtime images, pin by digest and record the tested digest
 
 ---
 
-## L-007 — Runtime-aware lint and type environments must be explicit
+## L-007A — Runtime-aware lint and type environments must be explicit
 
 **Date:** 2026-09-18
 
@@ -233,7 +233,7 @@ Whenever a new runtime class is introduced (Node script, browser, worker, edge r
 
 ---
 
-## L-008 — Third-party optional providers can create contradictory peer contracts
+## L-008A — Third-party optional providers can create contradictory peer contracts
 
 **Date:** 2026-09-18
 
@@ -255,7 +255,7 @@ For dependency conflicts, inspect upstream package manifests and runtime imports
 
 ---
 
-## L-009 — Heavy browser CI should run once per merge candidate
+## L-009A — Heavy browser CI should run once per merge candidate
 
 **Date:** 2026-09-18
 
@@ -434,3 +434,25 @@ Redact both structure and carrier syntax before JSON artifact persistence: sensi
 
 Threat-model diagnostic strings as potentially credential-bearing input. Security tests should scan the serialized artifact output, not merely inspect the pre-serialization object.
 
+
+---
+ 
+## L-017 — Hot project memory must be compressed before it becomes history
+
+**Date:** 2026-09-19
+
+**Symptom**
+
+The current-state document accumulated detailed CI evidence for every completed gate, while decision and lesson ledgers developed duplicate identifiers. Fresh-context recovery still worked, but the amount of hot context and ambiguity were beginning to grow.
+
+**Cause**
+
+A memory system can become a second product if completed history is continuously appended to the same files that are supposed to answer current questions. Human/agent discipline alone also does not reliably prevent identifier collisions.
+
+**Fix**
+
+Keep one small current-state hub, move detailed completed evidence to cold history, use the active issue for working memory, preserve stable unique ledger IDs, and run a deterministic memory-structure check in normal validation.
+
+**Prevention**
+
+Treat memory quality as recovery quality rather than storage volume. Archive old detail, discard transient reasoning, and automate cheap structural invariants instead of building a more complex memory service.
