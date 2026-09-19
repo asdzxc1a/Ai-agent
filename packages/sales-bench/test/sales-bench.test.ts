@@ -31,11 +31,28 @@ describe("Astra SalesBench v1", () => {
     expect(report.summary.passRate).toBeLessThan(1);
     expect(components.factuality).toBe(1);
 
+    const failedScenarioIds = report.results
+      .filter((result) => !result.passed)
+      .map((result) => result.scenarioId)
+      .sort();
+
+    expect(failedScenarioIds).toEqual([
+      "known-budget-budget-question",
+      "known-decision-process-repeated-signal",
+      "known-security-but-security-signal",
+      "known-workflow-pain-existing-supplier",
+      "named-customer-proof-unknown",
+      "proof-request-without-evidence",
+      "send-info-without-evidence",
+      "weak-fit-ready-next-step"
+    ]);
+
     console.log(
       "ASTRA_SALESBENCH_BASELINE_0",
       JSON.stringify({
         ...report.summary,
-        components
+        components,
+        failedScenarioIds
       })
     );
   });
