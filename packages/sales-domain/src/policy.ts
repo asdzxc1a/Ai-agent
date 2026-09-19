@@ -78,6 +78,31 @@ function hasUsableEvidence(evidence: readonly Evidence[]): boolean {
   );
 }
 
+function evidenceClaims(
+  evidence: readonly Evidence[]
+): SalesDecision["claims"] {
+  const item = evidence.find((candidate) =>
+    candidate.kind === "observed_fact" ||
+    candidate.kind === "approved_claim"
+  );
+
+  if (!item) return [];
+
+  if (item.kind === "approved_claim") {
+    return [{
+      kind: "approved_claim",
+      statement: item.statement,
+      approvedClaimId: item.claimId
+    }];
+  }
+
+  return [{
+    kind: "observed_fact",
+    statement: item.statement,
+    evidenceIds: [item.id]
+  }];
+}
+
 export function selectConsultativeBaseline(
   input: ConsultativePolicyInput
 ): SalesDecision {
@@ -187,7 +212,7 @@ export function selectConsultativeBaseline(
         "Share only evidence that is already approved or observed. Do not invent a customer result or quantified outcome.",
       question: null,
       questionTarget: null,
-      claims: [],
+      claims: evidenceClaims(input.availableEvidence),
       nextAction: {
         kind: "share_evidence",
         rationale: "The buyer asked for information and verified evidence exists.",
