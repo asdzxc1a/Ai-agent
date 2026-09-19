@@ -26,6 +26,12 @@ export default defineConfig({
       ),
       "@astra/sandbox-runtime": workspaceSource(
         "./packages/sandbox-runtime/src/index.ts"
+      ),
+      "@astra/prospect-research": workspaceSource(
+        "./packages/prospect-research/src/index.ts"
+      ),
+      "@astra/prospect-postgres": workspaceSource(
+        "./packages/prospect-postgres/src/index.ts"
       )
     }
   }

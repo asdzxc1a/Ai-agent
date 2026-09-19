@@ -1,7 +1,8 @@
 export type ArtifactKind =
   | "SCREENSHOT"
   | "DIAGNOSTICS"
-  | "RUN_SUMMARY";
+  | "RUN_SUMMARY"
+  | "RESEARCH_EVIDENCE";
 
 export interface ArtifactRecord {
   id: string;
