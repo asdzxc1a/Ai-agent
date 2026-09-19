@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-09-19  
 **Repository:** `asdzxc1a/Ai-agent`  
-**Phase:** Proven browser foundation → Astra autonomous sales product  
-**Current gate:** Gate 8 — Sales domain contract + SalesBench baseline  
-**Overall status:** Gates 0–7 remain PASSED and are preserved as Astra's browser/research/run foundation. The autonomous-sales product pivot is merged in PR #47 at `68c568c09920c223d690884dd6007a8e180cb190`. Gate 8 has not started implementation yet; issue #48 is the active working-memory anchor. The Git-centered memory system remains the canonical handoff mechanism.
+**Phase:** Sales domain/evaluation foundation → multi-step sales-agent orchestration  
+**Current gate:** Gate 9 — Owned multi-step sales-agent loop  
+**Overall status:** Gates 0–8 are PASSED. Gate 8 adds Astra's first owned sales-domain truth layer, AI-native company/workforce transformation ontology V1, 40-scenario SalesBench V1, and an honest deterministic Baseline 0 of 32/40 (80%). Gate 9 is next; issue #53 is the active working-memory anchor.
 
 ## North star
 
@@ -32,9 +32,11 @@ experience memory + sanitized public proof
 
 Astra sells our AI-native company/workforce transformation service **and demonstrates the service by doing the sales job itself**.
 
-## What works now on `main`
+## What works now
 
-The repository already has:
+### Browser / run substrate
+
+The repository has:
 
 - strict TypeScript workspace + deterministic CI;
 - owned `BrowserRuntime` / `BrowserSession` contracts;
@@ -43,51 +45,106 @@ The repository already has:
 - Stagehand adapter over Steel CDP;
 - asynchronous HTTP run API;
 - provider-neutral `RunEngine` / `RunRepository`;
-- fast in-memory repository and durable PostgreSQL repository;
+- in-memory and durable PostgreSQL run repositories;
 - persisted runs, steps, and ordered events;
-- replayable SSE using persisted event sequence IDs;
-- artifact abstraction with in-memory/local filesystem stores;
-- downloadable screenshots/diagnostics/run summaries;
-- artifact redaction tests;
-- pinned Steel and PostgreSQL runtime images;
-- clean GitHub-centered project memory/handoff discipline.
+- replayable SSE;
+- artifact stores, screenshots, diagnostics, and secret redaction;
+- pinned Steel/PostgreSQL runtime images.
 
-These capabilities become the **research, evidence, and later browser-action substrate** for the sales product.
+These remain Astra's research, evidence, and later browser-action substrate.
+
+### Gate 8 sales-domain foundation
+
+`@astra/sales-domain` now provides runtime-validated contracts for:
+
+- `ServiceOffer`;
+- `Evidence`;
+- `Prospect`;
+- `Buyer`;
+- `Opportunity`;
+- `QualificationState`;
+- `SalesDecision`;
+- `NextAction`;
+- `Outcome`;
+- `PublicProof`.
+
+The truth model distinguishes:
+
+- `observed_fact`;
+- `inferred_hypothesis`;
+- `approved_claim`;
+- `unknown`.
+
+Evidence validators prevent claim-ID text substitution and require observed claims to match referenced observed evidence.
+
+The first conservative service-offer boundary approves workflow assessment, AI-agent/workflow design, implementation support, and evaluation/reliability work while leaving pricing, quantified ROI, named customer proof, guaranteed outcomes, and standard timelines unknown until later operator-approved evidence exists.
+
+### Gate 8 SalesBench
+
+`@astra/sales-bench` now provides:
+
+- 40 frozen deterministic sales scenarios;
+- structured hard-failure evaluation;
+- separate factuality/evidence/relevance/question/information-gain/qualification/trust/pressure/next-step scores;
+- deterministic candidates;
+- provider-neutral pinned-model candidates;
+- frozen Baseline 0.
+
+Baseline 0:
+
+| Metric | Result |
+| --- | ---: |
+| Scenarios | 40 |
+| Passed | 32 |
+| Failed | 8 |
+| Pass rate | 0.80 |
+| Mean structural score | 0.9472 |
+| Factuality | 1.00 |
+| Evidence use | 1.00 |
+| Relevance | 0.875 |
+| Question quality | 0.925 |
+| Information gain | 0.925 |
+| Qualification quality | 0.925 |
+| Trust | 1.00 |
+| Pressure safety | 1.00 |
+| Next-step quality | 0.875 |
+
+The eight failed scenarios are intentionally preserved. They expose proof requests without evidence, weak-fit handoff, and repeated questions for already-known qualification facts.
+
+No paid external-model benchmark is claimed. The pinned-model lane exists and is contract-tested, but no production credential/spend authorization was used.
 
 ## Reusable sales/voice asset outside `main`
 
-Draft PR #2 / branch `codex/sales-avatar-foundation` contains an experimental sales/voice foundation:
+Draft PR #2 / branch `codex/sales-avatar-foundation` remains a reusable experimental asset containing:
 
-- deterministic sales session state and sales strategy;
+- sales session state/strategy;
 - Qwen/GPT-Live realtime integration;
-- optional HeyGen LiveAvatar transport;
-- server-owned commercial-truth canonicalization;
-- action proposal/confirmation/execution boundaries;
-- SalesOS trajectory/reward/experience structures;
-- focused adversarial action-security coverage.
+- optional HeyGen rendering;
+- commercial-truth canonicalization;
+- action proposal/confirmation/execution concepts;
+- SalesOS trajectory/reward/experience concepts;
+- adversarial action-security coverage.
 
-The branch is **not merged into main**, the real GPT-Live + HeyGen live acceptance remains incomplete, and its demo product ontology is generic SaaS rather than our AI-native transformation service. It is an asset for selective reuse, not current product truth.
+D-023 requires selective reuse behind current owned contracts rather than a wholesale merge.
 
 ## What is not built yet
 
 Astra does not yet have:
 
-- an owned multi-step agent loop; the current RunEngine foundation still reflects the earlier one-observe/select/act capability limit;
+- an owned multi-step agent loop;
 - explicit completion/effect semantics, cancellation propagation, and execution budgets for broader autonomy;
-- a canonical definition of the service it is allowed to sell;
-- an AI-native company/workforce transformation ontology;
-- owned `Prospect`, `Buyer`, `Opportunity`, `QualificationState`, `SalesDecision`, `Outcome`, or `PublicProof` contracts on `main`;
-- a deterministic SalesBench for consultative selling quality;
-- a prospect-research vertical slice that separates observation from hypothesis;
-- ICP scoring or a persistent prospect queue;
+- deterministic multi-page prospect-research qualification;
+- sandbox/network isolation for untrusted live research;
+- live prospect research;
+- durable ICP/prospect queue;
 - outreach drafting/approval workflow;
-- a persistent consultative sales conversation on `main`;
-- a selected and live-accepted realtime voice path;
-- durable production-grade action execution;
-- real CRM, handoff, scheduling, email, LinkedIn, or X connectors;
-- a safe public-proof publishing pipeline;
-- an automated evaluator/experience-retrieval loop;
-- a controlled real-market pilot.
+- persistent consultative conversation;
+- selected/live-accepted realtime voice;
+- durable real action execution;
+- CRM/handoff/scheduling/email/social connectors;
+- safe publication capability;
+- automated experience retrieval;
+- controlled real-market pilot.
 
 ## Completed milestones
 
@@ -101,16 +158,21 @@ Astra does not yet have:
 | 5 — Durable run state | PASSED | PR #31 |
 | 6 — Replayable SSE | PASSED | PR #33 |
 | 7 — Artifacts + debugging | PASSED | PR #35 |
+| 8 — Sales domain + SalesBench baseline | PASSED | PR #51 / CI 35452463916 |
 
-Detailed Gates 0–7 evidence remains in:
+Gate 8 regression evidence:
 
-`docs/project/history/2026-09-18-gates-0-7-browser-foundation.md`
+- CI `35452463916` — quality/tests/build green;
+- Steel `35452463895` — pinned Steel 10/10 green;
+- Stagehand `35452463890` — Stagehand 10/10 + API/Postgres/SSE/restart green.
 
-The product pivot and branch-reuse rationale are recorded in:
+Detailed evidence:
 
-`docs/project/history/2026-09-19-astra-sales-product-pivot.md`
+- `docs/project/history/2026-09-18-gates-0-7-browser-foundation.md`
+- `docs/project/history/2026-09-19-astra-sales-product-pivot.md`
+- `docs/project/history/2026-09-19-gate8-sales-domain-salesbench.md`
 
-Tests and current code remain stronger evidence than this summary.
+Tests/current code remain stronger evidence than this summary.
 
 ## Project memory
 
@@ -118,18 +180,14 @@ The memory system uses:
 
 - `AGENTS.md` as the bootloader;
 - this file as the single hot-memory hub;
-- active GitHub issue #48 as short-lived working memory for Gate 8;
+- active GitHub issue #53 as short-lived working memory for Gate 9;
 - `PLAN.md` for future gates;
 - `DECISIONS.md` for durable rationale;
 - `LESSONS.md` for reusable learning;
-- `history/` for cold completed evidence;
+- `history/` for cold evidence;
 - tests/CI as the strongest source of truth.
 
-The complete reusable specification is:
-
-`docs/project/PROJECT_MEMORY_SYSTEM.md`
-
-Structural invariants are checked with:
+Structural invariants:
 
 ~~~bash
 pnpm check:memory
@@ -137,18 +195,20 @@ pnpm check:memory
 
 ## Known risks
 
-1. **Capability risk:** browser/runtime reliability is proven more strongly than broad multi-step agent capability; Gates 8–11 must measure and close that gap before live prospecting expands.
-2. **Product-definition risk:** the service offer must be explicit before Astra is allowed to invent value propositions, pricing, proof, or guarantees.
-3. **Scope risk:** the existing browser foundation and draft voice branch are large assets; combining them wholesale would create integration debt. Reuse must be contract-by-contract.
-4. **Evaluation risk:** a persuasive agent can still be wrong or spammy. SalesBench must score factuality, evidence, relevance, information gain, pressure, qualification, and next-step quality separately.
-5. **Reputation risk:** outreach and social publishing change external reputation. Drafting is not authorization to send/post.
-6. **Platform/compliance risk:** LinkedIn/X/email/telephony automation has provider rules, consent, rate-limit, anti-spam, and account-risk constraints that must be encoded before autonomous use.
-7. **Voice risk:** PR #2 contains substantial transport code, but neither the intended GPT-Live + HeyGen route nor a canonical alternative is accepted for this product yet.
-8. **Memory risk:** this pivot will fail if future agents read old browser-product intent as current mission. Current STATE/AGENTS/PLAN now outrank that history.
+1. **Capability risk:** Gate 8 defines the domain/evaluation layer, but broad multi-step agent capability is still unproven. Gates 9–11 must close that gap before live prospecting expands.
+2. **Sales-policy risk:** Baseline 0 is only 32/40. Known weaknesses include evidence requests without evidence, weak-fit handoff, and re-asking known qualification facts.
+3. **External-model evidence risk:** no paid hosted-model benchmark is claimed yet.
+4. **Scope risk:** the browser foundation and draft voice branch are large assets; reuse must remain contract-by-contract.
+5. **Evaluation risk:** persuasive output can still be wrong or spammy; SalesBench components must remain separate.
+6. **Reputation risk:** outreach/publication are external reputation-changing actions and remain gated.
+7. **Platform/compliance risk:** email/social/telephony automation needs provider-policy, consent, rate-limit, and anti-spam controls before autonomy.
+8. **Voice risk:** PR #2 contains substantial transport code, but no canonical realtime route has been selected for this product.
 
 ## Next action
 
-**Gate 8 — Sales domain contract + SalesBench baseline (issue #48):** implement the service/claim boundary, owned sales-domain schemas, first AI-native transformation ontology, consultative policy, deterministic SalesBench, and honest Baseline 0 before any live prospect outreach or voice integration.
+**Gate 9 — Owned multi-step sales-agent loop (issue #53):** implement owned repeated observe → decide → act orchestration with explicit `ACTION | COMPLETE | FAIL | BLOCKED` outcomes, persisted multi-step progress, and recoverable failure handling.
+
+Do not start live prospect research, outreach, voice, E2B, or external actions in Gate 9.
 
 ## Gate completion rule
 
