@@ -35,10 +35,12 @@ function opportunity(): Opportunity {
 
 describe("consultative baseline policy", () => {
   it("treats no current need as a valid defer outcome", () => {
+    const state = opportunity();
+    state.activeSignals = ["no_current_need"];
+
     const decision = selectConsultativeBaseline({
       prospect: prospect(),
-      opportunity: opportunity(),
-      signals: ["no_current_need"],
+      opportunity: state,
       availableEvidence: [],
       serviceOffer: ASTRA_SERVICE_OFFER_V1
     });
@@ -48,10 +50,12 @@ describe("consultative baseline policy", () => {
   });
 
   it("does not attack an existing supplier and asks about workflow pain", () => {
+    const state = opportunity();
+    state.activeSignals = ["existing_supplier"];
+
     const decision = selectConsultativeBaseline({
       prospect: prospect(),
-      opportunity: opportunity(),
-      signals: ["existing_supplier"],
+      opportunity: state,
       availableEvidence: [],
       serviceOffer: ASTRA_SERVICE_OFFER_V1
     });
@@ -64,10 +68,12 @@ describe("consultative baseline policy", () => {
   });
 
   it("does not invent pricing when the buyer asks about budget", () => {
+    const state = opportunity();
+    state.activeSignals = ["budget_question"];
+
     const decision = selectConsultativeBaseline({
       prospect: prospect(),
-      opportunity: opportunity(),
-      signals: ["budget_question"],
+      opportunity: state,
       availableEvidence: [],
       serviceOffer: ASTRA_SERVICE_OFFER_V1
     });
@@ -88,7 +94,6 @@ describe("consultative baseline policy", () => {
     const decision = selectConsultativeBaseline({
       prospect: prospect(),
       opportunity: state,
-      signals: [],
       availableEvidence: [],
       serviceOffer: ASTRA_SERVICE_OFFER_V1
     });
