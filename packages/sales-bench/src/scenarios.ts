@@ -123,7 +123,6 @@ function scenario(options: ScenarioOptions): SalesBenchScenario {
         options.target === undefined ? "transformationNeed" : options.target,
         signals
       ),
-      signals,
       availableEvidence: [...(options.evidence ?? [])],
       serviceOffer: ASTRA_SERVICE_OFFER_V1
     },
