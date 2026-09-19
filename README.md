@@ -10,6 +10,7 @@ This repository is the working home for a clean-room, TinyFish-like web-agent pl
 2. [Current project state](./docs/project/STATE.md)
 3. The active gate in [Build plan](./docs/project/PLAN.md)
 4. [Test strategy](./docs/project/TEST_STRATEGY.md)
+5. The active GitHub issue for the current gate/subtask, if one exists
 
 Do not start by reading every historical document.
 
@@ -17,7 +18,7 @@ Do not start by reading every historical document.
 
 The initial architecture is intentionally small:
 
-```text
+~~~text
 Our API
   ↓
 Our durable run engine
@@ -27,7 +28,7 @@ Stagehand
 Steel Browser
   ↓
 Chromium
-```
+~~~
 
 After this works reliably, the same browser runtime is placed inside an E2B/Firecracker sandbox.
 
@@ -35,20 +36,23 @@ We deliberately **do not** merge or fork Stagehand, Steel, and E2B. They remain 
 
 ## Persistent project memory
 
+- [PROJECT_MEMORY_SYSTEM.md](./docs/project/PROJECT_MEMORY_SYSTEM.md) — self-contained portable specification and starter templates for the memory/handoff system.
 - [CHARTER.md](./docs/project/CHARTER.md) — why the project exists and long-term architecture.
 - [STATE.md](./docs/project/STATE.md) — small, current source of truth.
 - [PLAN.md](./docs/project/PLAN.md) — gated roadmap and acceptance tests.
-- [DECISIONS.md](./docs/project/DECISIONS.md) — append-only architecture decisions.
-- [LESSONS.md](./docs/project/LESSONS.md) — append-only reusable mistakes/insights.
+- [DECISIONS.md](./docs/project/DECISIONS.md) — durable architecture/product decisions.
+- [LESSONS.md](./docs/project/LESSONS.md) — reusable engineering lessons.
 - [TEST_STRATEGY.md](./docs/project/TEST_STRATEGY.md) — what counts as evidence.
-- [HANDOFF_PROTOCOL.md](./docs/project/HANDOFF_PROTOCOL.md) — how fresh Astra contexts continue safely.
+- [HANDOFF_PROTOCOL.md](./docs/project/HANDOFF_PROTOCOL.md) — Astra-specific fresh-context workflow.
+- [history/](./docs/project/history/) — cold milestone/incident evidence; do not read by default.
+
+GitHub issues act as short-lived working memory for the active gate/subtask. Tests and CI remain the strongest evidence.
 
 ## Core rule
 
 **One gate at a time. A gate does not pass until its automated acceptance tests pass.**
 
 The immediate next action is always recorded in [STATE.md](./docs/project/STATE.md).
-
 
 ## Development
 
@@ -60,22 +64,22 @@ Gate 0 pins the foundation to:
 
 From a clean checkout:
 
-```bash
+~~~bash
 pnpm install --frozen-lockfile
+pnpm check:memory
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
-```
+~~~
 
 Or run the same validation sequence with:
 
-```bash
+~~~bash
 pnpm check
-```
+~~~
 
 GitHub Actions runs the strict frozen-lockfile path on every push and pull request.
-
 
 ## Browser foundation
 
@@ -83,9 +87,9 @@ Gate 1 proves Steel independently of Stagehand.
 
 The tested Steel image is pinned in:
 
-```text
+~~~text
 infra/steel-image.txt
-```
+~~~
 
 The permanent integration test:
 
@@ -99,8 +103,8 @@ The permanent integration test:
 
 Run the browser acceptance test when Steel and the fixture are already available:
 
-```bash
+~~~bash
 pnpm test:steel
-```
+~~~
 
 GitHub Actions performs the full Docker-backed setup in `.github/workflows/steel-integration.yml`.
