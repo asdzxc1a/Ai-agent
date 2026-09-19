@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation → agent capability evaluation  
 **Current gate:** Gate 8 — Deterministic eval suite  
-**Overall status:** Gates 0–7 are PASSED. Gate 7 was squash-merged in PR #35 at `653e07246857ddf5e95e5589bdac947ee58e511a`. The project-memory hardening is PASSED and squash-merged in PR #38 at `f7962f936f15979965fb342fe27be92a83100f1b`. Gate 8 remains the current product gate and no Gate 8 product implementation has started. The user's current bounded priority is optimizing the root `AGENTS.md` for GPT-6 Astra in issue #40 before the roadmap correction.
+**Overall status:** Gates 0–7 are PASSED. Gate 7 was squash-merged in PR #35 at `653e07246857ddf5e95e5589bdac947ee58e511a`. The project-memory hardening is PASSED and squash-merged in PR #38 at `f7962f936f15979965fb342fe27be92a83100f1b`. Gate 8 remains the current product gate and no Gate 8 product implementation has started. The root `AGENTS.md` is now optimized for GPT-6 Astra and merged in PR #41 at `3efbc385f99aa33031af26e676c18299d118aa5e`.
 
 ## North star
 
@@ -111,7 +111,7 @@ pnpm check:memory
 
 ## Next action
 
-**Astra instruction optimization issue #40:** merge the lean Astra-native `AGENTS.md` with green CI, then return to the roadmap correction before Gate 8 implementation.
+**Roadmap correction before Gate 8 implementation:** update the future gates and evaluation strategy using the completed architectural review, then begin the revised Gate 8.
 
 ## Gate completion rule
 
