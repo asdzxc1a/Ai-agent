@@ -187,6 +187,12 @@ test("completed HTTP run survives a fresh Postgres pool and API instance", async
       const persisted = await response.json() as RunSnapshot;
 
       expect(persisted.status).toBe("COMPLETED");
+      expect(
+        persisted.goalStatus
+      ).toBe("COMPLETED");
+      expect(
+        persisted.terminalReason?.code
+      ).toBe("GOAL_COMPLETED");
       expect(persisted.result).toEqual({
         count: 1,
         status: "clicked"

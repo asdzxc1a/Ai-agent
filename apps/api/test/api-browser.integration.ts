@@ -166,6 +166,12 @@ test("HTTP API executes a real structured browser run with downloadable screensh
     expect(terminal?.status).toBe(
       "COMPLETED"
     );
+    expect(
+      terminal?.goalStatus
+    ).toBe("COMPLETED");
+    expect(
+      terminal?.terminalReason?.code
+    ).toBe("GOAL_COMPLETED");
     expect(terminal?.result).toEqual({
       count: 1,
       status: "clicked"

@@ -257,7 +257,7 @@ Acceptance:
 
 ## Gate 10 — Completion, effects, cancellation + budgets
 
-**Status:** IN_PROGRESS
+**Status:** PASSED
 
 Purpose:
 
@@ -289,7 +289,7 @@ Acceptance:
 
 ## Gate 11 — Deterministic prospect-research qualification
 
-**Status:** NOT_STARTED
+**Status:** IN_PROGRESS
 
 Purpose:
 

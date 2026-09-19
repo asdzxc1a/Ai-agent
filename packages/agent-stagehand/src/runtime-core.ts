@@ -9,6 +9,7 @@ import { z } from "zod";
 import type {
   AgentAction,
   AgentActionResult,
+  AgentOperationOptions,
   AgentRuntime,
   AgentSession,
   OpenAgentSessionOptions,
@@ -16,6 +17,61 @@ import type {
 } from "@astra/agent-runtime";
 
 export type CreateStagehand = (cdpUrl: string) => Stagehand;
+
+function abortReason(
+  signal: AbortSignal
+): unknown {
+  return signal.reason instanceof Error
+    ? signal.reason
+    : new DOMException(
+        "The operation was aborted.",
+        "AbortError"
+      );
+}
+
+async function abortable<T>(
+  operation: () => Promise<T>,
+  signal: AbortSignal | undefined
+): Promise<T> {
+  if (signal === undefined) {
+    return operation();
+  }
+
+  if (signal.aborted) {
+    throw abortReason(signal);
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(abortReason(signal));
+    };
+
+    signal.addEventListener(
+      "abort",
+      onAbort,
+      {
+        once: true
+      }
+    );
+
+    void operation().then(
+      (value) => {
+        signal.removeEventListener(
+          "abort",
+          onAbort
+        );
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener(
+          "abort",
+          onAbort
+        );
+        reject(error);
+      }
+    );
+  });
+}
 
 function toAgentAction(action: {
   selector: string;
@@ -41,30 +97,61 @@ class StagehandAgentSession implements AgentSession {
     this.#stagehand = stagehand;
   }
 
-  public async navigate(url: string): Promise<void> {
+  public async navigate(
+    url: string,
+    options: AgentOperationOptions = {}
+  ): Promise<void> {
     const page = this.#stagehand.context.pages()[0];
 
     if (page === undefined) {
       throw new Error("Stagehand session has no active page.");
     }
 
-    await page.goto(url);
+    await abortable(
+      () => page.goto(url).then(() => undefined),
+      options.signal
+    );
   }
 
-  public async observe(instruction: string): Promise<AgentAction[]> {
-    const actions = await this.#stagehand.observe(instruction);
+  public async observe(
+    instruction: string,
+    options: AgentOperationOptions = {}
+  ): Promise<AgentAction[]> {
+    const actions = await abortable(
+      () => this.#stagehand.observe(instruction),
+      options.signal
+    );
     return actions.map(toAgentAction);
   }
 
-  public async act(action: AgentAction): Promise<AgentActionResult> {
-    const result = await this.#stagehand.act({
-      selector: action.selector,
-      description: action.description,
-      ...(action.method === undefined ? {} : { method: action.method }),
-      ...(action.arguments === undefined
-        ? {}
-        : { arguments: [...action.arguments] })
-    } as Action);
+  public async act(
+    action: AgentAction,
+    options: AgentOperationOptions = {}
+  ): Promise<AgentActionResult> {
+    const result = await abortable(
+      () =>
+        this.#stagehand.act({
+          selector: action.selector,
+          description:
+            action.description,
+          ...(action.method ===
+            undefined
+            ? {}
+            : {
+                method:
+                  action.method
+              }),
+          ...(action.arguments ===
+            undefined
+            ? {}
+            : {
+                arguments: [
+                  ...action.arguments
+                ]
+              })
+        } as Action),
+      options.signal
+    );
 
     return {
       success: result.success,
@@ -72,13 +159,18 @@ class StagehandAgentSession implements AgentSession {
       ...(result.actionDescription === undefined
         ? {}
         : { actionDescription: result.actionDescription }),
-      actions: (result.actions ?? []).map(toAgentAction)
+      actions: (result.actions ?? []).map(toAgentAction),
+      effect:
+        result.success
+          ? "committed"
+          : "unknown"
     };
   }
 
   public async extract<T>(
     instruction: string,
-    schema: RuntimeSchema<T>
+    schema: RuntimeSchema<T>,
+    options: AgentOperationOptions = {}
   ): Promise<T> {
     const parse = schema.parse.bind(schema);
 
@@ -88,9 +180,13 @@ class StagehandAgentSession implements AgentSession {
       );
     }
 
-    const value = await this.#stagehand.extract(
-      instruction,
-      schema as z.ZodType
+    const value = await abortable(
+      () =>
+        this.#stagehand.extract(
+          instruction,
+          schema as z.ZodType
+        ),
+      options.signal
     );
 
     return parse(value);
@@ -110,10 +206,22 @@ export class StagehandRuntimeCore implements AgentRuntime {
   }
 
   public async openSession({
-    browser
+    browser,
+    signal
   }: OpenAgentSessionOptions): Promise<AgentSession> {
     const stagehand = this.#createStagehand(browser.cdpUrl);
-    await stagehand.init();
+
+    try {
+      await abortable(
+        () => stagehand.init(),
+        signal
+      );
+    } catch (error) {
+      await stagehand.close().catch(
+        () => undefined
+      );
+      throw error;
+    }
 
     return new StagehandAgentSession(stagehand);
   }

@@ -1,14 +1,18 @@
 import type {
   CreateRunRequest,
+  GoalStatus,
   RunFailure,
   RunSnapshot,
-  RunStatus
+  RunStatus,
+  RunTerminalReason
 } from "@astra/contracts";
 
 export interface RunUpdate {
   status?: RunStatus;
+  goalStatus?: GoalStatus;
   result?: unknown;
   error?: RunFailure;
+  terminalReason?: RunTerminalReason;
 }
 
 export interface RunStepRecord {

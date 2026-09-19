@@ -34,7 +34,8 @@ export default defineConfig({
   },
   test: {
     include: [
-      "packages/agent-stagehand/test/**/*.integration.ts"
+      "packages/agent-stagehand/test/**/*.integration.ts",
+      "packages/run-engine/test/steel-cancellation.integration.ts"
     ],
     maxWorkers: 1,
     testTimeout: 300_000,

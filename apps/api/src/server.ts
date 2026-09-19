@@ -472,6 +472,40 @@ async function handleRequest(
     return;
   }
 
+  const cancelMatch =
+    requestUrl.pathname.match(
+      /^\/v1\/runs\/([^/]+)\/cancel$/
+    );
+
+  if (
+    request.method === "POST" &&
+    cancelMatch?.[1]
+  ) {
+    const runId =
+      decodeURIComponent(
+        cancelMatch[1]
+      );
+    const run =
+      await runService.cancelRun(
+        runId
+      );
+
+    if (run === undefined) {
+      throw new RequestError(
+        404,
+        "RUN_NOT_FOUND",
+        "Run not found."
+      );
+    }
+
+    sendJson(
+      response,
+      202,
+      run
+    );
+    return;
+  }
+
   const runMatch =
     requestUrl.pathname.match(
       /^\/v1\/runs\/([^/]+)$/
@@ -494,6 +528,7 @@ async function handleRequest(
   if (
     requestUrl.pathname === "/v1/runs" ||
     runMatch !== null ||
+    cancelMatch !== null ||
     eventMatch !== null ||
     artifactListMatch !== null ||
     artifactDownloadMatch !== null

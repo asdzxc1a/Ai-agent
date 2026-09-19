@@ -4,6 +4,26 @@ export interface RuntimeSchema<T> {
   parse(input: unknown): T;
 }
 
+export type AgentActionEffect =
+  | "none"
+  | "committed"
+  | "unknown";
+
+export interface AgentUsageSnapshot {
+  modelTokens: number;
+  modelCostUsd: number;
+}
+
+export interface AgentUsageMeter {
+  snapshot():
+    | AgentUsageSnapshot
+    | Promise<AgentUsageSnapshot>;
+}
+
+export interface AgentOperationOptions {
+  signal?: AbortSignal;
+}
+
 export interface AgentAction {
   selector: string;
   description: string;
@@ -16,20 +36,41 @@ export interface AgentActionResult {
   message: string;
   actionDescription?: string;
   actions: AgentAction[];
+  effect?: AgentActionEffect;
 }
 
 export interface AgentSession {
-  navigate(url: string): Promise<void>;
-  observe(instruction: string): Promise<AgentAction[]>;
-  act(action: AgentAction): Promise<AgentActionResult>;
-  extract<T>(instruction: string, schema: RuntimeSchema<T>): Promise<T>;
+  navigate(
+    url: string,
+    options?: AgentOperationOptions
+  ): Promise<void>;
+
+  observe(
+    instruction: string,
+    options?: AgentOperationOptions
+  ): Promise<AgentAction[]>;
+
+  act(
+    action: AgentAction,
+    options?: AgentOperationOptions
+  ): Promise<AgentActionResult>;
+
+  extract<T>(
+    instruction: string,
+    schema: RuntimeSchema<T>,
+    options?: AgentOperationOptions
+  ): Promise<T>;
+
   close(): Promise<void>;
 }
 
 export interface OpenAgentSessionOptions {
   browser: BrowserSession;
+  signal?: AbortSignal;
 }
 
 export interface AgentRuntime {
-  openSession(options: OpenAgentSessionOptions): Promise<AgentSession>;
+  openSession(
+    options: OpenAgentSessionOptions
+  ): Promise<AgentSession>;
 }

@@ -134,7 +134,8 @@ function recoveryPolicy():
           actionIndex: 1,
           rationale:
             "Recover with the alternate action.",
-          onFailure: "FAIL"
+          onFailure: "FAIL",
+          effectRisk: "REVERSIBLE"
         };
       }
 
@@ -160,7 +161,8 @@ function recoveryPolicy():
         actionIndex: 0,
         rationale:
           "Try the primary action.",
-        onFailure: "CONTINUE"
+        onFailure: "CONTINUE",
+        effectRisk: "REVERSIBLE"
       };
     }
   };
@@ -211,7 +213,20 @@ test("RunEngine persists recoverable multi-step progress without corrupting term
           policy:
             recoveryPolicy(),
           iterationCeiling: 5
-        })
+        }),
+      completionVerifier: {
+        verify({ result }) {
+          return {
+            verified:
+              JSON.stringify(result) ===
+              JSON.stringify({
+                complete: true
+              }),
+            message:
+              "Recovery result must be complete."
+          };
+        }
+      }
     });
 
   const started =

@@ -13,6 +13,15 @@ export type {
 } from "./run-engine.js";
 
 export type {
+  CompletionVerificationInput,
+  CompletionVerificationResult,
+  NormalizedRunExecutionBudget,
+  RunCompletionVerifier,
+  RunExecutionBudget,
+  RunUsageMeterFactory
+} from "./execution-control.js";
+
+export type {
   RunEventRecord,
   RunRepository,
   RunStepRecord,

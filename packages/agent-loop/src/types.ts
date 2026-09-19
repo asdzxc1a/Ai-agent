@@ -1,6 +1,18 @@
 import type {
-  AgentSession
+  AgentActionEffect,
+  AgentSession,
+  AgentUsageMeter
 } from "@astra/agent-runtime";
+
+export type AgentLoopGoalState =
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "FAILED"
+  | "BLOCKED";
+
+export type AgentLoopEffectRisk =
+  | "REVERSIBLE"
+  | "IRREVERSIBLE";
 
 export interface AgentLoopActionSummary {
   selector: string;
@@ -12,6 +24,8 @@ export interface AgentLoopActionOutcome {
   action: AgentLoopActionSummary;
   success: boolean;
   recoverable: boolean;
+  effect: AgentActionEffect;
+  effectRisk: AgentLoopEffectRisk;
 }
 
 export interface AgentLoopActionDecision {
@@ -19,7 +33,9 @@ export interface AgentLoopActionDecision {
   actionIndex: number;
   rationale: string;
   onFailure: "CONTINUE" | "FAIL";
+  effectRisk: AgentLoopEffectRisk;
 }
+
 export interface AgentLoopCompleteDecision {
   type: "COMPLETE";
   rationale: string;
@@ -43,6 +59,7 @@ export type AgentLoopDecision =
   | AgentLoopCompleteDecision
   | AgentLoopFailDecision
   | AgentLoopBlockedDecision;
+
 export interface AgentLoopTrajectoryEntry {
   iteration: number;
   observedActions:
@@ -65,6 +82,29 @@ export interface AgentLoopPolicy {
     input: AgentLoopPolicyInput
   ): Promise<unknown>;
 }
+
+export type AgentLoopFailureReason =
+  | "POLICY_REJECTED"
+  | "POLICY_FAILED"
+  | "INVALID_ACTION_SELECTION"
+  | "ACTION_FAILED"
+  | "ITERATION_LIMIT_EXCEEDED"
+  | "STEP_LIMIT_EXCEEDED"
+  | "MODEL_TOKEN_BUDGET_EXCEEDED"
+  | "MODEL_COST_BUDGET_EXCEEDED"
+  | "LOOP_DETECTED";
+
+export type AgentLoopBlockedReason =
+  | "POLICY_BLOCKED"
+  | "IRREVERSIBLE_EFFECT_UNKNOWN"
+  | "IRREVERSIBLE_EFFECT_COMMITTED";
+
+export type AgentLoopLimitReason =
+  | "STEP_LIMIT_EXCEEDED"
+  | "MODEL_TOKEN_BUDGET_EXCEEDED"
+  | "MODEL_COST_BUDGET_EXCEEDED"
+  | "LOOP_DETECTED";
+
 export type AgentLoopProgressEvent =
   | {
       type: "OBSERVED";
@@ -90,7 +130,14 @@ export type AgentLoopProgressEvent =
       iteration: number;
       message: string;
       durationMs: number;
+    }
+  | {
+      type: "LIMIT_REACHED";
+      iteration: number;
+      reason: AgentLoopLimitReason;
+      message: string;
     };
+
 interface AgentLoopTerminalBase {
   iterations: number;
   trajectory:
@@ -100,21 +147,36 @@ interface AgentLoopTerminalBase {
 export type AgentLoopOutcome =
   | (AgentLoopTerminalBase & {
       type: "COMPLETE";
+      goalState: "COMPLETED";
       result: unknown;
     })
   | (AgentLoopTerminalBase & {
       type: "FAIL";
+      goalState: "FAILED";
+      reason: AgentLoopFailureReason;
       message: string;
     })
   | (AgentLoopTerminalBase & {
       type: "BLOCKED";
+      goalState: "BLOCKED";
+      reason: AgentLoopBlockedReason;
       message: string;
     });
+
+export interface AgentLoopExecutionLimits {
+  maxActions?: number;
+  maxModelTokens?: number;
+  maxModelCostUsd?: number;
+  repeatedActionLimit?: number;
+}
 
 export interface AgentLoopOptions {
   goal: string;
   policy: AgentLoopPolicy;
   iterationCeiling?: number;
+  limits?: AgentLoopExecutionLimits;
+  usageMeter?: AgentUsageMeter;
+  signal?: AbortSignal;
   onProgress?(
     event: AgentLoopProgressEvent
   ): Promise<void>;
@@ -128,6 +190,9 @@ export interface AgentLoopExecutorOptions {
 export interface ExecuteAgentLoopInput {
   session: AgentSession;
   goal: string;
+  limits?: AgentLoopExecutionLimits;
+  usageMeter?: AgentUsageMeter;
+  signal?: AbortSignal;
   onProgress?(
     event: AgentLoopProgressEvent
   ): Promise<void>;

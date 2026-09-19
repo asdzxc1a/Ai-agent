@@ -89,7 +89,8 @@ class ResearchLoopPolicy
       actionIndex: 0,
       rationale:
         "Execute the observed next research action.",
-      onFailure: "FAIL" as const
+      onFailure: "FAIL" as const,
+      effectRisk: "REVERSIBLE" as const
     };
   }
 }
@@ -153,7 +154,24 @@ test(
             policy:
               new ResearchLoopPolicy(),
             iterationCeiling: 8
-          })
+          }),
+        completionVerifier: {
+          verify({ result }) {
+            const parsed =
+              researchResultSchema.safeParse(
+                result
+              );
+
+            return {
+              verified:
+                parsed.success,
+              message:
+                parsed.success
+                  ? "Research result matched the verified fixture outcome."
+                  : "Research result did not match the verified fixture outcome."
+            };
+          }
+        }
       });
 
     const started =

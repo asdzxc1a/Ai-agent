@@ -17,6 +17,7 @@ export interface CreateSteelSessionOptions {
     width: number;
     height: number;
   };
+  signal?: AbortSignal;
 }
 
 export interface SteelLogQuery {
@@ -99,7 +100,17 @@ export class SteelClient {
       headers: {
         "content-type": "application/json"
       },
-      body: JSON.stringify(options)
+      body: JSON.stringify({
+        headless: options.headless,
+        skipFingerprintInjection:
+          options.skipFingerprintInjection,
+        dimensions: options.dimensions
+      }),
+      ...(options.signal === undefined
+        ? {}
+        : {
+            signal: options.signal
+          })
     });
 
     if (!response.ok) {

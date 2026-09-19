@@ -332,7 +332,16 @@ test("configured artifact store captures successful lifecycle evidence", async (
         };
       }
     },
-    artifactStore
+    artifactStore,
+    completionVerifier: {
+      verify() {
+        return {
+          verified: true,
+          message:
+            "Fixture completion verified."
+        };
+      }
+    }
   });
 
   const started = await engine.createRun({
@@ -439,6 +448,15 @@ test("artifact-store failures do not change successful run result", async () => 
       },
       async readArtifact() {
         return undefined;
+      }
+    },
+    completionVerifier: {
+      verify() {
+        return {
+          verified: true,
+          message:
+            "Fixture completion verified."
+        };
       }
     }
   });

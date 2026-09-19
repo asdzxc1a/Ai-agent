@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-09-19  
 **Repository:** `asdzxc1a/Ai-agent`  
-**Phase:** Multi-step sales-agent orchestration → bounded verified execution
-**Current gate:** Gate 10 — Completion, effects, cancellation + budgets
-**Overall status:** Gates 0–9 are PASSED. Gate 9 completed in PR #55: Astra now has an owned provider-neutral multi-step agent loop, explicit completion/failure/blocking decisions, explicit failure recovery policy, sanitized durable loop progress, per-action screenshots, deterministic recovery coverage, and a real three-action Stagehand→Steel research acceptance. Gate 10 is active in issue #56.
+**Phase:** Bounded verified execution → deterministic research qualification
+**Current gate:** Gate 11 — Deterministic prospect-research qualification
+**Overall status:** Gates 0–10 are PASSED. Gate 10 completed in PR #60: `COMPLETED` now requires verifier acceptance, autonomous execution is bounded by action/time/model budgets and loop detection, irreversible-effect uncertainty blocks retry, cancellation propagates through owned runtime boundaries, and real Steel cancellation proves browser release. Gate 11 is active in issue #61.
 
 ## North star
 
@@ -62,6 +62,14 @@ These remain Astra's research, evidence, and later browser-action substrate.
 Durable loop progress uses sanitized action/decision summaries through `AGENT_LOOP_OBSERVE`, `AGENT_LOOP_DECISION`, `AGENT_LOOP_ACTION`, `AGENT_LOOP_RESULT`, and `RUN_PROGRESS`; action arguments and provider failure text are excluded from those progress payloads. Per-action screenshots are captured when artifacts are enabled.
 
 Gate 9 acceptance proves three real Stagehand→Steel browser actions before explicit `COMPLETE`, plus deterministic recovery from one explicitly recoverable failed action.
+
+### Gate 10 verified bounded execution
+
+`RunEngine` now separates durable run status from goal state and persists typed terminal reasons. A run can reach `COMPLETED` only after an owned completion verifier accepts the result; browser/action success and schema validity alone are insufficient.
+
+The owned loop now enforces action/step limits, wall-clock cancellation, model token/cost budgets, repeated-action loop detection, and explicit `none | committed | unknown` action-effect semantics. Irreversible actions with uncertain or already-committed failure effects are blocked rather than blindly retried.
+
+Abort signals propagate through browser/agent contracts into Stagehand/Steel operations. `POST /v1/runs/:id/cancel` produces durable cancellation state and cleanup, and the pinned Steel acceptance proves the underlying session reaches `released`.
 
 ### Gate 8 sales-domain foundation
 
@@ -141,7 +149,6 @@ D-023 requires selective reuse behind current owned contracts rather than a whol
 
 Astra does not yet have:
 
-- verified completion/effect semantics, cancellation propagation, and execution budgets for broader autonomy;
 - deterministic multi-page prospect-research qualification;
 - sandbox/network isolation for untrusted live research;
 - live prospect research;
@@ -169,6 +176,7 @@ Astra does not yet have:
 | 7 — Artifacts + debugging | PASSED | PR #35 |
 | 8 — Sales domain + SalesBench baseline | PASSED | PR #51 / CI 35452463916 |
 | 9 — Owned multi-step sales-agent loop | PASSED | PR #55 / CI 35454706979 |
+| 10 — Completion, effects, cancellation + budgets | PASSED | PR #60 / CI 35458628400 |
 
 Gate 8 regression evidence:
 
@@ -182,6 +190,7 @@ Detailed evidence:
 - `docs/project/history/2026-09-19-astra-sales-product-pivot.md`
 - `docs/project/history/2026-09-19-gate8-sales-domain-salesbench.md`
 - `docs/project/history/2026-09-19-gate9-owned-multistep-loop.md`
+- `docs/project/history/2026-09-19-gate10-completion-effects-cancellation-budgets.md`
 
 Tests/current code remain stronger evidence than this summary.
 
@@ -191,7 +200,7 @@ The memory system uses:
 
 - `AGENTS.md` as the bootloader;
 - this file as the single hot-memory hub;
-- active GitHub issue #56 as short-lived working memory for Gate 10;
+- active GitHub issue #61 as short-lived working memory for Gate 11;
 - `PLAN.md` for future gates;
 - `DECISIONS.md` for durable rationale;
 - `LESSONS.md` for reusable learning;
@@ -206,7 +215,7 @@ pnpm check:memory
 
 ## Known risks
 
-1. **Capability risk:** Gate 9 proves owned multi-step orchestration on deterministic fixtures, but verified completion, execution budgets/cancellation, and broader research qualification are still unproven. Gates 10–11 must close those gaps before live prospecting expands.
+1. **Capability risk:** Gate 10 proves verified bounded execution and cleanup, but broader deterministic prospect-research reliability is still unproven. Gate 11 must qualify that capability before sandbox/live research expands.
 2. **Sales-policy risk:** Baseline 0 is only 32/40. Known weaknesses include evidence requests without evidence, weak-fit handoff, and re-asking known qualification facts.
 3. **External-model evidence risk:** no paid hosted-model benchmark is claimed yet.
 4. **Scope risk:** the browser foundation and draft voice branch are large assets; reuse must remain contract-by-contract.
@@ -217,9 +226,9 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 10 — Completion, effects, cancellation + budgets (issue #56):** make `COMPLETED` require verified goal completion and add bounded execution through typed terminal reasons, effect semantics, step/time/model budgets, explicit cancellation, and loop detection.
+**Gate 11 — Deterministic prospect-research qualification (issue #61):** freeze a representative 25–50-task local research suite, split core vs hard tasks, and measure first-attempt evidence-backed research reliability without changing failing tasks to improve the score.
 
-Do not start live prospect research, outreach/email/LinkedIn/X, voice/avatar, CRM/calendar/social actions, E2B, or new irreversible external side effects in Gate 10.
+Do not start live prospect research at scale, outreach/email/LinkedIn/X, voice/avatar, CRM/calendar/social actions, E2B/sandbox expansion, or new irreversible external side effects in Gate 11.
 
 ## Gate completion rule
 

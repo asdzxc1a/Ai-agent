@@ -93,7 +93,8 @@ test("successful action cannot complete without COMPLETE", async () => {
           actionIndex: 0,
           rationale:
             "Take one action.",
-          onFailure: "FAIL"
+          onFailure: "FAIL",
+          effectRisk: "REVERSIBLE"
         };
       }
 
@@ -130,7 +131,8 @@ test("explicit COMPLETE returns policy result", async () => {
           type: "ACTION",
           actionIndex: 0,
           rationale: "Continue.",
-          onFailure: "FAIL"
+          onFailure: "FAIL",
+          effectRisk: "REVERSIBLE"
         };
       }
 
@@ -188,7 +190,8 @@ test("recoverable action failure returns control to policy", async () => {
           actionIndex: 1,
           rationale:
             "Use recovery.",
-          onFailure: "FAIL"
+          onFailure: "FAIL",
+          effectRisk: "REVERSIBLE"
         };
       }
 
@@ -211,7 +214,8 @@ test("recoverable action failure returns control to policy", async () => {
         actionIndex: 0,
         rationale:
           "Try primary action.",
-        onFailure: "CONTINUE"
+        onFailure: "CONTINUE",
+        effectRisk: "REVERSIBLE"
       };
     }
   };
@@ -278,7 +282,9 @@ test("terminal action failure stops immediately", async () => {
               type: "ACTION",
               actionIndex: 0,
               rationale: "Try once.",
-              onFailure: "FAIL"
+              onFailure: "FAIL",
+              effectRisk:
+                "REVERSIBLE"
             };
           }
         }
@@ -301,7 +307,9 @@ test("invalid action selection fails closed", async () => {
               type: "ACTION",
               actionIndex: 99,
               rationale: "Invalid.",
-              onFailure: "FAIL"
+              onFailure: "FAIL",
+              effectRisk:
+                "REVERSIBLE"
             };
           }
         }
@@ -333,7 +341,8 @@ test("malformed decisions are rejected before acting", async () => {
               type: "ACTION",
               actionIndex: 0,
               rationale: "Missing policy.",
-              onFailure: "MAYBE"
+              onFailure: "MAYBE",
+              effectRisk: "REVERSIBLE"
             };
           }
         },
@@ -350,6 +359,246 @@ test("malformed decisions are rejected before acting", async () => {
   expect(
     events.at(-1)?.type
   ).toBe("DECISION_REJECTED");
+});
+
+class ThrowingIrreversibleSession
+  extends LoopFixtureSession {
+  public override async act(
+    action: AgentAction
+  ): Promise<AgentActionResult> {
+    this.actCalls += 1;
+    void action;
+
+    throw new Error(
+      "provider timed out after send"
+    );
+  }
+}
+
+test("unknown irreversible effects block automatic retry", async () => {
+  const session =
+    new ThrowingIrreversibleSession();
+  const outcome =
+    await executeAgentLoop(
+      session,
+      {
+        goal:
+          "Do not duplicate an irreversible action.",
+        policy: {
+          async decide() {
+            return {
+              type: "ACTION",
+              actionIndex: 0,
+              rationale:
+                "Attempt the irreversible action once.",
+              onFailure: "CONTINUE",
+              effectRisk:
+                "IRREVERSIBLE"
+            };
+          }
+        }
+      }
+    );
+
+  expect(outcome.type).toBe(
+    "BLOCKED"
+  );
+  if (outcome.type !== "BLOCKED") {
+    throw new Error(
+      "Expected blocked outcome."
+    );
+  }
+
+  expect(outcome.reason).toBe(
+    "IRREVERSIBLE_EFFECT_UNKNOWN"
+  );
+  expect(session.actCalls).toBe(1);
+});
+
+test("action budget terminates before an extra action", async () => {
+  const session =
+    new LoopFixtureSession();
+  const outcome =
+    await executeAgentLoop(
+      session,
+      {
+        goal:
+          "Respect the action budget.",
+        limits: {
+          maxActions: 1,
+          repeatedActionLimit: 5
+        },
+        policy: {
+          async decide() {
+            return {
+              type: "ACTION",
+              actionIndex: 0,
+              rationale:
+                "Keep acting until bounded.",
+              onFailure: "FAIL",
+              effectRisk:
+                "REVERSIBLE"
+            };
+          }
+        }
+      }
+    );
+
+  expect(outcome.type).toBe(
+    "FAIL"
+  );
+  if (outcome.type !== "FAIL") {
+    throw new Error(
+      "Expected bounded failure."
+    );
+  }
+
+  expect(outcome.reason).toBe(
+    "STEP_LIMIT_EXCEEDED"
+  );
+  expect(session.actCalls).toBe(1);
+});
+
+test("repeated identical actions trigger loop detection", async () => {
+  const session =
+    new LoopFixtureSession();
+  const outcome =
+    await executeAgentLoop(
+      session,
+      {
+        goal:
+          "Detect an action loop.",
+        limits: {
+          maxActions: 5,
+          repeatedActionLimit: 1
+        },
+        policy: {
+          async decide() {
+            return {
+              type: "ACTION",
+              actionIndex: 0,
+              rationale:
+                "Repeat the same action.",
+              onFailure: "FAIL",
+              effectRisk:
+                "REVERSIBLE"
+            };
+          }
+        }
+      }
+    );
+
+  expect(outcome.type).toBe(
+    "FAIL"
+  );
+  if (outcome.type !== "FAIL") {
+    throw new Error(
+      "Expected loop failure."
+    );
+  }
+
+  expect(outcome.reason).toBe(
+    "LOOP_DETECTED"
+  );
+  expect(session.actCalls).toBe(1);
+});
+
+test("model cost budget fails before further execution", async () => {
+  const session =
+    new LoopFixtureSession();
+  const outcome =
+    await executeAgentLoop(
+      session,
+      {
+        goal:
+          "Respect model spend.",
+        limits: {
+          maxModelCostUsd: 0.5
+        },
+        usageMeter: {
+          snapshot() {
+            return {
+              modelTokens: 100,
+              modelCostUsd: 0.51
+            };
+          }
+        },
+        policy: {
+          async decide() {
+            return {
+              type: "ACTION",
+              actionIndex: 0,
+              rationale:
+                "This decision should never run.",
+              onFailure: "FAIL",
+              effectRisk:
+                "REVERSIBLE"
+            };
+          }
+        }
+      }
+    );
+
+  expect(outcome.type).toBe(
+    "FAIL"
+  );
+  if (outcome.type !== "FAIL") {
+    throw new Error(
+      "Expected budget failure."
+    );
+  }
+
+  expect(outcome.reason).toBe(
+    "MODEL_COST_BUDGET_EXCEEDED"
+  );
+  expect(session.actCalls).toBe(0);
+});
+
+test("model token budget is independently enforced", async () => {
+  const session =
+    new LoopFixtureSession();
+  const outcome =
+    await executeAgentLoop(
+      session,
+      {
+        goal:
+          "Respect token budget.",
+        limits: {
+          maxModelTokens: 99
+        },
+        usageMeter: {
+          snapshot() {
+            return {
+              modelTokens: 100,
+              modelCostUsd: 0
+            };
+          }
+        },
+        policy: {
+          async decide() {
+            return {
+              type: "FAIL",
+              message:
+                "This decision should not run."
+            };
+          }
+        }
+      }
+    );
+
+  expect(outcome.type).toBe(
+    "FAIL"
+  );
+  if (outcome.type !== "FAIL") {
+    throw new Error(
+      "Expected budget failure."
+    );
+  }
+
+  expect(outcome.reason).toBe(
+    "MODEL_TOKEN_BUDGET_EXCEEDED"
+  );
+  expect(session.actCalls).toBe(0);
 });
 
 test("policy failure detail is excluded from progress", async () => {
