@@ -5,14 +5,12 @@ import {
   type Prospect,
   type QualificationDimensionKey,
   type SalesDecision,
-  type SalesSignal,
   type ServiceOffer
 } from "./contracts.js";
 
 export interface ConsultativePolicyInput {
   prospect: Prospect;
   opportunity: Opportunity;
-  signals: readonly SalesSignal[];
   availableEvidence: readonly Evidence[];
   serviceOffer: ServiceOffer;
 }
@@ -106,7 +104,7 @@ function evidenceClaims(
 export function selectConsultativeBaseline(
   input: ConsultativePolicyInput
 ): SalesDecision {
-  const signalSet = new Set(input.signals);
+  const signalSet = new Set(input.opportunity.activeSignals);
 
   if (
     input.prospect.fit === "disqualified" ||
