@@ -48,6 +48,12 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  packages/agent-loop:
+    dependencies:
+      '@astra/agent-runtime':
+        specifier: workspace:*
+        version: link:../agent-runtime
+
   packages/agent-runtime:
     dependencies:
       '@astra/browser-runtime':
@@ -88,20 +94,11 @@ importers:
 
   packages/contracts: {}
 
-  packages/sales-bench:
-    dependencies:
-      '@astra/sales-domain':
-        specifier: workspace:*
-        version: link:../sales-domain
-
-  packages/sales-domain:
-    dependencies:
-      zod:
-        specifier: 4.4.3
-        version: 4.4.3
-
   packages/run-engine:
     dependencies:
+      '@astra/agent-loop':
+        specifier: workspace:*
+        version: link:../agent-loop
       '@astra/agent-runtime':
         specifier: workspace:*
         version: link:../agent-runtime
@@ -130,6 +127,18 @@ importers:
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
+
+  packages/sales-bench:
+    dependencies:
+      '@astra/sales-domain':
+        specifier: workspace:*
+        version: link:../sales-domain
+
+  packages/sales-domain:
+    dependencies:
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
 
 packages:
 

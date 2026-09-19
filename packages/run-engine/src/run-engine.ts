@@ -7,6 +7,10 @@ import type {
   RuntimeSchema
 } from "@astra/agent-runtime";
 import type {
+  AgentLoopExecutor,
+  AgentLoopProgressEvent
+} from "@astra/agent-loop";
+import type {
   ArtifactContent,
   ArtifactRecord,
   ArtifactStore
@@ -122,6 +126,7 @@ export interface RunEngineOptions {
   browserRuntime: BrowserRuntime;
   agentRuntime: AgentRuntime;
   artifactStore?: ArtifactStore;
+  agentLoop?: AgentLoopExecutor;
 }
 
 export class RunEngine implements RunService {
@@ -129,12 +134,14 @@ export class RunEngine implements RunService {
   readonly #browserRuntime: BrowserRuntime;
   readonly #agentRuntime: AgentRuntime;
   readonly #artifactStore?: ArtifactStore;
+  readonly #agentLoop?: AgentLoopExecutor;
 
   public constructor({
     repository,
     browserRuntime,
     agentRuntime,
-    artifactStore
+    artifactStore,
+    agentLoop
   }: RunEngineOptions) {
     this.#repository = repository;
     this.#browserRuntime = browserRuntime;
@@ -142,6 +149,10 @@ export class RunEngine implements RunService {
 
     if (artifactStore !== undefined) {
       this.#artifactStore = artifactStore;
+    }
+
+    if (agentLoop !== undefined) {
+      this.#agentLoop = agentLoop;
     }
   }
 
@@ -344,6 +355,109 @@ export class RunEngine implements RunService {
     }
   }
 
+  async #persistLoopProgress(
+    runId: string,
+    browser: BrowserSession | undefined,
+    progress: AgentLoopProgressEvent,
+    artifactErrors: string[]
+  ): Promise<void> {
+    if (progress.type === "OBSERVED") {
+      const payload = {
+        iteration: progress.iteration,
+        actionCount: progress.actions.length,
+        actions: progress.actions,
+        durationMs: progress.durationMs
+      };
+
+      await this.#repository.appendStep(
+        runId,
+        "AGENT_LOOP_OBSERVE",
+        payload
+      );
+      await this.#repository.appendEvent(
+        runId,
+        "RUN_PROGRESS",
+        { phase: "observe", ...payload }
+      );
+      return;
+    }
+
+    if (progress.type === "DECISION_REJECTED") {
+      const payload = {
+        iteration: progress.iteration,
+        message: progress.message,
+        durationMs: progress.durationMs
+      };
+
+      await this.#repository.appendStep(
+        runId,
+        "AGENT_LOOP_DECISION_REJECTED",
+        payload
+      );
+      await this.#repository.appendEvent(
+        runId,
+        "RUN_PROGRESS",
+        { phase: "decision_rejected", ...payload }
+      );
+      return;
+    }
+
+    if (progress.type === "DECIDED") {
+      const decision =
+        progress.decision.type === "COMPLETE"
+          ? {
+              type: progress.decision.type,
+              rationale: progress.decision.rationale
+            }
+          : progress.decision;
+      const payload = {
+        iteration: progress.iteration,
+        decision,
+        durationMs: progress.durationMs
+      };
+
+      await this.#repository.appendStep(
+        runId,
+        "AGENT_LOOP_DECISION",
+        payload
+      );
+      await this.#repository.appendEvent(
+        runId,
+        "RUN_PROGRESS",
+        { phase: "decision", ...payload }
+      );
+      return;
+    }
+
+    const payload = {
+      iteration: progress.iteration,
+      action: progress.outcome.action,
+      success: progress.outcome.success,
+      recoverable: progress.outcome.recoverable,
+      durationMs: progress.durationMs
+    };
+
+    await this.#repository.appendStep(
+      runId,
+      "AGENT_LOOP_ACTION",
+      payload
+    );
+    await this.#repository.appendEvent(
+      runId,
+      "RUN_PROGRESS",
+      { phase: "action", ...payload }
+    );
+
+    await this.#captureScreenshot(
+      runId,
+      browser,
+      "loop-" +
+        String(progress.iteration).padStart(2, "0") +
+        "-after-action.jpg",
+      artifactErrors
+    );
+  }
+
   async #execute(
     runId: string,
     input: StartRunInput
@@ -424,6 +538,57 @@ export class RunEngine implements RunService {
         artifactErrors
       );
 
+      if (this.#agentLoop !== undefined) {
+        startedAt = Date.now();
+
+        const loopResult =
+          await this.#agentLoop.execute({
+            session: agent,
+            goal: input.request.goal,
+            onProgress: async (progress) => {
+              if (progress.type === "ACTED") {
+                selectedAction = {
+                  ...progress.outcome.action
+                };
+              }
+
+              await this.#persistLoopProgress(
+                runId,
+                browser,
+                progress,
+                artifactErrors
+              );
+            }
+          });
+
+        timings.loopMs =
+          Date.now() - startedAt;
+
+        await this.#repository.appendStep(
+          runId,
+          "AGENT_LOOP_RESULT",
+          {
+            kind: loopResult.type,
+            iterations: loopResult.iterations
+          }
+        );
+
+        if (loopResult.type === "BLOCKED") {
+          throw new RunExecutionError(
+            "AGENT_BLOCKED",
+            loopResult.message
+          );
+        }
+
+        if (loopResult.type === "FAIL") {
+          throw new RunExecutionError(
+            "AGENT_LOOP_FAILED",
+            loopResult.message
+          );
+        }
+
+        result = loopResult.result;
+      } else {
       startedAt = Date.now();
       const observed = await agent.observe(
         input.request.goal
@@ -490,6 +655,8 @@ export class RunEngine implements RunService {
           "NO_ACTION_FOUND",
           "The agent found no actionable element for the goal."
         );
+      }
+
       }
 
       if (input.outputSchema !== undefined) {

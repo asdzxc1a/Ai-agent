@@ -9,6 +9,12 @@ function workspaceSource(path: string): string {
 export default defineConfig({
   resolve: {
     alias: {
+      "@astra/agent-runtime": workspaceSource(
+        "./packages/agent-runtime/src/index.ts"
+      ),
+      "@astra/agent-loop": workspaceSource(
+        "./packages/agent-loop/src/index.ts"
+      ),
       "@astra/sales-domain": workspaceSource(
         "./packages/sales-domain/src/index.ts"
       ),

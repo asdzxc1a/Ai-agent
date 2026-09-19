@@ -228,7 +228,7 @@ Acceptance:
 
 ## Gate 9 — Owned multi-step sales-agent loop
 
-**Status:** NOT_STARTED
+**Status:** PASSED
 
 Purpose:
 
@@ -257,7 +257,7 @@ Acceptance:
 
 ## Gate 10 — Completion, effects, cancellation + budgets
 
-**Status:** NOT_STARTED
+**Status:** IN_PROGRESS
 
 Purpose:
 

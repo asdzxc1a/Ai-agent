@@ -501,3 +501,24 @@ Keep passed infrastructure as reusable substrate, preserve D-021's capability-fi
 
 After a foundation milestone, require the next roadmap gate to name a user/business outcome and a measurable capability gap. Do not add another infrastructure layer merely because it is available. Product mission may change; verified foundation evidence should not be discarded.
 
+---
+
+## L-020 — Recovery must be explicit; durable loop progress must be sanitized
+
+**Date:** 2026-09-19
+
+**Symptom / context**
+
+A multi-step agent can encounter provider/action failures that may or may not be safe to recover from, while raw action/provider/model payloads may contain arguments, transient diagnostics, or other data that should not become durable progress records.
+
+**Cause**
+
+Inferring recovery from arbitrary failures conflates provider behavior with owned control policy. Persisting raw loop payloads similarly makes provider-specific details part of Astra's durable contract and can leak data that is not needed for diagnosis.
+
+**Fix**
+
+Require the policy to choose `onFailure: CONTINUE | FAIL` for every action. Persist compact owned summaries for observations, decisions, actions, and results; omit action arguments and provider failure text from durable loop-progress payloads.
+
+**Prevention**
+
+Treat recovery as a typed policy decision, never as an automatic reaction to a caught exception. Keep durable loop telemetry allowlisted and provider-neutral rather than serializing raw provider/model objects.
