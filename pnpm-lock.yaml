@@ -88,6 +88,18 @@ importers:
 
   packages/contracts: {}
 
+  packages/sales-bench:
+    dependencies:
+      '@astra/sales-domain':
+        specifier: workspace:*
+        version: link:../sales-domain
+
+  packages/sales-domain:
+    dependencies:
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
   packages/run-engine:
     dependencies:
       '@astra/agent-runtime':

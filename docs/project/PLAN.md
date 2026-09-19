@@ -184,7 +184,7 @@ Acceptance:
 
 ## Gate 8 — Sales domain contract + SalesBench baseline
 
-**Status:** NOT_STARTED
+**Status:** PASSED
 
 Purpose:
 
