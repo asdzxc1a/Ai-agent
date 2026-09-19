@@ -456,3 +456,25 @@ Keep one small current-state hub, move detailed completed evidence to cold histo
 **Prevention**
 
 Treat memory quality as recovery quality rather than storage volume. Archive old detail, discard transient reasoning, and automate cheap structural invariants instead of building a more complex memory service.
+
+---
+
+## L-018 — Repeating one fixture proves integration reliability, not general agent capability
+
+**Date:** 2026-09-19
+
+**Symptom / context**
+
+The project had strong 10/10 Stagehand→Steel evidence, but every iteration exercised the same simple-button behavior and the semantic acceptance used a deterministic fixture LLM.
+
+**Cause**
+
+Reliability of one integration path can look like breadth of agent capability when the repetition count is emphasized without the task distribution and model configuration.
+
+**Fix**
+
+Separate contract/infrastructure evaluation from model-backed capability evaluation. Build versioned tasks across materially different browser difficulties, measure the current engine before improving it, and reserve success-rate targets for a later qualification gate.
+
+**Prevention**
+
+Every benchmark claim must state what varied: task distribution, model/configuration, attempts, and evaluator. Never use repeated execution of one scripted fixture as evidence that a general web agent is reliable.
