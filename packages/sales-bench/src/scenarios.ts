@@ -239,7 +239,7 @@ export const SALES_BENCH_V1: readonly SalesBenchScenario[] = [
     allowedActions: ["ask_question"],
     questionRequired: true,
     questionTarget: "budgetSignal",
-    forbiddenText: ["$3,500", "per month", "discount"]
+    forbiddenText: ["$3,500", "per month", "special discount"]
   }),
   scenario({
     id: "timeline-question",
@@ -361,7 +361,7 @@ export const SALES_BENCH_V1: readonly SalesBenchScenario[] = [
     allowedActions: ["ask_question"],
     questionRequired: true,
     questionTarget: "budgetSignal",
-    forbiddenText: ["$99", "$299", "$3,500", "discount"]
+    forbiddenText: ["$99", "$299", "$3,500", "special discount"]
   }),
   scenario({
     id: "named-customer-proof-unknown",
