@@ -8,6 +8,8 @@ import {
   SalesDecisionSchema,
   ServiceOfferSchema,
   emptyQualificationState,
+  validateDecisionEvidence,
+  validateEvidenceGraph,
   validatePublicProofEvidence
 } from "../src/index.js";
 
@@ -88,6 +90,52 @@ describe("sales-domain contracts", () => {
         dimension.value === null &&
         dimension.evidenceIds.length === 0
     )).toBe(true);
+  });
+
+  it("rejects approved-claim evidence whose text does not match the approved service claim", () => {
+    expect(validateEvidenceGraph({
+      evidence: [{
+        id: "evidence.approved.bad",
+        kind: "approved_claim",
+        statement: "We guarantee a 50% cost reduction.",
+        claimId: "workflow-assessment"
+      }],
+      serviceOffer: ASTRA_SERVICE_OFFER_V1
+    })).toEqual([
+      "approved claim text mismatch: workflow-assessment"
+    ]);
+  });
+
+  it("requires observed decision claims to match the referenced observed evidence", () => {
+    expect(validateDecisionEvidence({
+      decision: {
+        objective: "Use evidence.",
+        responseGuidance: "Stay factual.",
+        question: null,
+        questionTarget: null,
+        claims: [{
+          kind: "observed_fact",
+          statement: "The company has 10,000 employees.",
+          evidenceIds: ["evidence.company.about"]
+        }],
+        nextAction: {
+          kind: "share_evidence",
+          rationale: "Verified evidence is relevant.",
+          requiresApproval: false
+        },
+        confidence: 0.8
+      },
+      evidence: [{
+        id: "evidence.company.about",
+        kind: "observed_fact",
+        statement: "The company operates in three regions.",
+        sourceUrl: "https://example.test/about",
+        capturedAt: "2026-09-19T12:00:00.000Z"
+      }],
+      serviceOffer: ASTRA_SERVICE_OFFER_V1
+    })).toContain(
+      "observed fact claim must match referenced observed evidence"
+    );
   });
 
   it("requires every public-proof claim to carry evidence references", () => {
