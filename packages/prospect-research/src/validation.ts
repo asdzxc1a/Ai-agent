@@ -270,18 +270,7 @@ export function validateProspectResearch(
         "research evidence source is outside approved domains: " +
           evidence.id
       );
-    }
-
-    if (
-      evidence.capturedAt !==
-      report.researchedAt
-    ) {
-      errors.push(
-        "research evidence capture time must be server-derived from researchedAt: " +
-          evidence.id
-      );
-    }
-  }
+    }  }
 
   const claims = allClaims(report);
   const claimById =
@@ -613,6 +602,8 @@ export interface BuildCompletedProspectResearchAttemptInput {
   target: ApprovedResearchTarget;
   runId: string;
   researchedAt: string;
+  capturedAtByEvidenceId:
+    ReadonlyMap<string, string>;
   result: unknown;
 }
 
@@ -620,6 +611,7 @@ export function buildCompletedProspectResearchAttempt({
   target,
   runId,
   researchedAt,
+  capturedAtByEvidenceId,
   result: input
 }: BuildCompletedProspectResearchAttemptInput):
   CompletedProspectResearchAttempt {
@@ -628,6 +620,22 @@ export function buildCompletedProspectResearchAttempt({
       target,
       input
     );
+  for (
+    const evidence of
+    result.evidence
+  ) {
+    if (
+      !capturedAtByEvidenceId.has(
+        evidence.id
+      )
+    ) {
+      throw new Error(
+        "Missing server-owned capture time for research evidence: " +
+          evidence.id
+      );
+    }
+  }
+
   const attempt =
     CompletedProspectResearchAttemptSchema
       .parse({
@@ -677,7 +685,10 @@ export function buildCompletedProspectResearchAttempt({
               (evidence) => ({
                 ...evidence,
                 capturedAt:
-                  researchedAt
+                  capturedAtByEvidenceId
+                    .get(
+                      evidence.id
+                    )!
               })
             )
         }
