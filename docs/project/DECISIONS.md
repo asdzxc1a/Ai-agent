@@ -557,3 +557,41 @@ GPT-6 Astra is more sensitive to instructions in `AGENTS.md` and stronger at inf
 - safe repository reads, local tests, focused branches, and PR work may proceed without per-step approval;
 - production/destructive/credential/external irreversible actions still require explicit authorization;
 - periodically re-audit `AGENTS.md` when model behavior or project workflow changes.
+
+---
+
+## D-021 — Measure and build agent capability before adding sandbox infrastructure
+
+**Date:** 2026-09-19  
+**Status:** Accepted
+
+**Decision**
+
+After Gates 0–7, reorder future work around the largest remaining product risk: broad, multi-step agent capability.
+
+The sequence becomes:
+
+1. trustworthy evaluation harness + honest current baseline;
+2. owned multi-step agent loop;
+3. completion/effect semantics plus cancellation and budgets;
+4. deterministic capability qualification;
+5. sandbox abstraction/E2B and isolation;
+6. production security/durability/product layers.
+
+Gate 8 no longer requires >=95% success. It validates the benchmark and records Baseline 0. The >=95% first-attempt target moves to the later deterministic qualification gate after the owned agent loop exists.
+
+E2B is introduced through an owned sandbox abstraction rather than as agent logic.
+
+**Why**
+
+The existing evidence proves Steel/Stagehand integration, stored-state durability, replayable events, and artifacts, but the RunEngine still performs one observe/select/act cycle and the 10/10 semantic regression repeats one simple fixture with a deterministic fixture LLM. Infrastructure repetition is not evidence of general autonomous web-task capability.
+
+Adding E2B before measuring/fixing that capability would increase infrastructure complexity without attacking the dominant uncertainty.
+
+**Consequences**
+
+- evaluation metrics begin before agent-loop implementation;
+- benchmark tasks/evaluators are versioned and resistant to score-gaming;
+- cancellation/budgets/effect semantics move before sandbox expansion;
+- profiles move after tenant/security/durable-worker foundations;
+- public exposure requires explicit isolation, network, authentication, tenancy, and durable execution gates.
