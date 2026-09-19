@@ -1,139 +1,92 @@
-# AGENTS.md — Astra Operating Contract
+# AGENTS.md — Astra
 
 ## Mission
 
 Build the smallest reliable TinyFish-like browser-agent platform, one evidence-backed gate at a time.
 
-Core direction:
+- **Steel**: browser/session/CDP runtime.
+- **Stagehand**: initial semantic browser layer.
+- **E2B**: later isolation layer, only after local agent behavior is measured and reliable.
+- We own product contracts/orchestration; upstream systems remain replaceable adapters.
 
-- **Steel** provides browser/session/CDP runtime.
-- **Stagehand** provides the initial semantic browser layer.
-- **E2B** is a later isolation layer, added only after local agent behavior is measured and reliable.
-- We own the product contracts and orchestration; upstream systems remain replaceable adapters.
+Full memory protocol: `docs/project/PROJECT_MEMORY_SYSTEM.md`. Read it only when maintaining or porting project memory.
 
-The complete project-memory protocol is in `docs/project/PROJECT_MEMORY_SYSTEM.md`. Do not load it for ordinary work unless maintaining the memory system.
+## Authority
 
-## Instruction priority
+When guidance conflicts:
 
-When guidance conflicts, use this order:
-
-1. the user's explicit current instruction;
+1. user's explicit current instruction;
 2. passing tests and current code;
 3. `docs/project/STATE.md`;
-4. accepted entries in `docs/project/DECISIONS.md`;
-5. the current gate in `docs/project/PLAN.md`;
-6. the active GitHub issue for the current gate/subtask;
-7. cold history and old conversations.
+4. accepted `docs/project/DECISIONS.md`;
+5. current gate in `docs/project/PLAN.md`;
+6. active GitHub issue;
+7. history / old conversations.
 
-Do not blend contradictory sources. Resolve the conflict using the strongest evidence and correct stale project memory when appropriate.
+Resolve conflicts using the strongest source; do not blend incompatible instructions. Update stale memory when appropriate.
 
-## Start with minimum context
+## Boot with minimum context
 
-After reading this file:
+After this file, read:
 
-1. Read `docs/project/STATE.md`.
-2. Read **only the current gate** in `docs/project/PLAN.md`.
-3. Read `docs/project/TEST_STRATEGY.md`.
-4. Read the active GitHub issue for the current gate/subtask, if one exists.
-5. Inspect the code and tests relevant to the requested work.
+1. `STATE.md`;
+2. **current gate only** in `PLAN.md`;
+3. `TEST_STRATEGY.md`;
+4. active gate/subtask issue, if any;
+5. relevant code/tests.
 
-Load other context only when needed:
+Only as needed: relevant `DECISIONS.md`, related `LESSONS.md`, `CHARTER.md`, then `history/`.
 
-- `DECISIONS.md` for relevant architecture/product intent;
-- `LESSONS.md` when the task resembles a previous problem or reusable pattern;
-- `CHARTER.md` when purpose/scope is unclear;
-- `history/` only when current evidence points there.
+Do not preload all docs or history.
 
-Do not preload the whole repository history or every project document.
+## Work
 
-## Execution behavior
-
-- Infer the user's intended outcome and bias toward completing it.
-- For small, reversible tasks, act directly.
-- For multi-step, risky, or ambiguous work, give a short plan, then continue.
-- Do not stop after proposing a plan when the requested work can be completed now.
-- Do not ask non-blocking clarification questions. Ask only when a missing decision is genuinely blocking, unsafe to assume, or would make an irreversible choice for the user.
-- Work on one gate or one well-bounded subtask at a time. The user may explicitly reprioritize.
-- Keep changes focused. Do not mix unrelated cleanup into the task.
-- Use repository/tool evidence instead of guessing current state.
-- Do not preserve scratch reasoning as project memory.
-
-## Safe autonomy
-
-You are authorized to perform ordinary repository work needed to complete the task, including:
-
-- reading/searching repository files and Git history;
-- creating focused branches and pull requests;
-- running local lint, typecheck, unit tests, deterministic fixtures, and other non-production validation;
-- fixing failures caused by your change and rerunning the affected checks.
-
-Do not repeatedly run already-green expensive checks without a new reason.
-
-Do not perform production, credential, billing, destructive, externally irreversible, or user-account actions unless the user explicitly authorized that action and the available tool permissions allow it.
+- Infer the intended outcome and carry actionable requests to completion.
+- Small/reversible task: act directly. Multi-step/risky task: give a short plan, then continue.
+- Ask only when a missing choice is genuinely blocking, unsafe to assume, or irreversible.
+- Work on one gate or bounded subtask at a time; the user may reprioritize.
+- Keep diffs focused; avoid unrelated cleanup.
+- Repository reads/searches, focused branches/PRs, and local non-production validation are authorized.
+- Do not perform production, credential, billing, destructive, or externally irreversible actions without explicit authorization.
+- Do not store scratch reasoning as project memory.
 
 ## Architecture guardrails
 
-- TypeScript-first for the initial product.
-- Keep provider-specific types inside provider adapters.
-- Application code depends on owned browser/agent/run/artifact contracts.
-- Do not fork Stagehand, Steel, E2B, or other upstreams without a measured blocker and an accepted decision.
-- Do not add E2B or later product layers ahead of the current evidence-backed roadmap.
-- Authorization and capabilities live outside model prompts.
-- Irreversible or ambiguous browser actions must ultimately support explicit effect semantics: `none | committed | unknown`.
-- Prefer the smallest architecture that can pass the current acceptance criteria.
+- TypeScript-first initially.
+- Provider-specific types stay in adapters; application code uses owned contracts.
+- Do not fork upstreams without a measured blocker and accepted decision.
+- Do not jump ahead of the evidence-backed roadmap; especially do not add E2B/later layers early.
+- Authorization/capabilities live outside model prompts.
+- Irreversible/ambiguous browser actions must ultimately support `none | committed | unknown` effect semantics.
+- Prefer the smallest architecture that passes current acceptance.
 
-## Verification
+## Verify
 
-Calibrate verification to the change.
+- Run the smallest meaningful checks that prove the change, plus gate-required acceptance tests.
+- Use `pnpm check` when full-repo validation is warranted.
+- Run `pnpm check:memory` when project-memory files/invariants change.
+- Fix failures caused by the change; do not hide deterministic failures with retries.
+- Do not repeat expensive green checks without new reason.
+- Do not claim completion while required evidence is red.
 
-- Run the smallest meaningful checks that prove the requested behavior.
-- Run gate-required integration/acceptance tests when the change touches that gate.
-- Use `pnpm check` when a full repository validation is warranted.
-- `pnpm check:memory` must pass when project-memory files or their invariants change.
-- Do not hide deterministic failures with retries.
-- Do not claim completion while required acceptance evidence is red.
-- Broaden or repeat testing only when failures, new changes, or unresolved risk justify it.
+Tests/current code outrank prose.
 
-Tests and current code are stronger evidence than prose.
+## Write memory once
 
-## Definition of done
+- current truth / blocker / next action → `STATE.md`
+- future gate scope / acceptance → `PLAN.md`
+- current implementation work → active issue
+- durable rationale → `DECISIONS.md`
+- reusable learning → `LESSONS.md`
+- detailed completed evidence → `history/`
+- transient reasoning → discard
 
-A meaningful task is done when all applicable items are true:
+Chat is context, not project state.
 
-1. the requested implementation/change is complete;
-2. relevant automated checks pass;
-3. gate-specific acceptance criteria pass when applicable;
-4. the active issue records important implementation discoveries/evidence;
-5. `STATE.md` reflects changed current truth;
-6. `PLAN.md` changes only if gate status/scope changed;
-7. `DECISIONS.md` gets a new entry only for a durable architecture/product decision;
-8. `LESSONS.md` gets a new entry only for reusable learning;
-9. verbose completed evidence is archived under `docs/project/history/` instead of bloating hot state;
-10. the PR/handoff states the next concrete action.
+## Done
 
-## Memory routing
+A meaningful task is done when the requested change is complete, relevant evidence is green, durable memory reflects changed truth, and the PR/handoff records the next concrete action.
 
-Route information once:
-
-- **current truth / blocker / next action** → `STATE.md`
-- **future gate scope / acceptance** → `PLAN.md`
-- **current implementation work** → active GitHub issue
-- **durable why** → `DECISIONS.md`
-- **reusable learning** → `LESSONS.md`
-- **detailed completed evidence** → `history/`
-- **transient reasoning** → discard
-
-GitHub/repository memory is canonical. Chat is context, not project state.
-
-## Default handoff
-
-End substantial work with a compact report:
-
-- what changed;
-- what was verified;
-- what remains uncertain or blocked;
-- current gate/status;
-- one next action;
-- PR/CI/evidence references.
+Update decisions/lessons only when genuinely durable; archive verbose evidence instead of bloating `STATE.md`.
 
 If unsure what to do next, read `docs/project/STATE.md`.
