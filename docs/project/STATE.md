@@ -3,7 +3,7 @@
 **Last updated:** 2026-09-19  
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation → agent capability evaluation  
-**Current gate:** Gate 8 — Deterministic eval suite  
+**Current gate:** Gate 8 — Evaluation harness + honest baseline  
 **Overall status:** Gates 0–7 are PASSED. Gate 7 was squash-merged in PR #35 at `653e07246857ddf5e95e5589bdac947ee58e511a`. The project-memory hardening is PASSED and squash-merged in PR #38 at `f7962f936f15979965fb342fe27be92a83100f1b`. Gate 8 remains the current product gate and no Gate 8 product implementation has started. The root `AGENTS.md` is now optimized for GPT-6 Astra and merged in PR #41 at `3efbc385f99aa33031af26e676c18299d118aa5e`.
 
 ## North star
@@ -111,7 +111,7 @@ pnpm check:memory
 
 ## Next action
 
-**Roadmap correction before Gate 8 implementation:** update the future gates and evaluation strategy using the completed architectural review, then begin the revised Gate 8.
+**Roadmap correction issue #43:** merge the revised capability-first roadmap and test strategy with green CI. Then create/focus the revised Gate 8 issue and begin the evaluation harness/baseline implementation.
 
 ## Gate completion rule
 
