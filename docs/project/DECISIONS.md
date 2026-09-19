@@ -522,3 +522,38 @@ The existing GitHub-centered memory system already proved that a fresh context c
 - structural memory drift becomes CI-visible;
 - chat remains context, not project state;
 - future memory infrastructure requires evidence that this simpler system is insufficient.
+
+---
+
+## D-020 — Keep Astra's always-loaded AGENTS.md lean and conditional
+
+**Date:** 2026-09-19  
+**Status:** Accepted
+
+**Decision**
+
+Use the repository-root `AGENTS.md` as Astra/Codex's compact always-loaded control surface.
+
+It defines only:
+
+- mission and durable architecture guardrails;
+- instruction/source priority;
+- minimum fresh-context boot order;
+- autonomy and irreversible-action boundaries;
+- verification expectations;
+- project-memory routing;
+- definition of done.
+
+Detailed memory mechanics remain in `docs/project/PROJECT_MEMORY_SYSTEM.md` and are loaded only when maintaining or porting the memory system. Decisions, lessons, charter, and cold history are also loaded only when relevant.
+
+**Why**
+
+GPT-6 Astra is more sensitive to instructions in `AGENTS.md` and stronger at inferring routine implementation detail. Overly broad always-loaded guidance can consume context, introduce irrelevant constraints, and make the model pause unnecessarily. A short control file plus conditional references gives Astra authority and completion boundaries without prescribing every step.
+
+**Consequences**
+
+- do not duplicate the full memory protocol in `AGENTS.md`;
+- prefer contextual references over mandatory pre-reading;
+- safe repository reads, local tests, focused branches, and PR work may proceed without per-step approval;
+- production/destructive/credential/external irreversible actions still require explicit authorization;
+- periodically re-audit `AGENTS.md` when model behavior or project workflow changes.
