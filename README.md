@@ -1,6 +1,8 @@
-# Astra Web Agent Platform
+# Astra — Autonomous Consultative Sales Agent
 
-This repository is the working home for a clean-room, TinyFish-like web-agent platform.
+Astra is our company's autonomous consultative sales agent and the public proof of the AI-native company/workforce transformation service it sells.
+
+The product goal is not merely browser automation or a talking avatar. Astra should eventually research suitable prospects, understand company/buyer context from evidence, conduct strong consultative sales conversations, qualify real opportunities, propose and safely execute authorized next actions, measure outcomes, and generate sanitized proof that can become public demonstrations.
 
 ## Fresh agent? Start here
 
@@ -14,49 +16,87 @@ This repository is the working home for a clean-room, TinyFish-like web-agent pl
 
 Do not start by reading every historical document.
 
-## What we are building
-
-The initial architecture is intentionally small:
+## Product architecture
 
 ~~~text
-Our API
-  ↓
-Our durable run engine
-  ↓
-Stagehand
-  ↓ CDP
-Steel Browser
-  ↓
-Chromium
+Approved target / ICP
+        ↓
+Evidence-backed prospect research
+        ↓
+Sales ontology + durable prospect/buyer/opportunity state
+        ↓
+Consultative strategy / next-best-action
+        ↓
+Text / voice / optional avatar
+        ↓
+Typed action proposal + authorization
+        ↓
+Handoff / follow-up / meeting / CRM / approved browser action
+        ↓
+Outcome + evaluation
+        ↓
+Experience memory + sanitized public proof
 ~~~
 
-After this works reliably, the same browser runtime is placed inside an E2B/Firecracker sandbox.
+Astra remains one visible salesperson. Browser runtimes, models, voice providers, avatars, CRM/email/calendar/social systems, validators, and evaluators remain replaceable implementation layers.
 
-We deliberately **do not** merge or fork Stagehand, Steel, and E2B. They remain replaceable layers behind our own contracts.
+## What already exists
+
+Gates 0–7 built the browser/research/run substrate:
+
+- TypeScript workspace and CI;
+- Steel browser/session adapter;
+- Stagehand semantic-browser adapter;
+- owned browser/agent contracts;
+- asynchronous run API;
+- durable PostgreSQL run/step/event state;
+- replayable SSE;
+- screenshots/diagnostics/artifacts;
+- secret redaction;
+- deterministic browser integration evidence.
+
+This foundation is retained. It is now infrastructure for the sales product, not the product mission itself.
+
+A separate draft sales/voice branch, [PR #2](https://github.com/asdzxc1a/Ai-agent/pull/2), contains reusable experimental work around Qwen, GPT-Live, HeyGen, sales state, action confirmation, and SalesOS. The current roadmap reuses those pieces selectively after the main-branch sales contracts are defined.
+
+## Current gate
+
+**Gate 8 — Sales domain contract + SalesBench baseline**
+
+Before Astra contacts real prospects, Gate 8 defines:
+
+- the service/claim boundary;
+- evidence/fact/hypothesis semantics;
+- prospect/buyer/opportunity/qualification state;
+- consultative sales policy;
+- deterministic SalesBench scenarios;
+- separate factuality, evidence, relevance, information-gain, trust, pressure, qualification, and next-step metrics.
+
+See [STATE.md](./docs/project/STATE.md) for the one current source of truth.
 
 ## Persistent project memory
 
-- [PROJECT_MEMORY_SYSTEM.md](./docs/project/PROJECT_MEMORY_SYSTEM.md) — self-contained portable specification and starter templates for the memory/handoff system.
-- [CHARTER.md](./docs/project/CHARTER.md) — why the project exists and long-term architecture.
-- [STATE.md](./docs/project/STATE.md) — small, current source of truth.
+- [PROJECT_MEMORY_SYSTEM.md](./docs/project/PROJECT_MEMORY_SYSTEM.md) — self-contained portable memory/handoff specification.
+- [CHARTER.md](./docs/project/CHARTER.md) — why Astra exists and the target product architecture.
+- [STATE.md](./docs/project/STATE.md) — small current source of truth.
 - [PLAN.md](./docs/project/PLAN.md) — gated roadmap and acceptance tests.
 - [DECISIONS.md](./docs/project/DECISIONS.md) — durable architecture/product decisions.
 - [LESSONS.md](./docs/project/LESSONS.md) — reusable engineering lessons.
 - [TEST_STRATEGY.md](./docs/project/TEST_STRATEGY.md) — what counts as evidence.
-- [HANDOFF_PROTOCOL.md](./docs/project/HANDOFF_PROTOCOL.md) — Astra-specific fresh-context workflow.
-- [history/](./docs/project/history/) — cold milestone/incident evidence; do not read by default.
+- [HANDOFF_PROTOCOL.md](./docs/project/HANDOFF_PROTOCOL.md) — fresh-context workflow.
+- [history/](./docs/project/history/) — cold milestone/incident/pivot evidence; do not read by default.
 
-GitHub issues act as short-lived working memory for the active gate/subtask. Tests and CI remain the strongest evidence.
+GitHub issues are short-lived working memory for the active gate/subtask. Tests and CI remain the strongest evidence.
 
 ## Core rule
 
-**One gate at a time. A gate does not pass until its automated acceptance tests pass.**
+**One gate at a time. A gate does not pass until its required deterministic and behavioral evidence passes.**
 
-The immediate next action is always recorded in [STATE.md](./docs/project/STATE.md).
+Research/drafting is not authorization to send outreach or publish externally.
 
 ## Development
 
-Gate 0 pins the foundation to:
+The current foundation pins:
 
 - Node.js `24.21.0`
 - pnpm `10.34.5`
@@ -66,45 +106,29 @@ From a clean checkout:
 
 ~~~bash
 pnpm install --frozen-lockfile
-pnpm check:memory
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-~~~
-
-Or run the same validation sequence with:
-
-~~~bash
 pnpm check
 ~~~
 
-GitHub Actions runs the strict frozen-lockfile path on every push and pull request.
+Project-memory-only changes should at minimum run:
+
+~~~bash
+pnpm check:memory
+~~~
+
+Relevant browser integration gates remain available through the existing Steel/Stagehand test commands and GitHub Actions.
 
 ## Browser foundation
 
-Gate 1 proves Steel independently of Stagehand.
-
-The tested Steel image is pinned in:
+The proven browser path remains:
 
 ~~~text
-infra/steel-image.txt
+RunEngine
+  ↓
+AgentRuntime → Stagehand
+  ↓
+BrowserRuntime → Steel
+  ↓
+Chromium
 ~~~
 
-The permanent integration test:
-
-1. starts the deterministic fixture;
-2. starts pinned Steel in Docker;
-3. creates a Steel browser session through REST;
-4. connects `playwright-core` over Steel's returned CDP WebSocket;
-5. navigates, clicks, verifies state, and captures a screenshot;
-6. releases the session;
-7. repeats the complete sequence ten times.
-
-Run the browser acceptance test when Steel and the fixture are already available:
-
-~~~bash
-pnpm test:steel
-~~~
-
-GitHub Actions performs the full Docker-backed setup in `.github/workflows/steel-integration.yml`.
+Provider-specific types stay inside adapters. Future authenticated profiles, isolation/E2B, production queues, and broader browser capabilities are added only when a sales gate creates a measured need for them.
