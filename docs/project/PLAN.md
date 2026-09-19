@@ -182,94 +182,75 @@ Acceptance:
 
 ---
 
-## Gate 8 — Evaluation harness + honest baseline
+## Gate 8 — Sales domain contract + SalesBench baseline
 
 **Status:** NOT_STARTED
 
 Purpose:
 
-- build a trustworthy local evaluation system before improving agent intelligence;
-- measure the current engine honestly rather than assuming broad capability.
-
-Build an initial 12–15 deterministic fixture tasks covering:
-
-- single click;
-- two-step navigation;
-- form input;
-- validation;
-- dropdown;
-- search/results;
-- modal;
-- new tab;
-- iframe;
-- table;
-- delayed content;
-- simple cart;
-- cookie/session state.
-
-Each task records:
-
-- stable task ID and category;
-- start URL;
-- natural-language goal;
-- deterministic expected state/result;
-- maximum step count;
-- timeout.
-
-Build two distinct evaluation lanes:
-
-1. **Contract/infrastructure lane** — scripted/fake agent behavior to prove browser, run engine, persistence, events, artifacts, evaluator, and cleanup.
-2. **Capability lane** — real pinned model/configuration against deterministic local sites to measure semantic/action capability.
-
-Record from Gate 8 onward:
-
-- task/fixture version;
-- git commit;
-- model/configuration;
-- first-attempt success;
-- failure category;
-- steps;
-- duration;
-- model usage/cost when available;
-- action failures;
-- loop count;
-- artifact completeness.
-
-Acceptance:
-
-- task format and deterministic evaluator are versioned and testable;
-- every fixture/evaluator is reproducible locally;
-- contract lane runs deterministically in CI;
-- the current engine is measured as **Baseline 0** without changing the benchmark to improve its score;
-- capability results are stored as benchmark evidence when a real model run is available;
-- Gate 8 passes on evaluation-system trustworthiness, not on achieving a target success rate.
-
----
-
-## Gate 9 — Owned multi-step agent loop
-
-**Status:** NOT_STARTED
-
-Purpose:
-
-Turn Stagehand primitives into an owned multi-step execution loop.
+- define exactly what Astra sells before asking a model to sell it;
+- define the smallest owned sales-domain state needed for prospecting and consultative selling;
+- build a trustworthy evaluation harness and record an honest Baseline 0 before improving sales intelligence.
 
 Build:
 
-- an owned loop/executor boundary separate from durable run lifecycle when evidence requires the seam;
-- explicit decision outcomes such as `ACTION | COMPLETE | FAIL | BLOCKED`;
-- repeated observe → decide → act → observe cycles;
-- compact persisted trajectory/progress records;
-- safe recovery path for recoverable action failures.
+- `ServiceOffer` with approved claims, evidence requirements, non-claims, and unknowns;
+- provider-neutral schemas for `Evidence`, `Prospect`, `Buyer`, `Opportunity`, `QualificationState`, `SalesDecision`, `NextAction`, `Outcome`, and `PublicProof`;
+- AI-native company/workforce transformation ontology V1;
+- explicit separation of observed fact, inferred hypothesis, operator-approved claim, and unknown;
+- consultative policy baseline: research → relevant hypothesis → one useful question → state update → evidence/next step;
+- 30–50 deterministic SalesBench scenarios covering fit, no-fit, objections, uncertainty, trust, discovery, qualification, and next-step choices;
+- two evaluation lanes:
+  1. deterministic policy/contract lane;
+  2. pinned-model capability lane;
+- score vector for factuality, evidence use, relevance, question quality, information gain, qualification quality, trust, pressure, and next-step quality.
 
-Keep Stagehand as a semantic capability provider inside owned orchestration.
+Non-goals:
+
+- no live prospect outreach;
+- no email/LinkedIn/X sending;
+- no voice integration;
+- no CRM writeback;
+- no model training;
+- no new browser infrastructure.
 
 Acceptance:
 
-- a deterministic task requiring at least three browser actions completes through the owned loop;
+- all new public domain schemas validate deterministically;
+- the service/claim boundary contains no invented pricing, guarantees, customer proof, or outcome claims;
+- SalesBench scenarios/evaluators are versioned and runnable from a clean checkout;
+- current behavior is recorded as Baseline 0 without changing the benchmark to improve the score;
+- deterministic policy/security assertions have zero known violations;
+- Gate 8 passes on evaluation-system trustworthiness, not a target conversion/sales score;
+- existing Gates 0–7 regressions remain green.
+
+---
+
+## Gate 9 — Owned multi-step sales-agent loop
+
+**Status:** NOT_STARTED
+
+Purpose:
+
+- turn the existing one-step semantic browser execution into owned multi-step orchestration suitable for prospect research;
+- keep Stagehand as a semantic capability provider rather than the owner of Astra's lifecycle.
+
+Build:
+
+- owned loop/executor boundary;
+- explicit decision outcomes such as `ACTION | COMPLETE | FAIL | BLOCKED`;
+- repeated observe → decide → act → observe cycles;
+- compact persisted trajectory/progress records;
+- recoverable action-failure path;
+- SalesBench research tasks that require at least three browser actions.
+
+Acceptance:
+
+- deterministic multi-step fixture completes through the owned loop;
 - multiple action steps are persisted in order;
 - progress evidence is sufficient to diagnose each step;
-- a recoverable action failure can return control to the loop without corrupting run state;
+- recoverable action failure can return control to the loop without corrupting run state;
+- the loop cannot mark a sales/research goal complete merely because one browser action returned success;
 - Gates 1–8 regressions remain green.
 
 ---
@@ -280,12 +261,13 @@ Acceptance:
 
 Purpose:
 
-Make `COMPLETED` mean the requested goal was verified, and bound autonomous execution.
+- make `COMPLETED` mean the requested sales/research goal was verified;
+- bound autonomous execution before broad prospect research.
 
 Build:
 
 - goal state: `IN_PROGRESS | COMPLETED | FAILED | BLOCKED`;
-- completion/verifier policy separate from action success;
+- completion/verifier policy separate from browser-action success;
 - action effect semantics: `none | committed | unknown`;
 - maximum steps;
 - wall-clock timeout;
@@ -297,324 +279,450 @@ Build:
 Acceptance:
 
 - `act.success === true` cannot by itself mark a goal complete;
-- step-limit, timeout, cost-budget, and explicit cancellation each terminate with correct durable state;
+- step-limit, timeout, cost-budget, and explicit cancellation terminate with correct durable state;
 - resources are released on every termination path;
 - no zombie Steel session remains;
 - simulated `effect=unknown` after an irreversible action is never blindly retried;
-- completion verifier rejects an intentionally wrong-but-schema-valid result.
+- completion verifier rejects intentionally wrong-but-schema-valid results.
 
 ---
 
-## Gate 11 — Deterministic capability qualification
+## Gate 11 — Deterministic prospect-research qualification
 
 **Status:** NOT_STARTED
 
 Purpose:
 
-Measure whether the owned agent is reliable enough to justify sandbox/product infrastructure.
+- prove the owned loop can research companies reliably before touching live prospects at scale.
 
-Expand to 25–50 deterministic tasks covering:
+Build 25–50 local company/research fixtures covering:
 
-- forms and validation;
-- search/results;
-- dropdowns;
-- modal/popup;
-- new tab;
-- iframe/nested iframe;
-- table/dynamic table;
-- cart;
-- calendar;
-- upload;
-- loading delay;
-- infinite scroll;
-- virtualized list;
-- shadow DOM;
-- cookie/session persistence;
-- multi-step navigation;
-- recoverable and non-recoverable failures;
-- irrelevant/distractor elements;
-- prompt-injection-like page text.
+- about/company pages;
+- product/service pages;
+- team/leadership pages;
+- careers/hiring signals;
+- press/news pages;
+- multi-page evidence collection;
+- tables/cards/modals;
+- delayed/dynamic content;
+- conflicting information;
+- missing information;
+- distractor elements;
+- stale dates;
+- prompt-injection-like page text;
+- source attribution;
+- unknown/uncertain facts.
 
 Split tasks into:
 
-- **core** — release-blocking tasks the product claims to support;
-- **hard** — research/challenge tasks measured without blocking every merge.
+- **core** — release-blocking research behaviors Astra claims to support;
+- **hard** — challenge/research tasks measured without blocking every merge.
 
 Acceptance for the core suite:
 
-- >= 95% **first-attempt** success over the agreed repeated qualification sample;
-- 0 false-completed runs in the qualification sample;
-- every failure is locally reproducible or explicitly classified as infrastructure/model variance;
-- benchmark artifacts include per-task results, aggregate metrics, model/configuration, commit, and fixture version;
-- Gate 1/2 lifecycle regressions remain 10/10;
-- no known browser session leaks.
+- >=95% first-attempt expected-state success over the agreed qualification sample;
+- zero false-completed runs in the qualification sample;
+- zero unsupported claims promoted as observed facts;
+- every material fact can be traced to stored evidence;
+- every failure is locally reproducible or explicitly classified;
+- Gates 1/2 browser lifecycle regressions remain 10/10;
+- no known browser/session leaks.
 
-**Pause here and benchmark before adding E2B.**
+**Pause here before adding sandbox complexity or live outreach.**
 
 ---
 
-## Gate 12 — Owned sandbox abstraction + E2B
+## Gate 12 — Sandbox + network safety for external research
 
 **Status:** NOT_STARTED
 
 Purpose:
 
-Add isolation without coupling agent/product logic to one sandbox provider.
+- add isolation only after multi-step sales research is measured;
+- prevent untrusted public websites from reaching sensitive networks/runtime state.
 
 Build:
 
 - owned `SandboxRuntime` / `SandboxSession` boundary;
-- E2B implementation behind that boundary;
-- environment/template containing Steel + Chromium;
-- sandbox lifecycle;
-- port/CDP exposure;
+- E2B or another provider behind that boundary only if it passes the owned contract;
+- explicit browser/network egress policy;
+- isolation tests for cookies, storage, filesystem, processes, ports, and session identifiers;
+- redirect/DNS/private-network defenses;
 - composed sandboxed browser runtime.
 
 Acceptance:
 
-- unchanged product API and agent-loop contracts run through the sandboxed provider;
-- Stagehand/agent-loop code does not gain E2B-specific types or calls;
-- sandbox always terminates after success, failure, cancellation, and test teardown;
-- local non-sandbox provider remains usable for deterministic development.
+- unchanged sales-research contracts run through local and sandbox providers;
+- Stagehand/sales logic gains no E2B-specific dependency;
+- sandbox terminates after success/failure/cancellation;
+- localhost, private RFC1918, link-local, and metadata targets are blocked by default for untrusted runs;
+- allowed public-fixture navigation still works;
+- two simultaneous sandboxes do not share state.
 
 ---
 
-## Gate 13 — Isolation + network egress security
-
-**Status:** NOT_STARTED
-
-Build simultaneous-sandbox isolation tests for:
-
-- cookies;
-- localStorage/sessionStorage;
-- filesystem;
-- processes;
-- ports;
-- browser/session identifiers.
-
-Add explicit browser/network egress policy.
-
-Acceptance:
-
-- state does not cross between two simultaneous sandboxes;
-- terminating one sandbox does not affect the other;
-- localhost, loopback, private RFC1918, link-local, and cloud-metadata targets are blocked by default for untrusted runs;
-- redirect and hostname-resolution paths cannot trivially bypass the private-network policy;
-- allowed public fixture navigation still works;
-- isolation failures produce diagnosable evidence.
-
-No public exposure before this gate passes.
-
----
-
-## Gate 14 — Deployable service + authentication + tenancy
-
-**Status:** NOT_STARTED
-
-Build the production composition root:
-
-- configuration;
-- database pool + migrations;
-- repositories;
-- browser/sandbox runtime;
-- agent runtime;
-- artifact store;
-- run engine;
-- HTTP server;
-- graceful shutdown;
-- `/health` and `/ready`;
-- request IDs and structured operational logging.
-
-Add:
-
-- API authentication;
-- tenant/user identity;
-- tenant ownership for runs, events, artifacts, cancellation, and later profiles.
-
-Acceptance:
-
-- the complete service runs outside integration-test composition;
-- readiness fails when required dependencies are unavailable;
-- graceful shutdown does not accept new work and releases owned resources;
-- Tenant B cannot read, stream, download, cancel, or mutate Tenant A resources;
-- unauthenticated access is rejected;
-- existing single-tenant contract behavior remains covered.
-
----
-
-## Gate 15 — Shared artifacts + durable-data sanitization
-
-**Status:** NOT_STARTED
-
-Build:
-
-- shared/object artifact-store implementation behind `ArtifactStore`;
-- local S3-compatible deterministic integration test;
-- retention/lifecycle metadata;
-- centralized durable-data sanitization policy for run steps/events/artifacts;
-- explicit handling/classification for sensitive screenshots.
-
-Acceptance:
-
-- one process/worker writes an artifact and a fresh process can list/read it;
-- fake secrets injected through URL, diagnostics, action arguments, step payloads, and metadata do not appear in sanitized durable JSON;
-- artifact authorization remains tenant-scoped;
-- local store remains supported for development/tests;
-- artifact failures remain best-effort and do not corrupt authoritative run state.
-
----
-
-## Gate 16 — Durable worker queue + crash recovery
+## Gate 13 — Evidence-backed live prospect research
 
 **Status:** NOT_STARTED
 
 Purpose:
 
-Make execution durable, not only stored run state.
+- use Astra's browser foundation on approved real companies without contacting them.
 
-Build initially with PostgreSQL unless measurements justify another system:
+Build:
 
-- durable work claim;
-- lease owner/expiry;
-- heartbeat;
-- attempt tracking;
-- tenant concurrency limits;
-- retry/recovery policy driven by action effect semantics;
-- stale-run reconciliation.
+- input: approved company URL/domain plus optional ICP context;
+- evidence bundle containing source URL, observation, capture time, and uncertainty;
+- company summary, likely transformation opportunities, buying signals, and explicit unknowns;
+- observed-fact vs hypothesis separation;
+- durable `Prospect` record;
+- artifacts sufficient to audit each material claim.
 
-Acceptance:
+Non-goals:
 
-- API process can die after accepting a run without losing the work;
-- worker killed before an action can be safely recovered by another worker;
-- worker killed after `effect=none` may safely retry;
-- worker killed after `effect=unknown` does not blindly repeat the irreversible action;
-- terminal state/events remain consistent;
-- concurrent-load test respects tenant/global limits.
-
----
-
-## Gate 17 — Profiles / browser state
-
-**Status:** NOT_STARTED
-
-Build V1 profile state:
-
-- cookies;
-- localStorage;
-- sessionStorage where practical;
-- encryption at rest;
-- tenant ownership;
-- versioning.
+- no authenticated contact discovery;
+- no outreach;
+- no CRM writes;
+- no social posting.
 
 Acceptance:
 
-- Run A logs into a deterministic fixture;
-- profile is saved;
-- browser/sandbox is destroyed;
-- Run B uses a fresh browser/sandbox;
-- profile is restored and remains authenticated;
-- Tenant B cannot enumerate/read/use Tenant A's profile;
-- corrupted/incompatible profile data fails safely.
+- controlled public-web sample uses approved companies only;
+- material facts/evidence are manually spot-checked against sources;
+- unsupported hypotheses are never presented as observed facts;
+- research failures are classified separately from deterministic release regressions;
+- deterministic Gate 11 remains the release gate.
 
 ---
 
-## Gate 18 — Credential / capability broker
+## Gate 14 — ICP scoring + durable prospect queue
 
 **Status:** NOT_STARTED
 
 Purpose:
 
-Allow authenticated workflows without giving webpage content or the model unrestricted secret/action authority.
+- decide who Astra should spend time on without letting an LLM silently define fit.
 
 Build:
 
-- capability policy outside model prompts;
-- credential references instead of raw credentials in goals/prompts;
-- controlled secret injection at the narrowest required boundary;
-- explicit permissions for sensitive/irreversible action classes;
-- prompt-injection security fixtures.
+- explicit ICP/disqualifier configuration;
+- explainable fit score with rule/model contributions separated;
+- durable prospect/account identity;
+- prospect states such as `NEW | RESEARCHED | QUALIFIED_FOR_OUTREACH | DEFERRED | DISQUALIFIED`;
+- next-best-action suggestion without execution;
+- deduplication by canonical company identity.
 
 Acceptance:
 
-- raw credential values are absent from model prompts and normal durable logs;
-- a malicious fixture page cannot grant itself new capabilities;
-- attempts to reveal credentials, visit forbidden targets, or execute blocked action classes are denied;
-- allowed login workflow succeeds using brokered credentials;
-- denials and capability use leave auditable sanitized events.
+- ranking is reproducible for deterministic fixtures;
+- disqualifiers cannot be overridden by model prose;
+- duplicate companies do not create independent active prospects;
+- every score exposes rationale and uncertainty;
+- restart preserves queue/prospect state.
 
 ---
 
-## Gate 19 — Controlled live-web evaluation
+## Gate 15 — Personalized outreach draft + human approval
 
 **Status:** NOT_STARTED
 
-Build a small nightly/manual suite using approved external sites.
+Purpose:
 
-Track:
+- prove Astra can turn research into a relevant first contact without granting autonomous send authority.
 
-- completion rate;
-- false-completion rate;
-- structured-answer correctness;
-- median/P95 duration;
-- median/P95 steps;
-- browser startup latency;
-- browser crash rate;
-- agent loop rate;
-- policy blocks;
-- anti-bot/external-site failures;
-- cost/successful task.
+Build:
+
+- draft generation for one approved channel first;
+- recipient/channel/message as a typed server-owned proposal;
+- evidence references used for personalization;
+- anti-spam/repetition/unsupported-claim checks;
+- approval/edit/reject lifecycle;
+- preview artifact/UI.
+
+Non-goals:
+
+- no autonomous send;
+- no purchased-list blasting;
+- no multi-channel sequence engine.
 
 Acceptance:
 
-- live-web failures are classified separately from deterministic release regressions;
-- local deterministic core suite remains the release gate;
-- live-web results are stored as trend/regression evidence, never the sole proof a feature works.
+- SalesBench outreach scenarios include strong-fit, weak-fit, no-fit, ambiguous evidence, and sensitive situations;
+- factuality/evidence gates pass before a draft is approvable;
+- drafts do not fabricate familiarity, urgency, customer proof, or business facts;
+- rejected/edited drafts remain auditable;
+- no external side effect occurs in this gate.
 
 ---
 
-## Gate 20 — Public-beta readiness
+## Gate 16 — Persistent consultative sales conversation
 
 **Status:** NOT_STARTED
 
-Build/verify:
+Purpose:
 
-- rate limits and quotas;
-- artifact/data retention;
-- backup + restore procedure;
-- deployment rollback;
-- graceful worker draining;
-- metrics/traces/alerts;
-- cost accounting;
-- API documentation/versioning;
-- first supported JS/TS SDK surface;
-- data deletion workflow;
-- production security review.
+- make Astra a real seller in text before adding realtime voice complexity.
+
+Build:
+
+- durable buyer/account/opportunity state;
+- incremental qualification rather than questionnaire behavior;
+- objection handling grounded in current state and approved evidence;
+- one visible seller persona;
+- canonical sales-decision boundary where models advise and server-owned state wins;
+- conversation trajectory events suitable for later evaluation;
+- selective reuse of proven sales-state/canonicalization concepts from draft PR #2 behind owned main-branch contracts.
 
 Acceptance:
 
-- load test passes at approximately 2× the intended initial supported concurrency without correctness loss;
-- backup/restore drill recovers authoritative run data;
-- deployment rollback and worker draining are exercised;
-- tenant/security tests remain green under load;
-- operational dashboards/alerts cover the measured bottlenecks;
-- documented public API matches tested behavior.
+- multi-turn SalesBench includes discovery, no-fit, incumbent supplier, uncertainty, trust, budget/timing, and handoff scenarios;
+- buyer facts persist across process restart;
+- model output cannot overwrite protected identity/consent/action truth;
+- known facts are not repeatedly re-asked without a reason;
+- evaluation records information gain and next-step quality.
 
 ---
 
-# Later product layers
+## Gate 17 — Realtime voice route selection + live acceptance
 
-Only after the core is reliable and measured:
+**Status:** NOT_STARTED
 
-1. Search.
-2. Fetch.
-3. Research.
-4. Monitor.
-5. richer proxy/domain intelligence.
-6. custom semantic snapshot layer.
-7. specialized action model.
-8. custom Chromium only when measurements justify it.
-9. Python SDK when real customer demand justifies it.
-10. multi-region orchestration when single-region limits are measured.
+Purpose:
+
+- add natural voice only after sales state/policy is testable independently;
+- choose one canonical realtime route by evidence rather than branch history.
+
+Build:
+
+- one owned conversation/voice adapter contract;
+- benchmark strongest reusable work from draft PR #2 (Qwen→GPT-Live and/or native GPT-Live);
+- interruption/barge-in;
+- transcript-to-durable-sales-state correlation;
+- latency/transport metrics;
+- optional avatar behind a renderer interface.
+
+Non-goals:
+
+- no requirement to keep two production voice architectures;
+- no avatar rewrite;
+- no real external sales actions.
+
+Acceptance:
+
+- deterministic/mock transport tests pass;
+- at least 20 scripted live conversations complete without state corruption;
+- human microphone tests cover interruption, unclear speech, and long turns;
+- speaking layer adds no unsupported commercial claims;
+- measured latency/reliability selects one canonical route;
+- avatar, if enabled, passes a separate drift/reconnect acceptance.
+
+---
+
+## Gate 18 — Durable action plane + real human handoff
+
+**Status:** NOT_STARTED
+
+Purpose:
+
+- create real business value with one safe external action.
+
+Build:
+
+- durable PostgreSQL action proposal/state machine;
+- typed `human_handoff` payload containing opportunity/buyer/context summary;
+- explicit confirmation;
+- atomic `confirmed → executing` transition;
+- provider idempotency key;
+- `none | committed | unknown` effect semantics;
+- sanitized receipt/audit trail;
+- one real internal handoff provider only.
+
+Acceptance:
+
+- pending/unconfirmed actions cannot execute;
+- crash/retry cannot silently execute twice;
+- ambiguous provider failure is `unknown`, never guessed;
+- cross-prospect/session execution is blocked;
+- secrets cannot enter client-visible receipts, learning artifacts, or public proof;
+- one approved controlled handoff succeeds end to end.
+
+---
+
+## Gate 19 — Follow-up + scheduling/CRM, one connector at a time
+
+**Status:** NOT_STARTED
+
+Purpose:
+
+- extend the same durable action contract instead of adding ad-hoc integrations.
+
+Build in sequence:
+
+1. follow-up draft/send provider;
+2. meeting/scheduling provider;
+3. CRM opportunity/note provider.
+
+Each action requires a typed server-owned payload, permission scope, idempotency contract, sanitizer, regression suite, and explicit enablement.
+
+Acceptance:
+
+- each connector passes independently before the next is added;
+- no generic arbitrary-tool execution endpoint appears;
+- real writes remain policy/permission gated;
+- CRM state and Astra state reconcile after retries/restarts.
+
+---
+
+## Gate 20 — Public proof pipeline
+
+**Status:** NOT_STARTED
+
+Purpose:
+
+- let Astra demonstrate its own work without turning marketing copy into an unverified claim.
+
+Build:
+
+- `PublicProof` artifact derived from verified run/outcome evidence;
+- PII/secret/customer-name redaction policy;
+- metrics/evidence links for internal review;
+- LinkedIn/X draft generation;
+- approve/edit/reject flow;
+- idempotent publication proposal, but no autonomous posting yet.
+
+Acceptance:
+
+- no metric/outcome claim appears without durable evidence;
+- private prospect data is excluded by tests;
+- draft distinguishes observed result from interpretation;
+- approval is required before publication.
+
+---
+
+## Gate 21 — SalesOS evaluator + experience retrieval
+
+**Status:** NOT_STARTED
+
+Purpose:
+
+- improve Astra from measured experience before model training.
+
+Build:
+
+- deterministic factuality/tool/action validators;
+- calibrated human/LLM evaluation workflow;
+- durable reward/evaluation records;
+- training-eligibility hard gates;
+- experience records linking state → strategy → observable outcome;
+- retrieval of relevant approved experiences into strategy selection;
+- bounded/deduplicated experience growth.
+
+Acceptance:
+
+- evaluator agreement with human-labeled calibration set is measured;
+- unsafe/unfactual outcomes cannot become approved experiences;
+- experience retrieval improves frozen SalesBench without increasing hard-gate failures;
+- no weight training is required.
+
+---
+
+## Gate 22 — Bounded autonomy + authenticated capabilities
+
+**Status:** NOT_STARTED
+
+Purpose:
+
+- move selected previously approved actions to explicit policy-controlled autonomy.
+
+Build only for capabilities justified by evidence:
+
+- credential/capability broker;
+- profiles/session restoration;
+- per-action autonomy policy;
+- tenant/user ownership and authentication where required;
+- rate/spend/reputation limits;
+- incident/kill-switch path;
+- platform-specific compliance/terms constraints.
+
+Acceptance:
+
+- every autonomous capability is individually enabled/revocable;
+- credentials never enter model context or ordinary artifacts;
+- malicious page content cannot grant capabilities;
+- authenticated state cannot leak across tenants/prospects;
+- effect state remains durable/auditable;
+- autonomy can be disabled without changing conversation logic.
+
+---
+
+## Gate 23 — Controlled real-market pilot
+
+**Status:** NOT_STARTED
+
+Purpose:
+
+- measure whether Astra creates genuine pipeline rather than merely passing simulation.
+
+Build:
+
+- small approved target cohort;
+- approved channels and volume limits;
+- opportunity/outcome tracking;
+- buyer feedback and human-sales review;
+- permanent regression capture for material failures.
+
+Measure separately:
+
+- research accuracy;
+- relevant-reply rate;
+- qualification completeness;
+- meeting/handoff conversion;
+- false-positive qualification;
+- opt-out/negative-response rate;
+- factuality/compliance;
+- time to next action;
+- cost per qualified opportunity;
+- human-rep acceptance of handoffs.
+
+Acceptance:
+
+- pilot size/channels are explicitly authorized before launch;
+- no success claim relies only on simulated buyers;
+- negative outcomes remain in the report;
+- go/no-go thresholds for expanding autonomy are written before results are known.
+
+---
+
+## Gate 24 — Production sales service + scale
+
+**Status:** NOT_STARTED
+
+Purpose:
+
+- productionize only after the sales loop demonstrates real value.
+
+Build/verify as measured needs justify:
+
+- authenticated multi-tenant service;
+- worker queue, leases, crash recovery, and concurrency policy;
+- shared artifact/evidence storage;
+- production observability/cost accounting;
+- credential management;
+- channel/telephony scaling;
+- retention/deletion/privacy controls;
+- operator Agent Studio for versioned service claims, ICP, playbooks, proof, and policies;
+- backup/restore, deployment rollback, graceful draining, and kill switches.
+
+Acceptance:
+
+- worker/process failure does not corrupt opportunity/action truth;
+- tenant/auth boundaries pass adversarial tests;
+- operational SLOs/cost limits are defined and measured;
+- agent/policy versions are traceable to every interaction/public proof;
+- backup/restore and rollback are exercised;
+- production security review is complete.
+
+---
 
 # Rule for changing this plan
 
@@ -624,7 +732,10 @@ A durable change requires:
 
 - reason;
 - evidence;
-- update to `DECISIONS.md` if architectural/product ordering changes;
+- update to `DECISIONS.md` if architecture/product ordering changes;
 - updated acceptance criteria;
 - `TEST_STRATEGY.md` update when evidence requirements change;
-- `STATE.md` updated to reflect the new next action.
+- `STATE.md` update;
+- active issue update so a fresh Astra does not follow stale priority.
+
+Small gates are deliberate. Do not combine prospect research, outreach, voice, real actions, public posting, and learning into one implementation wave.

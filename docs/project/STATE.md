@@ -2,31 +2,39 @@
 
 **Last updated:** 2026-09-19  
 **Repository:** `asdzxc1a/Ai-agent`  
-**Phase:** Browser foundation → agent capability evaluation  
-**Current gate:** Gate 8 — Evaluation harness + honest baseline  
-**Overall status:** Gates 0–7 are PASSED. Gate 7 was squash-merged in PR #35 at `653e07246857ddf5e95e5589bdac947ee58e511a`. The project-memory hardening is PASSED and squash-merged in PR #38 at `f7962f936f15979965fb342fe27be92a83100f1b`. Gate 8 remains the current product gate and no Gate 8 product implementation has started. The root `AGENTS.md` is now optimized for GPT-6 Astra and merged in PR #41 at `3efbc385f99aa33031af26e676c18299d118aa5e`.
+**Phase:** Proven browser foundation → Astra autonomous sales product  
+**Current gate:** Gate 8 — Sales domain contract + SalesBench baseline  
+**Overall status:** Gates 0–7 remain PASSED and are preserved as Astra's browser/research/run foundation. The product mission has now changed: Astra is our company's autonomous consultative sales agent and public proof of the AI-native company/workforce transformation service it sells. No Gate 8 sales-product implementation has started yet. The Git-centered memory system is already hardened and remains the canonical handoff mechanism.
 
 ## North star
 
-Build the smallest reliable TinyFish-like browser-agent platform first:
+Astra should eventually execute this loop:
 
 ~~~text
-Our API
-  ↓
-Our durable run engine
-  ↓
-Stagehand
-  ↓ CDP
-Steel
-  ↓
-Chromium
+approved target / ICP
+      ↓
+evidence-backed browser research
+      ↓
+prospect + buyer + opportunity context
+      ↓
+consultative next-best-action policy
+      ↓
+text / voice / optional avatar conversation
+      ↓
+typed proposal + explicit authorization
+      ↓
+real business action
+      ↓
+durable outcome + evaluation
+      ↓
+experience memory + sanitized public proof
 ~~~
 
-Only add sandbox/isolation complexity after the local browser-agent path is measured and reliable.
+Astra sells our AI-native company/workforce transformation service **and demonstrates the service by doing the sales job itself**.
 
-## What works now
+## What works now on `main`
 
-The repository currently has:
+The repository already has:
 
 - strict TypeScript workspace + deterministic CI;
 - owned `BrowserRuntime` / `BrowserSession` contracts;
@@ -44,26 +52,48 @@ The repository currently has:
 - pinned Steel and PostgreSQL runtime images;
 - clean GitHub-centered project memory/handoff discipline.
 
-## Important current limits
+These capabilities become the **research, evidence, and later browser-action substrate** for the sales product.
 
-These are current product limits, not hidden future work:
+## Reusable sales/voice asset outside `main`
 
-- the owned RunEngine executes one observe/select/act cycle, not a general multi-step agent loop;
-- the current repeated semantic acceptance proves one deterministic fixture behavior, not broad web-agent capability;
-- the Stagehand integration acceptance uses a deterministic fixture LLM for reproducibility;
-- persisted run state is durable, but in-flight execution is still process-bound and not worker-recoverable;
-- `CANCELLED` exists as a state but cancellation propagation is not implemented;
-- hard step/time/model-cost budgets are not implemented yet;
-- E2B/sandbox isolation has not started;
-- authentication, tenancy, and public-service network policy are not implemented;
-- local artifact storage is not a distributed production artifact service;
-- no production composition/bootstrap executable currently wires the complete service outside integration tests.
+Draft PR #2 / branch `codex/sales-avatar-foundation` contains an experimental sales/voice foundation:
+
+- deterministic sales session state and sales strategy;
+- Qwen/GPT-Live realtime integration;
+- optional HeyGen LiveAvatar transport;
+- server-owned commercial-truth canonicalization;
+- action proposal/confirmation/execution boundaries;
+- SalesOS trajectory/reward/experience structures;
+- focused adversarial action-security coverage.
+
+The branch is **not merged into main**, the real GPT-Live + HeyGen live acceptance remains incomplete, and its demo product ontology is generic SaaS rather than our AI-native transformation service. It is an asset for selective reuse, not current product truth.
+
+## What is not built yet
+
+Astra does not yet have:
+
+- an owned multi-step agent loop; the current RunEngine foundation still reflects the earlier one-observe/select/act capability limit;
+- explicit completion/effect semantics, cancellation propagation, and execution budgets for broader autonomy;
+- a canonical definition of the service it is allowed to sell;
+- an AI-native company/workforce transformation ontology;
+- owned `Prospect`, `Buyer`, `Opportunity`, `QualificationState`, `SalesDecision`, `Outcome`, or `PublicProof` contracts on `main`;
+- a deterministic SalesBench for consultative selling quality;
+- a prospect-research vertical slice that separates observation from hypothesis;
+- ICP scoring or a persistent prospect queue;
+- outreach drafting/approval workflow;
+- a persistent consultative sales conversation on `main`;
+- a selected and live-accepted realtime voice path;
+- durable production-grade action execution;
+- real CRM, handoff, scheduling, email, LinkedIn, or X connectors;
+- a safe public-proof publishing pipeline;
+- an automated evaluator/experience-retrieval loop;
+- a controlled real-market pilot.
 
 ## Completed milestones
 
 | Gate | Status | Durable evidence |
 | --- | --- | --- |
-| 0 — Repository + CI | PASSED | PR #19 / CI evidence archived |
+| 0 — Repository + CI | PASSED | PR #19 / archived evidence |
 | 1 — Steel alone, local | PASSED | pinned Steel, 10/10 lifecycle regression |
 | 2 — Stagehand → Steel | PASSED | PR #25 |
 | 3 — Owned browser/agent interfaces | PASSED | PR #27 |
@@ -72,9 +102,13 @@ These are current product limits, not hidden future work:
 | 6 — Replayable SSE | PASSED | PR #33 |
 | 7 — Artifacts + debugging | PASSED | PR #35 |
 
-Detailed Gates 0–7 CI runs, timings, image digests, and artifact IDs are preserved in:
+Detailed Gates 0–7 evidence remains in:
 
 `docs/project/history/2026-09-18-gates-0-7-browser-foundation.md`
+
+The product pivot and branch-reuse rationale are recorded in:
+
+`docs/project/history/2026-09-19-astra-sales-product-pivot.md`
 
 Tests and current code remain stronger evidence than this summary.
 
@@ -84,7 +118,7 @@ The memory system uses:
 
 - `AGENTS.md` as the bootloader;
 - this file as the single hot-memory hub;
-- the active GitHub issue as short-lived working memory;
+- active GitHub issue #43 as short-lived working memory for the pivot/current gate;
 - `PLAN.md` for future gates;
 - `DECISIONS.md` for durable rationale;
 - `LESSONS.md` for reusable learning;
@@ -103,15 +137,18 @@ pnpm check:memory
 
 ## Known risks
 
-1. Broad agent capability is still unmeasured; Gate 8 must expose the real baseline rather than assume it.
-2. Upstream Stagehand/Steel/E2B APIs can evolve; owned adapters must continue isolating that churn.
-3. Live websites are inherently flaky; deterministic local fixtures remain the primary development/evaluation substrate.
-4. Adding sandbox/distributed infrastructure before agent behavior is measured can hide the actual product bottleneck.
-5. Project memory can drift again if hot state is allowed to become a historical ledger; detailed evidence belongs in cold history.
+1. **Capability risk:** browser/runtime reliability is proven more strongly than broad multi-step agent capability; Gates 8–11 must measure and close that gap before live prospecting expands.
+2. **Product-definition risk:** the service offer must be explicit before Astra is allowed to invent value propositions, pricing, proof, or guarantees.
+3. **Scope risk:** the existing browser foundation and draft voice branch are large assets; combining them wholesale would create integration debt. Reuse must be contract-by-contract.
+4. **Evaluation risk:** a persuasive agent can still be wrong or spammy. SalesBench must score factuality, evidence, relevance, information gain, pressure, qualification, and next-step quality separately.
+5. **Reputation risk:** outreach and social publishing change external reputation. Drafting is not authorization to send/post.
+6. **Platform/compliance risk:** LinkedIn/X/email/telephony automation has provider rules, consent, rate-limit, anti-spam, and account-risk constraints that must be encoded before autonomous use.
+7. **Voice risk:** PR #2 contains substantial transport code, but neither the intended GPT-Live + HeyGen route nor a canonical alternative is accepted for this product yet.
+8. **Memory risk:** this pivot will fail if future agents read old browser-product intent as current mission. Current STATE/AGENTS/PLAN now outrank that history.
 
 ## Next action
 
-**Roadmap correction issue #43:** merge the revised capability-first roadmap and test strategy with green CI. Then create/focus the revised Gate 8 issue and begin the evaluation harness/baseline implementation.
+**Gate 8 — Sales domain contract + SalesBench baseline:** define the service/claim boundary, owned sales-domain schemas, first AI-native transformation ontology, consultative policy, and deterministic sales scenarios before any live prospect outreach or voice integration.
 
 ## Gate completion rule
 

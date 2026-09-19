@@ -595,3 +595,103 @@ Adding E2B before measuring/fixing that capability would increase infrastructure
 - cancellation/budgets/effect semantics move before sandbox expansion;
 - profiles move after tenant/security/durable-worker foundations;
 - public exposure requires explicit isolation, network, authentication, tenancy, and durable execution gates.
+
+---
+
+## D-022 — Astra is the sales product; browser and voice are replaceable substrates
+
+**Date:** 2026-09-19  
+**Status:** Accepted
+
+**Decision**
+
+Astra's product mission is to become our company's autonomous consultative sales agent and public proof of the AI-native company/workforce transformation service it sells.
+
+The proven browser/run platform on `main` is retained as Astra's research/evidence/browser-action substrate. Realtime voice/avatar systems are conversation interfaces. Neither browser automation nor avatar rendering defines the product.
+
+The owned product layer centers on sales-domain contracts, business ontology, durable prospect/buyer/opportunity state, evidence-backed strategy, permissioned action execution, evaluation, and experience memory.
+
+**Why**
+
+Gates 0–7 prove valuable infrastructure but not a customer-facing product outcome. The user's explicit priority is now a seller that can find/research prospects, conduct consultative conversations, earn next steps, execute authorized actions, and demonstrate verified outcomes.
+
+D-021 already requires capability/evaluation work before infrastructure expansion. This decision applies that capability-first discipline to the sales product rather than returning to generic browser breadth as the north star.
+
+**Consequences**
+
+- Gates 0–7 remain valid historical foundation.
+- Future gates from Gate 8 are sales-product gates.
+- Generic browser capability grows only when a sales gate or measured reliability gap requires it.
+- One outward seller remains the default; internal components are not separate customer-facing personas.
+- Product success is measured by sales quality and real outcomes, not browser benchmark breadth alone.
+
+**Revisit when**
+
+Only if measured product evidence shows the company should return to a general-purpose browser-agent product rather than Astra as the primary sales product.
+
+---
+
+## D-023 — Reuse draft sales/voice work selectively; do not merge PR #2 wholesale
+
+**Date:** 2026-09-19  
+**Status:** Accepted
+
+**Decision**
+
+Treat draft PR #2 / `codex/sales-avatar-foundation` as a source of reusable contracts, tests, and implementation patterns rather than a branch to merge wholesale into current `main`.
+
+Potentially reusable elements include:
+
+- sales-state/canonical-decision boundaries;
+- action proposal/confirmation semantics;
+- adversarial action-security tests;
+- SalesOS trajectory/reward/experience concepts;
+- Qwen/GPT-Live/HeyGen and native GPT-Live voice adapters.
+
+Port/adapt only what satisfies the current main-branch sales contracts and gate acceptance.
+
+**Why**
+
+The draft branch contains useful work but was built against an older repository shape and a generic SaaS sales ontology. Its intended live GPT-Live + HeyGen acceptance is incomplete. A wholesale merge would combine two large architectures before the new product contracts and multi-step capability baseline are stable.
+
+**Consequences**
+
+- Gate 8 defines owned sales-domain contracts first.
+- Gates 9–11 establish the owned loop/effect semantics/research qualification before voice work.
+- Gate 16 may selectively reuse sales-state/canonicalization concepts.
+- Gate 17 benchmarks/selects a voice route using measured latency/reliability.
+- Old branch tests are reference evidence, not proof that ported main-branch behavior works.
+
+**Revisit when**
+
+If later comparison shows a rebased merge is lower risk than selective porting while preserving current contracts and all gate evidence.
+
+---
+
+## D-024 — Public demonstration output must be derived from verified evidence
+
+**Date:** 2026-09-19  
+**Status:** Accepted
+
+**Decision**
+
+Astra should eventually demonstrate its own sales results publicly, including LinkedIn/X-ready proof, but public claims must be generated from verified run/outcome evidence.
+
+Early versions may create `PublicProof` artifacts and social-post drafts. External publication remains an explicit action requiring authorization until the bounded-autonomy gate establishes capability scope, platform constraints, redaction, idempotency, rate limits, and incident controls.
+
+**Why**
+
+The demonstration is part of the product: an agent that sells itself is stronger evidence than a marketing description. But reputation-changing publication converts model output into an external factual claim and must use the same server-owned-truth discipline as pricing/action execution.
+
+**Consequences**
+
+- no metric/outcome appears in public proof without durable evidence;
+- prospect/customer PII and private data are excluded by policy/tests;
+- drafting does not imply permission to publish;
+- published demonstrations remain traceable to a run/policy version;
+- autonomous posting is a later capability, not a prompt instruction.
+
+**Revisit when**
+
+After Gate 22 demonstrates bounded, revocable autonomous external actions and the operator explicitly enables publication capability.
+
