@@ -2,7 +2,7 @@
 
 ## Result
 
-Gate 9 passed in PR #55. Cold review found no product-code defect requiring a change to the verified implementation.
+Gate 9 passed in PR #55. Cold review found one narrow sanitization defect: `DECISION_REJECTED` progress copied raw policy/provider exception text. The fix keeps the terminal failure message unchanged but replaces durable loop-progress detail with an owned generic rejection summary, with a focused regression proving provider detail is excluded.
 
 The gate establishes the ownership split recorded in D-025: `RunEngine` owns durable run lifecycle, `@astra/agent-loop` owns repeated observe/decide/act orchestration, and Stagehand remains a replaceable semantic `AgentSession` provider.
 
@@ -46,6 +46,14 @@ Verified base at that time:
   - cleanup: passed.
 
 The deterministic RunEngine test separately proves an explicitly recoverable failed action can return control to the loop and still complete with coherent durable state.
+
+## Final review validation
+
+On Node 24.21.0 / pnpm 10.34.5 after the sanitization fix and memory writeback:
+
+- focused agent-loop + RunEngine regression: 8/8 passed;
+- `pnpm check:memory` — passed;
+- `pnpm check` — passed with lint, strict typecheck, 44/44 tests across 12 files, and all workspace builds.
 
 ## Boundary preserved
 

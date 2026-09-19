@@ -274,7 +274,8 @@ async function rejectDecision(
   await options.onProgress?.({
     type: "DECISION_REJECTED",
     iteration,
-    message,
+    message:
+      "Agent-loop policy decision was rejected.",
     durationMs:
       Date.now() - startedAt
   });
