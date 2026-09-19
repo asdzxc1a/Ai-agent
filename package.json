@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:steel": "vitest run --config vitest.steel.config.ts",
     "test:stagehand": "vitest run --config vitest.stagehand.config.ts",
+    "test:run-loop": "vitest run --config vitest.run-loop.config.ts",
     "build": "pnpm --recursive --if-present build",
     "check": "pnpm check:memory && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "test:api-browser": "vitest run --config vitest.api-browser.config.ts",

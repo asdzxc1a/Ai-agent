@@ -3,6 +3,25 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 
 import type { CreateRunRequest, RunSnapshot } from "@astra/contracts";
+import {
+  AgentLoopExecutor
+} from "../../agent-loop/src/index.js";
+import type {
+  AgentAction,
+  AgentActionResult,
+  AgentRuntime,
+  AgentSession,
+  OpenAgentSessionOptions,
+  RuntimeSchema
+} from "../../agent-runtime/src/index.js";
+import type {
+  BrowserRuntime,
+  BrowserSession,
+  BrowserSessionOptions
+} from "../../browser-runtime/src/index.js";
+import {
+  RunEngine
+} from "../../run-engine/src/index.js";
 
 import {
   createPostgresPool,
@@ -175,3 +194,255 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
     failed.error
   );
 });
+
+class DurableLoopBrowserSession
+  implements BrowserSession {
+  public readonly id =
+    "durable-loop-browser";
+  public readonly cdpUrl =
+    "ws://browser.test/durable-loop";
+  public closeCalls = 0;
+
+  public async close(): Promise<void> {
+    this.closeCalls += 1;
+  }
+}
+
+class DurableLoopBrowserRuntime
+  implements BrowserRuntime {
+  public readonly session =
+    new DurableLoopBrowserSession();
+
+  public async createSession(
+    options?: BrowserSessionOptions
+  ): Promise<BrowserSession> {
+    void options;
+    return this.session;
+  }
+}
+
+class DurableLoopAgentSession
+  implements AgentSession {
+  public actCalls = 0;
+  public closeCalls = 0;
+
+  public async navigate(
+    url: string
+  ): Promise<void> {
+    void url;
+  }
+
+  public async observe(
+    instruction: string
+  ): Promise<AgentAction[]> {
+    void instruction;
+    return [
+      {
+        selector: "#next",
+        description:
+          "Next deterministic research step",
+        method: "click"
+      }
+    ];
+  }
+
+  public async act(
+    action: AgentAction
+  ): Promise<AgentActionResult> {
+    this.actCalls += 1;
+    return {
+      success: true,
+      message: "ok",
+      actions: [action]
+    };
+  }
+
+  public async extract<T>(
+    instruction: string,
+    schema: RuntimeSchema<T>
+  ): Promise<T> {
+    void instruction;
+    return schema.parse({});
+  }
+
+  public async close(): Promise<void> {
+    this.closeCalls += 1;
+  }
+}
+
+class DurableLoopAgentRuntime
+  implements AgentRuntime {
+  public readonly session =
+    new DurableLoopAgentSession();
+
+  public async openSession(
+    options: OpenAgentSessionOptions
+  ): Promise<AgentSession> {
+    void options;
+    return this.session;
+  }
+}
+
+async function waitForDurableTerminal(
+  runId: string
+) {
+  for (
+    let attempt = 0;
+    attempt < 100;
+    attempt += 1
+  ) {
+    const run =
+      await repository.getRun(runId);
+
+    if (
+      run?.status === "COMPLETED" ||
+      run?.status === "FAILED"
+    ) {
+      return run;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 5);
+    });
+  }
+
+  throw new Error(
+    "Durable loop run did not reach terminal state."
+  );
+}
+
+test(
+  "PostgreSQL preserves ordered owned-loop progress across repository instances",
+  async () => {
+    const browserRuntime =
+      new DurableLoopBrowserRuntime();
+    const agentRuntime =
+      new DurableLoopAgentRuntime();
+
+    const engine = new RunEngine({
+      repository,
+      browserRuntime,
+      agentRuntime,
+      agentLoop:
+        new AgentLoopExecutor({
+          iterationCeiling: 5,
+          policy: {
+            async decide(input) {
+              const successes =
+                input.trajectory.filter(
+                  (entry) =>
+                    entry.actionOutcome
+                      ?.success === true
+                ).length;
+
+              if (successes >= 3) {
+                return {
+                  type: "COMPLETE",
+                  rationale:
+                    "Three durable research actions are recorded."
+                };
+              }
+
+              return {
+                type: "ACTION",
+                actionIndex: 0,
+                rationale:
+                  "Persist the next research action."
+              };
+            }
+          }
+        })
+    });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "http://fixture.test/research",
+          goal:
+            "Complete three durable research actions."
+        }
+      });
+
+    const terminal =
+      await waitForDurableTerminal(
+        started.id
+      );
+
+    expect(terminal.status).toBe(
+      "COMPLETED"
+    );
+    expect(terminal.result).toEqual({
+      completed: true,
+      iterations: 4
+    });
+
+    const reloaded =
+      new PostgresRunRepository(pool);
+    const steps =
+      await reloaded.listSteps(
+        started.id
+      );
+    const events =
+      await reloaded.listEvents(
+        started.id
+      );
+
+    expect(
+      steps.filter(
+        (step) =>
+          step.kind ===
+          "AGENT_LOOP_ACTION"
+      )
+    ).toHaveLength(3);
+    expect(
+      steps.filter(
+        (step) =>
+          step.kind ===
+          "AGENT_LOOP_DECISION"
+      ).map(
+        (step) =>
+          (
+            step.payload as {
+              decision: {
+                type: string;
+              };
+            }
+          ).decision.type
+      )
+    ).toEqual([
+      "ACTION",
+      "ACTION",
+      "ACTION",
+      "COMPLETE"
+    ]);
+    expect(
+      steps.map(
+        (step) =>
+          step.sequenceNumber
+      )
+    ).toEqual(
+      steps.map(
+        (_, index) => index + 1
+      )
+    );
+    expect(
+      events.some(
+        (event) =>
+          event.eventType ===
+          "RUN_PROGRESS"
+      )
+    ).toBe(true);
+    expect(
+      events.at(-1)?.eventType
+    ).toBe("RUN_COMPLETED");
+
+    expect(
+      browserRuntime.session
+        .closeCalls
+    ).toBe(1);
+    expect(
+      agentRuntime.session.closeCalls
+    ).toBe(1);
+  }
+);
