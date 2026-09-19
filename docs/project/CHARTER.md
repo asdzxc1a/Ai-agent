@@ -84,30 +84,28 @@ Treat E2B as infrastructure, never as agent logic.
 
 ## Core abstractions
 
-```ts
-export interface BrowserRuntime {
-  createSession(options?: BrowserSessionOptions): Promise<BrowserSession>;
-  closeSession(id: string): Promise<void>;
-}
+The product owns provider-neutral boundaries for browser sessions, agent sessions, durable run orchestration, run storage, and artifacts.
 
-export interface BrowserSession {
-  id: string;
-  cdpUrl: string;
-  viewerUrl?: string;
-  screenshot(): Promise<Buffer>;
-  close(): Promise<void>;
-}
+The canonical executable contracts live in code, not in this charter:
 
-export interface AgentRuntime {
-  run(input: {
-    cdpUrl: string;
-    goal: string;
-    outputSchema?: object;
-  }): Promise<AgentResult>;
-}
-```
+- `packages/browser-runtime/src/index.ts`;
+- `packages/agent-runtime/src/index.ts`;
+- `packages/run-engine/src/`;
+- `packages/artifact-store/src/`.
 
-Future replacements should preserve these boundaries.
+Architecturally:
+
+~~~text
+HTTP/API
+  ↓
+RunEngine
+  ├ RunRepository
+  ├ ArtifactStore
+  ├ BrowserRuntime → BrowserSession
+  └ AgentRuntime   → AgentSession
+~~~
+
+Provider-specific types must remain inside their adapters. The charter describes responsibilities and direction; exact TypeScript signatures are intentionally not duplicated here because code/tests are the stronger source of truth.
 
 ## Initial repository shape
 
