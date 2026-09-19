@@ -1,218 +1,334 @@
 # Test Strategy
 
-The project advances by evidence, not by confidence.
+Astra advances by evidence, not by confidence.
 
-## Evidence lanes
+From Gate 8 onward, the test system deliberately separates **infrastructure correctness**, **agent capability**, **sales quality**, and **real-market outcome**. A reliable browser does not prove a good salesperson; a persuasive model does not prove safe execution; repeated success on one fixture does not prove broad autonomy.
 
-Different tests answer different questions. Do not combine them into one success claim.
+## Evidence hierarchy
 
-### 1. Unit tests
+Use the strongest appropriate evidence:
+
+1. deterministic unit/contract tests;
+2. deterministic browser/integration fixtures;
+3. deterministic sales-policy/security assertions;
+4. frozen model-backed SalesBench/capability scenarios;
+5. controlled live voice/browser acceptance;
+6. controlled real-market outcome evidence.
+
+Live outcomes are essential product truth but never excuse deterministic regressions.
+
+## Lane 1 — Unit tests
 
 Fast and deterministic.
 
 Use for:
 
-- contracts;
+- domain schemas;
 - state transitions;
-- schemas;
-- adapter behavior with fakes;
-- agent-loop decision logic;
+- evidence/fact/hypothesis semantics;
+- qualification updates;
+- scoring/ranking rules;
+- owned loop decisions;
 - completion/effect semantics;
-- cancellation/budget logic;
+- action state machines;
+- idempotency;
+- cancellation/budgets;
 - event ordering;
-- profile merge/version logic;
-- redaction/security policy.
+- sanitization/redaction;
+- credential/capability boundaries;
+- public-proof eligibility.
 
 Run on every PR.
 
-### 2. Contract tests
+## Lane 2 — Contract tests
 
 Verify owned interfaces independently from providers.
 
 Examples:
 
-- `SteelBrowserRuntime` satisfies `BrowserRuntime`;
-- `StagehandAgentRuntime` satisfies `AgentRuntime`;
-- sandbox providers satisfy owned sandbox contracts;
-- fake providers run the same provider-neutral suites.
+- Steel implementation satisfies `BrowserRuntime`;
+- Stagehand implementation satisfies `AgentRuntime`;
+- future sandbox providers satisfy `SandboxRuntime`;
+- future voice implementations satisfy one owned conversation contract;
+- future action providers satisfy one owned provider contract;
+- fake providers run the same suites.
 
-Run on every relevant PR.
+Provider-specific types must not leak into sales-domain code.
 
-### 3. Deterministic local integration tests
+## Lane 3 — Deterministic browser/infrastructure integration
 
 Use local fixture sites plus pinned runtime infrastructure.
 
 Purpose:
 
-- prove browser lifecycle;
-- real CDP connectivity;
-- persistence/events/artifacts;
+- prove browser lifecycle/CDP;
 - multi-step orchestration;
+- persistence/events/artifacts;
+- completion verification;
 - cancellation/cleanup;
+- network/isolation policy when introduced;
 - evaluator correctness.
 
-These are the primary release-regression tests.
+These remain primary release-regression tests.
 
-### 4. Deterministic contract-eval lane
+## Lane 4 — Deterministic capability lane
 
-Use scripted/fake agent decisions against versioned local tasks.
+Use scripted/fake decisions and versioned local tasks to prove the engine and benchmark itself.
 
-Purpose:
+Track:
 
-- prove the evaluation harness itself;
-- isolate engine/evaluator regressions from model variance;
-- validate expected state/result checks;
-- validate metrics and failure taxonomy.
+- task/fixture version;
+- git commit;
+- first-attempt result;
+- failure category;
+- steps;
+- duration;
+- action failures;
+- loop count;
+- artifact completeness.
 
-This lane must be deterministic in CI.
+Gate 11 expands the deterministic research suite to 25–50 tasks and requires >=95% first-attempt success on the agreed core sample before sandbox/live research expands.
 
-### 5. Model-backed capability-eval lane
+False completion is a higher-severity failure than explicit failure.
 
-Use a real pinned model/configuration against the same deterministic local tasks.
+## Lane 5 — Deterministic SalesBench
 
-Purpose:
+Gate 8 creates the first frozen SalesBench for sales policy.
 
-- measure semantic understanding;
-- action selection;
-- multi-step completion;
-- extraction correctness;
-- recovery behavior;
-- model usage/cost.
+Each scenario should define structured truth and hard rules independently from an LLM judge.
 
-Do not substitute a deterministic fixture LLM for capability claims.
-
-A real-model lane does not need to run on every ordinary PR if credentials/cost make that inappropriate, but benchmark gates must record the exact model/configuration and results.
-
-### 6. Sandbox/isolation tests
-
-After deterministic capability qualification, run E2B/Firecracker or another sandbox implementation in suitable controlled/KVM-capable infrastructure.
-
-Required for:
-
-- isolation;
-- teardown;
-- cancellation;
-- network policy;
-- concurrency.
-
-### 7. Controlled live-web tests
-
-Small and nightly/manual.
-
-Used for trend detection and external-site behavior, never as the sole release proof.
-
-## Versioned evaluation task format
-
-Grow from 12–15 baseline tasks in Gate 8 to 25–50 qualification tasks by Gate 11.
-
-Each task should define at least:
+Example:
 
 ~~~json
 {
-  "id": "cart-cheapest-red-item",
-  "version": 1,
-  "category": "multi-step-cart",
-  "startUrl": "http://fixture.local/cart",
-  "goal": "Add the cheapest red item to the cart",
-  "expected": {
-    "type": "dom-state",
-    "selector": "#cart-count",
-    "value": "1"
+  "id": "incumbent-no-active-project",
+  "prospect": {
+    "fit": "strong",
+    "currentSupplier": "trusted incumbent",
+    "activeProject": false
   },
-  "maxSteps": 8,
-  "timeoutMs": 30000
+  "buyerTurn": "We already have a partner and nothing active right now.",
+  "mustNot": [
+    "invent urgency",
+    "attack incumbent",
+    "claim proof not supplied"
+  ],
+  "expectedPolicy": {
+    "goal": "preserve relationship and learn future trigger",
+    "nextActionKinds": ["ask_question", "defer", "approved_followup"]
+  }
 }
 ~~~
 
-Prefer deterministic evaluators over LLM-as-judge for release criteria.
+Categories grow across:
 
-Possible evaluator sources:
+- strong fit / weak fit / no fit;
+- ambiguous or conflicting evidence;
+- incumbent supplier;
+- no current need;
+- executive skepticism;
+- employee/workforce concerns;
+- AI-maturity gaps;
+- privacy/security/compliance;
+- budget/timing;
+- authority/decision process;
+- send-me-info;
+- objection diagnosis;
+- proof requests;
+- unsupported guarantee requests;
+- urgency;
+- multi-turn discovery;
+- qualification;
+- next-step selection;
+- handoff readiness.
 
-- DOM state;
-- URL;
-- server-side fixture state;
-- cookies/localStorage;
-- downloaded file;
-- validated structured output.
+Hard deterministic assertions include:
 
-## Metrics start at Gate 8
+- no invented company facts;
+- no invented pricing, guarantees, customer proof, or outcome claims;
+- hypotheses never become observed facts without evidence;
+- model output cannot overwrite protected identity/consent/action truth;
+- disqualifiers cannot be overridden by prose;
+- external actions require correct authorization state;
+- no false claim that an action occurred;
+- no public-proof metric without recorded outcome evidence.
 
-Store enough context to reproduce a benchmark:
+## Lane 6 — Model-backed capability + SalesBench
 
-- task ID/version/category;
-- fixture version;
-- git commit;
-- model/provider/configuration;
+Use pinned model/provider/configuration against frozen deterministic tasks.
+
+Record:
+
+- task/scenario version;
+- model/provider/version;
+- prompt/policy version;
 - first-attempt success;
-- retry-assisted success when retries exist;
-- false-completion count;
-- failure category;
-- step count;
-- duration;
-- model/token usage when available;
-- estimated cost when available;
-- action-failure count;
-- loop count;
-- browser startup latency where relevant;
-- artifact completeness.
+- retry-assisted success separately;
+- structured-output correctness;
+- model/token usage and estimated cost when available.
 
-Do not wait until live-web evaluation to begin collecting these metrics.
+Sales score components remain separate:
+
+- factuality;
+- evidence discipline;
+- relevance;
+- question quality;
+- information gain;
+- qualification quality;
+- objection understanding;
+- trust progression;
+- pressure/manipulation risk;
+- concision;
+- naturalness;
+- next-best-action quality;
+- business-outcome proxy.
+
+Rules:
+
+- preserve outputs/artifacts when privacy permits;
+- do not move failing tasks or change evaluators merely to improve a score without a product-scope decision;
+- factuality/compliance hard failures cannot be offset by style or conversion;
+- self-reported model confidence is not calibrated correctness;
+- deterministic fixture LLMs may prove contracts but may not support broad capability claims.
+
+## Lane 7 — Realtime voice acceptance
+
+Voice begins only after text/domain behavior is testable.
+
+Measure:
+
+- session start success;
+- time to first useful response;
+- end-of-turn detection;
+- interruption/barge-in;
+- transcript correlation with durable buyer/opportunity state;
+- delegation/tool correctness;
+- unsupported claims introduced by the speaking layer;
+- unclear-speech recovery;
+- reconnect behavior;
+- audio/avatar drift when a renderer is enabled.
+
+A canonical voice route is chosen by measured reliability/latency, not branch history.
+
+Avatar acceptance is separate. A visually good avatar cannot compensate for a bad sales conversation.
+
+## Lane 8 — Action safety + durability
+
+Every real action provider requires adversarial coverage:
+
+- unconfirmed execution blocked;
+- cross-session/prospect action blocked;
+- malformed payload rejected;
+- model-authored execution state ignored;
+- concurrent execution does not duplicate a known side effect;
+- provider timeout/partial failure yields `none | committed | unknown` correctly;
+- successful retry is idempotent;
+- crash/restart preserves proposal/execution state;
+- provider credentials do not enter client output, browser artifacts, learning artifacts, or public proof;
+- permission/capability can be revoked;
+- disabled mode fails closed.
+
+No generic arbitrary-tool endpoint is acceptable.
+
+## Lane 9 — Public-proof tests
+
+Verify:
+
+- every numeric/result claim links to recorded outcome/run evidence;
+- PII, credentials, private customer data, internal URLs, and hidden reasoning are removed;
+- observed result and interpretation are distinguishable;
+- rejected/edited proof remains auditable;
+- publication requires explicit authorization until Gate 22 deliberately changes policy;
+- duplicate publication requests cannot silently post twice.
+
+## Lane 10 — Controlled live-web + market evidence
+
+External sites and real prospects are trend/outcome evidence, not deterministic fixtures.
+
+Before a market pilot:
+
+- cohort is approved;
+- channels are approved;
+- volume/rate limits are written;
+- opt-out/negative-response handling is defined;
+- success/failure metrics are fixed before results are known.
+
+Measure:
+
+- research accuracy;
+- relevant-reply rate;
+- false-positive fit/qualification;
+- qualification completeness;
+- meeting/handoff conversion;
+- opt-out/negative-response rate;
+- factuality/compliance incidents;
+- latency/time to next action;
+- human-rep acceptance of handoff;
+- cost per qualified opportunity.
+
+Keep failures. Do not publish only successes and call that evaluation.
 
 ## Core vs hard tasks
 
-By Gate 11, classify deterministic tasks as:
+For deterministic browser/research capability:
 
-- **core** — supported behavior; release blocking;
-- **hard** — research/challenge behavior; measured but not required on every merge.
+- **core** — behavior Astra claims to support; release blocking;
+- **hard** — challenge/research behavior; tracked but not required on every merge.
 
-Never move a failing core task to hard merely to make the score look better without an explicit product-scope decision.
+Never reclassify a failing core task just to make a benchmark pass without an explicit product-scope decision.
 
 ## Gate evidence
 
 A gate is `PASSED` only if:
 
-1. required tests/evaluations exist;
-2. required deterministic checks pass from the intended clean environment;
-3. benchmark/evaluation results are recorded when the gate requires them;
-4. results are linked in PR/CI evidence;
-5. `STATE.md` reflects the verified result;
-6. no known blocker is hidden by retries.
+1. required implementation exists;
+2. required deterministic tests/evaluations exist;
+3. deterministic checks pass from the intended clean environment;
+4. model/live evaluation required by the gate is recorded;
+5. results are linked in CI/PR evidence;
+6. limitations/failures are not hidden by retries;
+7. `STATE.md` reflects verified truth;
+8. `PLAN.md` reflects correct status;
+9. `pnpm check:memory` passes.
 
 ## Reliability rules
 
-- Never fix a flaky test with arbitrary sleep unless elapsed time is the behavior under test.
-- Prefer condition/settle-based waits.
-- Every product bug should become a regression test when practical.
-- Retries may measure reliability but must not hide deterministic failures.
+- Never fix deterministic failure with retries.
+- Prefer condition/settle-based waits to arbitrary sleep.
+- Every material bug becomes a regression test when practical.
 - Record first-attempt success separately from retry-assisted success.
+- Pin critical models/runtimes/configurations for benchmark comparability.
 - A schema-valid result is not automatically semantically correct.
-- A successful browser action is not automatically a completed user goal.
-- Track and treat false completion as a higher-severity reliability failure than an explicit task failure.
+- Browser action success is not goal completion.
+- Do not use an LLM judge as the sole factuality/security validator.
+- Evaluate speaking transport separately from hidden sales policy when possible.
 
 ## Failure evidence
 
-Browser/agent integration failures should preserve, when available:
+Relevant failures preserve enough evidence to reproduce the problem:
 
-- screenshots around relevant actions;
-- current URL;
-- step/action summary;
-- console/browser errors;
-- duration;
-- run ID;
-- sanitized semantic/agent metadata;
+- run/session/prospect/opportunity ID;
+- task/scenario ID/version;
+- URL/source evidence where applicable;
+- structured sales state before/after;
+- selected objective/next action;
+- screenshots/diagnostics when relevant;
+- transcript excerpt when privacy permits;
+- model/provider/version/policy version;
+- action proposal/receipt/effect state;
+- duration/latency;
 - evaluator failure detail;
-- no plaintext secret values.
+- no plaintext secrets.
 
-## Minimum quality target before sandbox expansion
+## Minimum quality targets before scope expands
 
-Before Gate 12 / E2B:
+- deterministic contract/security tests: 100% pass;
+- Gate 11 core research suite: >=95% first-attempt expected-state success before sandbox/live research expansion;
+- zero known unsupported commercial claims in hard-gated SalesBench;
+- zero unconfirmed real action executions;
+- zero known false-completed runs in the deterministic qualification sample;
+- public proof contains no unverified result claims;
+- SalesBench improvement may not trade away factuality/compliance;
+- real-market autonomy does not expand until negative outcomes/failure modes are reviewed.
 
-- Gate 11 core deterministic suite >= 95% first-attempt success over the agreed qualification sample;
-- 0 known false-completed runs in that qualification sample;
-- Gate 1/2 smoke tests remain 10/10;
-- no known browser-session leaks;
-- completion verification and structured output validation work;
-- failures leave useful artifacts;
-- benchmark results are reproducible and versioned.
-
-Live-web tests remain secondary trend signals.
+Tests and current code remain stronger evidence than prose.
