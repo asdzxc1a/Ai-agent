@@ -25,6 +25,7 @@ export {
   UnknownEvidenceSchema,
   emptyQualificationState,
   validateDecisionEvidence,
+  validateEvidenceGraph,
   validatePublicProofEvidence
 } from "./contracts.js";
 
