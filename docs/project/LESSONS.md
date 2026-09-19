@@ -456,3 +456,26 @@ Keep one small current-state hub, move detailed completed evidence to cold histo
 **Prevention**
 
 Treat memory quality as recovery quality rather than storage volume. Archive old detail, discard transient reasoning, and automate cheap structural invariants instead of building a more complex memory service.
+
+---
+
+## L-018 — Do not mistake enabling infrastructure for the product
+
+**Date:** 2026-09-19
+
+**Symptom**
+
+A roadmap can keep expanding browser/runtime capability because the infrastructure is measurable and technically interesting, while the actual user-value loop remains undefined.
+
+**Cause**
+
+The first seven gates correctly de-risked browser sessions, semantic interaction, durability, streaming, and artifacts. After those gates passed, the project still described the browser platform itself as the north star instead of asking what job Astra should own for the company.
+
+**Fix**
+
+Keep passed infrastructure as reusable substrate, then rewrite only future gates around one product outcome: Astra researches prospects, conducts consultative selling for our AI-native company/workforce transformation service, earns authorized next actions, records outcomes, and produces evidence-backed proof.
+
+**Prevention**
+
+After a foundation milestone, require the next roadmap gate to name a user/business outcome and a measurable capability gap. Do not add another infrastructure layer merely because it is available. Product mission may change; verified foundation evidence should not be discarded.
+
