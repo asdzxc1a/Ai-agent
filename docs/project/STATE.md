@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Browser foundation → agent capability evaluation  
 **Current gate:** Gate 8 — Deterministic eval suite  
-**Overall status:** Gates 0–7 are PASSED. Gate 7 was squash-merged in PR #35 at `653e07246857ddf5e95e5589bdac947ee58e511a`. The project-memory hardening is implemented in PR #38. Gate 8 remains the current product gate and no Gate 8 product implementation has started.
+**Overall status:** Gates 0–7 are PASSED. Gate 7 was squash-merged in PR #35 at `653e07246857ddf5e95e5589bdac947ee58e511a`. The project-memory hardening is PASSED and squash-merged in PR #38 at `f7962f936f15979965fb342fe27be92a83100f1b`. Gate 8 remains the current product gate and no Gate 8 product implementation has started.
 
 ## North star
 
@@ -111,7 +111,7 @@ pnpm check:memory
 
 ## Next action
 
-**Roadmap correction before Gate 8 implementation:** after PR #38 is merged with green CI, update the future gates and evaluation strategy using the completed architectural review. Then begin the revised Gate 8. No Gate 8 product implementation belongs in the memory-hardening PR.
+**Roadmap correction before Gate 8 implementation:** update the future gates and evaluation strategy using the completed architectural review, then begin the revised Gate 8. No Gate 8 product implementation has started.
 
 ## Gate completion rule
 
