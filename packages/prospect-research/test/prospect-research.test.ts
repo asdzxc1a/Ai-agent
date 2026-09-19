@@ -11,17 +11,22 @@ import {
 import {
   ApprovedResearchTargetSchema,
   InMemoryProspectResearchRepository,
+  ProspectResearchResultSchema,
   ProspectResearchService,
   ProspectResearchValidationError,
   isApprovedResearchUrl,
   toSalesEvidence,
   validateProspectResearch,
+  validateProspectResearchResult,
   type ApprovedResearchTarget,
-  type CompletedProspectResearchAttempt
+  type CompletedProspectResearchAttempt,
+  type ProspectResearchResult
 } from "../src/index.js";
 
 const timestamp =
-  "2026-09-19T12:00:00Z";
+  "2026-09-19T12:00:00.000Z";
+const runId =
+  "run_example";
 
 function target():
   ApprovedResearchTarget {
@@ -56,28 +61,29 @@ function completedAttempt(
   }
 ): CompletedProspectResearchAttempt {
   return {
-    id: "attempt.example",
+    id: runId,
     target: target(),
     createdAt: timestamp,
     status: "COMPLETED",
     report: {
-      id: "report.example",
-      runId: "run_example",
+      id: runId,
+      runId,
       targetId:
         "target.example",
       researchedAt:
         timestamp,
       prospect: {
         id:
-          "prospect.example",
+          "target.example",
         domain:
           "example.com",
         companyName:
-          "Example Systems",
-        fit: "strong",
+          null,
+        fit: "unknown",
         disqualifiers: [],
         evidenceIds: [
           "e.industry",
+          "e.workflow",
           "e.hiring"
         ],
         hypothesisIds: [
@@ -189,14 +195,64 @@ function completedAttempt(
   };
 }
 
+function researchResult(
+  artifactIds: {
+    industry: string;
+    workflow: string;
+    hiring: string;
+  }
+): ProspectResearchResult {
+  const attempt =
+    completedAttempt(
+      artifactIds
+    );
+
+  return {
+    companyName: null,
+    companySummary:
+      attempt.report
+        .companySummary,
+    transformationOpportunities:
+      attempt.report
+        .transformationOpportunities,
+    buyingSignals:
+      attempt.report
+        .buyingSignals,
+    unknowns:
+      attempt.report.unknowns,
+    evidence:
+      attempt.report.evidence
+        .map(
+          (evidence) => ({
+            id: evidence.id,
+            sourceUrl:
+              evidence.sourceUrl,
+            observation:
+              evidence.observation,
+            uncertainty:
+              evidence.uncertainty,
+            uncertaintyNote:
+              evidence
+                .uncertaintyNote,
+            artifactIds: [
+              ...evidence.artifactIds
+            ]
+          })
+        )
+  };
+}
+
 async function screenshot(
   artifacts:
     InMemoryArtifactStore,
-  name: string
+  name: string,
+  artifactRunId: string =
+    runId
 ): Promise<string> {
   const record =
     await artifacts.putArtifact({
-      runId: "run_example",
+      runId:
+        artifactRunId,
       kind: "SCREENSHOT",
       name,
       mediaType:
@@ -220,7 +276,7 @@ async function diagnosticsArtifact(
 ): Promise<string> {
   const record =
     await artifacts.putJsonArtifact({
-      runId: "run_example",
+      runId,
       kind: "DIAGNOSTICS",
       name,
       value: {
@@ -229,6 +285,19 @@ async function diagnosticsArtifact(
     });
 
   return record.id;
+}
+
+function service(
+  repository:
+    InMemoryProspectResearchRepository,
+  artifacts:
+    InMemoryArtifactStore
+): ProspectResearchService {
+  return new ProspectResearchService(
+    repository,
+    artifacts,
+    () => new Date(timestamp)
+  );
 }
 
 describe(
@@ -401,6 +470,143 @@ describe(
         "research evidence source is outside approved domains: e.industry"
       );
     });
+
+    it("rejects model-authored protected state and capture time", () => {
+      const result =
+        researchResult({
+          industry: "artifact.1",
+          workflow: "artifact.2",
+          hiring: "artifact.3"
+        });
+
+      expect(() =>
+        ProspectResearchResultSchema
+          .parse({
+            ...result,
+            runId:
+              "forged.run",
+            prospect: {
+              fit: "strong"
+            }
+          })
+      ).toThrow();
+
+      expect(() =>
+        ProspectResearchResultSchema
+          .parse({
+            ...result,
+            evidence:
+              result.evidence.map(
+                (evidence, index) =>
+                  index === 0
+                    ? {
+                        ...evidence,
+                        capturedAt:
+                          "2025-01-01T00:00:00.000Z"
+                      }
+                    : evidence
+              )
+          })
+      ).toThrow();
+    });
+
+    it("requires prospect evidence and hypothesis references to exactly match durable research", () => {
+      const attempt =
+        completedAttempt({
+          industry: "artifact.1",
+          workflow: "artifact.2",
+          hiring: "artifact.3"
+        });
+
+      attempt.report
+        .prospect.evidenceIds = [
+          "e.industry"
+        ];
+
+      expect(
+        validateProspectResearch(
+          attempt.target,
+          attempt.report
+        )
+      ).toContain(
+        "prospect evidenceIds must exactly match durable observed evidence"
+      );
+    });
+
+    it("rejects graph id collisions across evidence, claims, and unknowns", () => {
+      const attempt =
+        completedAttempt({
+          industry: "artifact.1",
+          workflow: "artifact.2",
+          hiring: "artifact.3"
+        });
+
+      attempt.report
+        .unknowns[0] = {
+          ...attempt.report
+            .unknowns[0]!,
+          id: "e.industry"
+        };
+
+      expect(
+        validateProspectResearch(
+          attempt.target,
+          attempt.report
+        )
+      ).toContain(
+        "research evidence, claim, and unknown ids must be globally unique"
+      );
+    });
+  }
+);
+
+describe(
+  "server-owned approval persistence",
+  () => {
+    it("rejects direct in-memory attempts before approval and after approval widening", async () => {
+      const repository =
+        new InMemoryProspectResearchRepository();
+      const attempt =
+        completedAttempt({
+          industry: "artifact.1",
+          workflow: "artifact.2",
+          hiring: "artifact.3"
+        });
+
+      await expect(
+        repository.saveAttempt(
+          attempt
+        )
+      ).rejects.toThrow(
+        "Research target was not approved before the attempt."
+      );
+
+      await repository.saveTarget(
+        target()
+      );
+
+      const widened =
+        completedAttempt({
+          industry: "artifact.1",
+          workflow: "artifact.2",
+          hiring: "artifact.3"
+        });
+      widened.target = {
+        ...widened.target,
+        approvedDomains: [
+          "example.com",
+          "evil.test"
+        ]
+      };
+
+      await expect(
+        repository.saveAttempt(
+          widened
+        )
+      ).rejects.toThrow(
+        "Research attempt target differs from the stored approval."
+      );
+    });
   }
 );
 
@@ -412,26 +618,26 @@ describe(
         new InMemoryArtifactStore();
       const repository =
         new InMemoryProspectResearchRepository();
-      const service =
-        new ProspectResearchService(
+      const research =
+        service(
           repository,
           artifacts
         );
 
       await expect(
-        service.networkPolicy(
+        research.networkPolicy(
           "target.example"
         )
       ).rejects.toThrow(
         "research target was not approved before network policy creation"
       );
 
-      await service.approveTarget(
+      await research.approveTarget(
         target()
       );
 
       await expect(
-        service.networkPolicy(
+        research.networkPolicy(
           "target.example"
         )
       ).resolves.toEqual({
@@ -441,52 +647,140 @@ describe(
       });
     });
 
-    it("requires referenced run artifacts, persists the prospect, and writes a redacted research evidence bundle", async () => {
+    it("creates a semantic completion verifier only from stored approval", async () => {
       const artifacts =
         new InMemoryArtifactStore();
       const repository =
         new InMemoryProspectResearchRepository();
-      const service =
-        new ProspectResearchService(
+      const research =
+        service(
           repository,
           artifacts
         );
 
+      await expect(
+        research.completionVerifier(
+          "target.example"
+        )
+      ).rejects.toThrow(
+        "research target was not approved before completion verifier creation"
+      );
+
+      await research.approveTarget(
+        target()
+      );
+      const verifier =
+        await research
+          .completionVerifier(
+            "target.example"
+          );
+      const result =
+        researchResult({
+          industry: "artifact.1",
+          workflow: "artifact.2",
+          hiring: "artifact.3"
+        });
+      const accepted =
+        verifier.verify({
+          request: {
+            url:
+              "https://www.example.com/",
+            goal:
+              "Research the approved company."
+          },
+          result,
+          signal:
+            new AbortController()
+              .signal
+        });
+
+      expect(accepted).toEqual({
+        verified: true,
+        message:
+          "Prospect research result passed semantic grounding validation."
+      });
+
+      result.companySummary[0] = {
+        ...result
+          .companySummary[0]!,
+        statement:
+          "Example Systems is the market leader."
+      };
+
+      const rejected =
+        verifier.verify({
+          request: {
+            url:
+              "https://www.example.com/",
+            goal:
+              "Research the approved company."
+          },
+          result,
+          signal:
+            new AbortController()
+              .signal
+        });
+
+      expect(rejected).toEqual({
+        verified: false,
+        message:
+          "Prospect research result failed semantic grounding validation."
+      });
+    });
+
+    it("derives protected state, requires run screenshots, persists the prospect, and writes research evidence", async () => {
+      const artifacts =
+        new InMemoryArtifactStore();
+      const repository =
+        new InMemoryProspectResearchRepository();
+      const research =
+        service(
+          repository,
+          artifacts
+        );
+      const artifactIds = {
+        industry:
+          await screenshot(
+            artifacts,
+            "industry.jpg"
+          ),
+        workflow:
+          await screenshot(
+            artifacts,
+            "workflow.jpg"
+          ),
+        hiring:
+          await screenshot(
+            artifacts,
+            "hiring.jpg"
+          )
+      };
+
+      await research.approveTarget(
+        target()
+      );
+
       const attempt =
-        completedAttempt({
-          industry:
-            await screenshot(
-              artifacts,
-              "industry.jpg"
-            ),
-          workflow:
-            await screenshot(
-              artifacts,
-              "workflow.jpg"
-            ),
-          hiring:
-            await screenshot(
-              artifacts,
-              "hiring.jpg"
+        await research.recordCompleted({
+          targetId:
+            "target.example",
+          runId,
+          result:
+            researchResult(
+              artifactIds
             )
         });
 
-      await service.approveTarget(
-        attempt.target
-      );
-
-      await expect(
-        service.recordCompleted(
-          attempt
+      expect(attempt).toEqual(
+        completedAttempt(
+          artifactIds
         )
-      ).resolves.toEqual(
-        attempt
       );
 
       expect(
         await repository
           .getProspect(
-            "prospect.example"
+            "target.example"
           )
       ).toEqual(
         attempt.report.prospect
@@ -495,7 +789,7 @@ describe(
       const records =
         await artifacts
           .listArtifacts(
-            "run_example"
+            runId
           );
       const bundle =
         records.find(
@@ -509,12 +803,28 @@ describe(
         bundle?.metadata
       ).toMatchObject({
         attemptId:
-          "attempt.example",
+          runId,
         prospectId:
-          "prospect.example",
+          "target.example",
         targetId:
           "target.example"
       });
+      expect(
+        attempt.report.prospect
+          .fit
+      ).toBe("unknown");
+      expect(
+        attempt.report.prospect
+          .disqualifiers
+      ).toEqual([]);
+      expect(
+        attempt.report.evidence
+          .every(
+            (evidence) =>
+              evidence.capturedAt ===
+              timestamp
+          )
+      ).toBe(true);
     });
 
     it("requires a screenshot artifact for every material observed evidence item", async () => {
@@ -522,8 +832,8 @@ describe(
         new InMemoryArtifactStore();
       const repository =
         new InMemoryProspectResearchRepository();
-      const service =
-        new ProspectResearchService(
+      const research =
+        service(
           repository,
           artifacts
         );
@@ -532,57 +842,64 @@ describe(
           artifacts,
           "page-diagnostics.json"
         );
-      const attempt =
-        completedAttempt({
-          industry:
-            diagnosticsOnly,
-          workflow:
-            diagnosticsOnly,
-          hiring:
-            diagnosticsOnly
-        });
 
-      await service.approveTarget(
-        attempt.target
+      await research.approveTarget(
+        target()
       );
 
       await expect(
-        service.recordCompleted(
-          attempt
-        )
+        research.recordCompleted({
+          targetId:
+            "target.example",
+          runId,
+          result:
+            researchResult({
+              industry:
+                diagnosticsOnly,
+              workflow:
+                diagnosticsOnly,
+              hiring:
+                diagnosticsOnly
+            })
+        })
       ).rejects.toThrow(
         "research evidence requires a screenshot artifact"
       );
     });
 
-    it("fails closed when a material evidence item references an artifact outside the run", async () => {
+    it("fails closed when evidence references a real screenshot from another run", async () => {
       const artifacts =
         new InMemoryArtifactStore();
       const repository =
         new InMemoryProspectResearchRepository();
-      const service =
-        new ProspectResearchService(
+      const research =
+        service(
           repository,
           artifacts
         );
-      const attempt =
-        completedAttempt({
-          industry:
-            "missing.industry",
-          workflow:
-            "missing.workflow",
-          hiring:
-            "missing.hiring"
-        });
+      const foreign =
+        await screenshot(
+          artifacts,
+          "foreign.jpg",
+          "other_run"
+        );
 
-      await service.approveTarget(
-        attempt.target
+      await research.approveTarget(
+        target()
       );
 
       await expect(
-        service.recordCompleted(
-          attempt
-        )
+        research.recordCompleted({
+          targetId:
+            "target.example",
+          runId,
+          result:
+            researchResult({
+              industry: foreign,
+              workflow: foreign,
+              hiring: foreign
+            })
+        })
       ).rejects.toBeInstanceOf(
         ProspectResearchValidationError
       );
@@ -590,94 +907,180 @@ describe(
       expect(
         await repository
           .getProspect(
-            "prospect.example"
+            "target.example"
           )
       ).toBeUndefined();
     });
 
-    it("rejects any completed attempt whose target approval was not stored first", async () => {
+    it("rejects any completed result whose target approval was not stored first", async () => {
       const artifacts =
         new InMemoryArtifactStore();
       const repository =
         new InMemoryProspectResearchRepository();
-      const service =
-        new ProspectResearchService(
+      const research =
+        service(
           repository,
           artifacts
         );
-      const attempt =
-        completedAttempt({
-          industry:
-            await screenshot(
-              artifacts,
-              "industry.jpg"
-            ),
-          workflow:
-            await screenshot(
-              artifacts,
-              "workflow.jpg"
-            ),
-          hiring:
-            await screenshot(
-              artifacts,
-              "hiring.jpg"
-            )
-        });
 
       await expect(
-        service.recordCompleted(
-          attempt
-        )
+        research.recordCompleted({
+          targetId:
+            "target.example",
+          runId,
+          result:
+            researchResult({
+              industry:
+                "missing.industry",
+              workflow:
+                "missing.workflow",
+              hiring:
+                "missing.hiring"
+            })
+        })
       ).rejects.toThrow(
         "research target was not approved before the attempt"
       );
     });
 
-    it("persists live-research failures with an explicit failure kind", async () => {
+    it("does not write a second evidence bundle for a duplicate attempt", async () => {
       const artifacts =
         new InMemoryArtifactStore();
       const repository =
         new InMemoryProspectResearchRepository();
-      const service =
-        new ProspectResearchService(
+      const research =
+        service(
+          repository,
+          artifacts
+        );
+      const artifactIds = {
+        industry:
+          await screenshot(
+            artifacts,
+            "industry.jpg"
+          ),
+        workflow:
+          await screenshot(
+            artifacts,
+            "workflow.jpg"
+          ),
+        hiring:
+          await screenshot(
+            artifacts,
+            "hiring.jpg"
+          )
+      };
+      const input = {
+        targetId:
+          "target.example",
+        runId,
+        result:
+          researchResult(
+            artifactIds
+          )
+      };
+
+      await research.approveTarget(
+        target()
+      );
+      await research.recordCompleted(
+        input
+      );
+
+      await expect(
+        research.recordCompleted(
+          input
+        )
+      ).rejects.toThrow(
+        "research attempt already exists"
+      );
+
+      const evidenceBundles =
+        (
+          await artifacts
+            .listArtifacts(
+              runId
+            )
+        ).filter(
+          (record) =>
+            record.kind ===
+            "RESEARCH_EVIDENCE"
+        );
+
+      expect(
+        evidenceBundles
+      ).toHaveLength(1);
+    });
+
+    it("persists live-research failures with server-owned approval, identity, and time", async () => {
+      const artifacts =
+        new InMemoryArtifactStore();
+      const repository =
+        new InMemoryProspectResearchRepository();
+      const research =
+        service(
           repository,
           artifacts
         );
 
-      const approved = target();
-      await service.approveTarget(
-        approved
+      await research.approveTarget(
+        target()
       );
 
       const failure =
-        await service.recordFailure({
-          id:
-            "attempt.failed",
-          target: approved,
-          createdAt: timestamp,
-          status: "FAILED",
+        await research.recordFailure({
+          targetId:
+            "target.example",
           runId:
             "run.failed",
-          failure: {
-            kind:
-              "LIVE_RESEARCH_FAILURE",
-            code:
-              "ACCESS_BLOCKED",
-            message:
-              "The approved public site blocked automated access."
-          }
+          code:
+            "ACCESS_BLOCKED",
+          message:
+            "The approved public site blocked automated access."
         });
 
       expect(
-        failure.failure.kind
-      ).toBe(
-        "LIVE_RESEARCH_FAILURE"
-      );
+        failure
+      ).toMatchObject({
+        id: "run.failed",
+        target: target(),
+        createdAt: timestamp,
+        status: "FAILED",
+        runId:
+          "run.failed",
+        failure: {
+          kind:
+            "LIVE_RESEARCH_FAILURE",
+          code:
+            "ACCESS_BLOCKED",
+          message:
+            "The approved public site blocked automated access."
+        }
+      });
       expect(
         await repository.getAttempt(
-          "attempt.failed"
+          "run.failed"
         )
       ).toEqual(failure);
     });
+  }
+);
+
+it(
+  "validates the model-facing result independently of durable protected state",
+  () => {
+    const result =
+      researchResult({
+        industry: "artifact.1",
+        workflow: "artifact.2",
+        hiring: "artifact.3"
+      });
+
+    expect(
+      validateProspectResearchResult(
+        target(),
+        result
+      )
+    ).toEqual(result);
   }
 );
