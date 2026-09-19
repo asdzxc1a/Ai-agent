@@ -771,11 +771,38 @@ describe(
             )
         });
 
-      expect(attempt).toEqual(
-        completedAttempt(
-          artifactIds
-        )
-      );
+      expect(attempt).toMatchObject({
+        id: runId,
+        target: target(),
+        createdAt: timestamp,
+        status: "COMPLETED",
+        report: {
+          id: runId,
+          runId,
+          targetId:
+            "target.example",
+          researchedAt:
+            timestamp,
+          prospect: {
+            id:
+              "target.example",
+            domain:
+              "example.com",
+            companyName:
+              null,
+            fit: "unknown",
+            disqualifiers: [],
+            evidenceIds: [
+              "e.industry",
+              "e.workflow",
+              "e.hiring"
+            ],
+            hypothesisIds: [
+              "h.workflow"
+            ]
+          }
+        }
+      });
 
       expect(
         await repository
@@ -817,14 +844,27 @@ describe(
         attempt.report.prospect
           .disqualifiers
       ).toEqual([]);
-      expect(
+      for (
+        const evidence of
         attempt.report.evidence
-          .every(
-            (evidence) =>
-              evidence.capturedAt ===
-              timestamp
-          )
-      ).toBe(true);
+      ) {
+        const screenshotRecord =
+          records.find(
+            (record) =>
+              record.id ===
+              evidence.artifactIds[0]
+          );
+
+        expect(
+          screenshotRecord?.kind
+        ).toBe("SCREENSHOT");
+        expect(
+          evidence.capturedAt
+        ).toBe(
+          screenshotRecord
+            ?.createdAt
+        );
+      }
     });
 
     it("requires a screenshot artifact for every material observed evidence item", async () => {
