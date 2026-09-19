@@ -1,6 +1,6 @@
 # Architecture Decision Ledger
 
-This is append-only. Keep entries concise.
+This is append-oriented durable memory. Keep entries concise. Existing entry substance is not rewritten; identifier-only legacy repairs may add a letter suffix so references remain unambiguous. New entries use the next normal numeric ID.
 
 ## D-001 — Use three foundations as separate layers
 
@@ -169,7 +169,7 @@ Upgrading Steel becomes an explicit, testable change: resolve a new digest, run 
 
 ---
 
-## D-008 — Pin external runtime images by immutable digest
+## D-008A — Pin external runtime images by immutable digest
 
 **Date:** 2026-09-18  
 **Status:** Accepted
@@ -484,3 +484,41 @@ Debugging evidence is valuable only if it does not couple product orchestration 
 
 PR #35: CI `35391692165`, Steel `35391691999`, and combined Stagehand/PostgreSQL/SSE `35391692005` all passed. The Steel acceptance directly proved JPEG capture plus console diagnostics against the pinned image, and the HTTP acceptance proved persisted downloadable JPEG evidence.
 
+
+---
+ 
+## D-019 — Keep project memory Git-centered, tiered, and mechanically validated
+
+**Date:** 2026-09-19  
+**Status:** Accepted
+
+**Decision**
+
+Keep GitHub/repository memory as the canonical project-memory system rather than adding a separate vector database, embedding index, or chat-memory dependency.
+
+Use distinct memory tiers:
+
+- `STATE.md` as the single small mutable hot-memory hub;
+- the active GitHub issue as short-lived working memory;
+- `PLAN.md` for future gates and acceptance criteria;
+- `DECISIONS.md` for durable architecture/product rationale;
+- `LESSONS.md` for reusable engineering learning;
+- `docs/project/history/` for cold completed evidence;
+- tests and CI as the strongest evidence.
+
+Maintain the full reusable protocol in `docs/project/PROJECT_MEMORY_SYSTEM.md`.
+
+Run a deterministic repository check that validates structural invariants such as required files, current-gate consistency, allowed gate status values, and unique decision/lesson identifiers.
+
+**Why**
+
+The existing GitHub-centered memory system already proved that a fresh context can recover the project and continue work without old chat history. The observed failures were hygiene failures—STATE growth, stale examples, and duplicate ledger identifiers—not evidence that a new storage system is required.
+
+**Consequences**
+
+- no separate memory service is introduced;
+- hot memory is aggressively compressed and old detail moves to cold history;
+- active issues become the normal working-memory layer;
+- structural memory drift becomes CI-visible;
+- chat remains context, not project state;
+- future memory infrastructure requires evidence that this simpler system is insufficient.

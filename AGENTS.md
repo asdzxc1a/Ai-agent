@@ -2,6 +2,8 @@
 
 This file is the entry point for Astra and any future coding agent.
 
+The complete, portable memory-system specification lives in `docs/project/PROJECT_MEMORY_SYSTEM.md`. Read that specification when maintaining or porting the memory system; ordinary implementation work should follow the shorter startup path below.
+
 ## Mission
 
 Build a TinyFish-like web-agent platform incrementally, with the smallest reliable architecture first.
@@ -16,12 +18,17 @@ Do **not** merge or fork all three projects. Integrate them through small adapte
 
 ## Fresh-context startup: read in this order
 
+After reading this file:
+
 1. `docs/project/STATE.md` — current truth, current gate, next action.
 2. The current gate only in `docs/project/PLAN.md`.
 3. `docs/project/TEST_STRATEGY.md` — required evidence for "done".
-4. Read `docs/project/DECISIONS.md` only when touching an architectural decision.
-5. Read `docs/project/LESSONS.md` only when a problem resembles an earlier mistake.
-6. Read `docs/project/CHARTER.md` when purpose/scope is unclear.
+4. The active GitHub issue for the current gate/subtask, if one exists.
+5. The code/tests relevant to that gate.
+6. Relevant entries in `docs/project/DECISIONS.md` only when architecture/product intent matters.
+7. Search `docs/project/LESSONS.md` only when the task resembles a previous problem or reusable pattern.
+8. `docs/project/CHARTER.md` when purpose/scope is unclear.
+9. `docs/project/history/` only when current evidence explicitly points there.
 
 Do not begin by reading all history.
 
@@ -36,34 +43,40 @@ When documents disagree, trust sources in this order:
 5. Historical notes.
 6. Old chat transcripts.
 
+The active GitHub issue is working memory for current scope. It must not silently override stronger sources; update the canonical memory if the task legitimately changes them.
+
 Chat is context, not project state.
 
 ## Working rule
 
-Work on **one gate at a time**. Do not start a later gate until the current gate's acceptance tests pass.
+Work on **one gate or one well-bounded subtask at a time**. Do not start a later gate until the current gate's acceptance tests pass unless the user explicitly changes priorities.
 
 Every meaningful change must end with:
 
 1. implementation;
 2. automated tests;
 3. test result recorded;
-4. `STATE.md` updated;
-5. `PLAN.md` gate status updated if the gate changed;
-6. `DECISIONS.md` updated only for durable architectural decisions;
-7. `LESSONS.md` updated only for reusable mistakes/insights.
+4. `pnpm check:memory`;
+5. `STATE.md` updated;
+6. `PLAN.md` gate status updated if the gate changed;
+7. `DECISIONS.md` updated only for durable architectural/product decisions;
+8. `LESSONS.md` updated only for reusable lessons;
+9. detailed completed evidence archived under `docs/project/history/` when it would bloat hot memory.
 
 ## Memory discipline
 
 Keep current context small.
 
-- `STATE.md` is mutable and short. It should answer: "Where are we? What works? What is broken? What next?"
+- `STATE.md` is the single mutable hot-memory hub. It should answer: "Where are we? What works? What is broken or uncertain? What next?"
 - `PLAN.md` is the roadmap, not a diary.
-- `DECISIONS.md` is append-only architecture memory.
-- `LESSONS.md` is append-only operational memory.
-- Tests are the strongest evidence.
-- Do not duplicate the same fact in five places.
-- Do not paste long logs into memory files. Link to commits/PRs/artifacts instead.
-- Archive milestone detail under `docs/project/history/` only when necessary.
+- The active GitHub issue is current working memory, not permanent project truth.
+- `DECISIONS.md` is durable architecture/product rationale.
+- `LESSONS.md` is reusable engineering learning.
+- `history/` is cold memory and should not be loaded by default.
+- Tests/CI are the strongest evidence.
+- Do not duplicate the same fact in several files.
+- Do not paste long logs or scratch reasoning into memory.
+- Most transient information should be discarded rather than preserved.
 
 ## Engineering constraints
 

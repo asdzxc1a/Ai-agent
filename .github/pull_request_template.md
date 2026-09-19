@@ -10,6 +10,7 @@ What gate/subtask does this PR complete?
 
 List exact commands or CI jobs and results.
 
+- [ ] `pnpm check:memory`
 - [ ] lint
 - [ ] typecheck
 - [ ] unit tests
@@ -18,11 +19,13 @@ List exact commands or CI jobs and results.
 
 ## Project-memory update
 
-- [ ] `docs/project/STATE.md` reflects the new truth
+- [ ] `docs/project/STATE.md` reflects the new truth and remains concise
 - [ ] `docs/project/PLAN.md` updated if gate status changed
-- [ ] `docs/project/DECISIONS.md` updated if a durable decision changed
-- [ ] `docs/project/LESSONS.md` updated if a reusable mistake/lesson was discovered
-- [ ] no long logs or transient scratch notes were added to memory files
+- [ ] active GitHub issue reflects important working discoveries/blockers
+- [ ] `docs/project/DECISIONS.md` updated only if a durable decision changed
+- [ ] `docs/project/LESSONS.md` updated only if a reusable lesson was discovered
+- [ ] detailed completed evidence moved to `docs/project/history/` when appropriate
+- [ ] no long logs, scratch reasoning, or duplicate current-state facts were added
 
 ## Fresh-agent handoff
 

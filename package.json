@@ -9,13 +9,14 @@
     "pnpm": ">=10.34.5 <11"
   },
   "scripts": {
+    "check:memory": "node scripts/check-project-memory.mjs",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:steel": "vitest run --config vitest.steel.config.ts",
     "test:stagehand": "vitest run --config vitest.stagehand.config.ts",
     "build": "pnpm --recursive --if-present build",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm check:memory && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "test:api-browser": "vitest run --config vitest.api-browser.config.ts",
     "test:postgres": "vitest run --config vitest.postgres.config.ts",
     "test:api-restart": "vitest run --config vitest.api-restart.config.ts",
