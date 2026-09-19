@@ -333,17 +333,27 @@ export type SalesDecision = z.infer<typeof SalesDecisionSchema>;
 export type Outcome = z.infer<typeof OutcomeSchema>;
 export type PublicProof = z.infer<typeof PublicProofSchema>;
 
+function unknownQualificationDimension() {
+  return {
+    status: "unknown" as const,
+    value: null,
+    evidenceIds: []
+  };
+}
+
 export function emptyQualificationState(): QualificationState {
-  return Object.fromEntries(
-    QUALIFICATION_DIMENSIONS.map((dimension) => [
-      dimension,
-      {
-        status: "unknown",
-        value: null,
-        evidenceIds: []
-      }
-    ])
-  ) as QualificationState;
+  return {
+    transformationNeed: unknownQualificationDimension(),
+    workflowPain: unknownQualificationDimension(),
+    businessImpact: unknownQualificationDimension(),
+    aiMaturity: unknownQualificationDimension(),
+    sponsor: unknownQualificationDimension(),
+    decisionProcess: unknownQualificationDimension(),
+    timeline: unknownQualificationDimension(),
+    budgetSignal: unknownQualificationDimension(),
+    securityCompliance: unknownQualificationDimension(),
+    nextStepReadiness: unknownQualificationDimension()
+  };
 }
 
 export function validateDecisionEvidence(input: {
