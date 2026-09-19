@@ -103,6 +103,22 @@ Its previous integration gate recorded green automated results, but:
 
 Therefore D-022 requires selective reuse behind new owned contracts rather than a wholesale branch merge.
 
+## Capability-first constraint inherited from current main
+
+While this pivot was being prepared, current `main` accepted D-021: broad agent capability must be measured and an owned multi-step loop/completion/effect model must exist before sandbox/infrastructure expansion.
+
+That decision is preserved rather than overwritten.
+
+The sales roadmap therefore separates:
+
+1. Gate 8 — sales domain + SalesBench + honest baseline;
+2. Gate 9 — owned multi-step sales-agent loop;
+3. Gate 10 — completion/effect/cancellation/budget semantics;
+4. Gate 11 — deterministic prospect-research qualification;
+5. only then sandbox/live prospect research.
+
+This matters because the existing browser foundation proves integration reliability more strongly than broad autonomous task capability.
+
 ## Why Gate 8 starts with domain + evaluation
 
 It would be easy to jump immediately to voice, prospect scraping, CRM connectors, or social posting.
