@@ -334,7 +334,7 @@ Acceptance for the core suite:
 
 ## Gate 12 — Sandbox + network safety for external research
 
-**Status:** IN_PROGRESS
+**Status:** PASSED
 
 Purpose:
 
@@ -363,7 +363,7 @@ Acceptance:
 
 ## Gate 13 — Evidence-backed live prospect research
 
-**Status:** NOT_STARTED
+**Status:** IN_PROGRESS
 
 Purpose:
 

@@ -23,6 +23,9 @@ export default defineConfig({
       ),
       "@astra/research-bench": workspaceSource(
         "./packages/research-bench/src/index.ts"
+      ),
+      "@astra/sandbox-runtime": workspaceSource(
+        "./packages/sandbox-runtime/src/index.ts"
       )
     }
   }

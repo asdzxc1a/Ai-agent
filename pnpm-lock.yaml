@@ -81,6 +81,9 @@ importers:
       '@astra/browser-steel':
         specifier: workspace:*
         version: link:../browser-steel
+      '@astra/sandbox-runtime':
+        specifier: workspace:*
+        version: link:../sandbox-runtime
 
   packages/artifact-store: {}
 
@@ -145,6 +148,12 @@ importers:
       zod:
         specifier: 4.4.3
         version: 4.4.3
+
+  packages/sandbox-runtime:
+    dependencies:
+      '@astra/browser-runtime':
+        specifier: workspace:*
+        version: link:../browser-runtime
 
 packages:
 

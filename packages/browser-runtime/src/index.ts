@@ -13,6 +13,26 @@ export interface BrowserScreenshotOptions {
   fullPage?: boolean;
 }
 
+export interface BrowserNetworkRequest {
+  url: string;
+  resourceType?: string;
+  isNavigation?: boolean;
+}
+
+export interface BrowserDomainPolicy {
+  allowedDomains?: readonly string[];
+  blockedDomains?: readonly string[];
+}
+
+export interface BrowserNetworkPolicy {
+  readonly domainPolicy?:
+    BrowserDomainPolicy;
+
+  assertAllowed(
+    request: BrowserNetworkRequest
+  ): Promise<void>;
+}
+
 export type BrowserDiagnosticKind =
   | "console"
   | "page-error"
@@ -33,6 +53,8 @@ export interface BrowserSession {
   readonly id: string;
   readonly cdpUrl: string;
   readonly viewerUrl?: string;
+  readonly isolationId?: string;
+  readonly networkPolicy?: BrowserNetworkPolicy;
 
   captureScreenshot?(
     options?: BrowserScreenshotOptions

@@ -16,6 +16,10 @@ import {
   SteelBrowserRuntime,
   SteelClient
 } from "@astra/browser-steel";
+import {
+  LocalSandboxRuntime,
+  SandboxedBrowserRuntime
+} from "../../sandbox-runtime/src/index.js";
 
 import {
   InMemoryRunRepository,
@@ -101,6 +105,8 @@ class BlockingAgentRuntime
   implements AgentRuntime {
   public browserId:
     string | undefined;
+  public isolationId:
+    string | undefined;
   public readonly session =
     new BlockingAgentSession();
 
@@ -110,6 +116,9 @@ class BlockingAgentRuntime
   ): Promise<AgentSession> {
     this.browserId =
       options.browser.id;
+    this.isolationId =
+      options.browser
+        .isolationId;
     return this.session;
   }
 }
@@ -195,11 +204,20 @@ test(
         repository:
           new InMemoryRunRepository(),
         browserRuntime:
-          new SteelBrowserRuntime({
-            baseUrl:
-              steelBaseUrl,
-            skipFingerprintInjection:
-              true
+          new SandboxedBrowserRuntime({
+            sandboxRuntime:
+              new LocalSandboxRuntime({
+                trustedHostnames: [
+                  "host.docker.internal"
+                ]
+              }),
+            browserRuntime:
+              new SteelBrowserRuntime({
+                baseUrl:
+                  steelBaseUrl,
+                skipFingerprintInjection:
+                  true
+              })
           }),
         agentRuntime: runtime
       });
@@ -218,6 +236,10 @@ test(
       await waitForBrowserId(
         runtime
       );
+
+    expect(
+      runtime.isolationId
+    ).toBeTypeOf("string");
 
     await engine.cancelRun(
       started.id

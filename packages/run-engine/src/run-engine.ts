@@ -794,7 +794,14 @@ export class RunEngine implements RunService {
           browserId: browser.id,
           viewerAvailable:
             browser.viewerUrl !==
+            undefined,
+          ...(browser.isolationId ===
             undefined
+            ? {}
+            : {
+                isolationId:
+                  browser.isolationId
+              })
         }
       );
 

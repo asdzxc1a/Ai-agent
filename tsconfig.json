@@ -41,6 +41,9 @@
       ],
       "@astra/research-bench": [
         "./packages/research-bench/src/index.ts"
+      ],
+      "@astra/sandbox-runtime": [
+        "./packages/sandbox-runtime/src/index.ts"
       ]
     }
   },

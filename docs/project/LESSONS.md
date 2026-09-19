@@ -590,3 +590,70 @@ Keep the frozen task definitions and evaluator expectations unchanged. Correct o
 **Prevention**
 
 Never improve a benchmark score by rewriting a failing measured task or expected answer. Separate benchmark ground truth, candidate code, and qualification harness so a defect can be localized and corrected without moving the goalposts.
+
+
+---
+
+## L-024 — Provider session IDs are not isolation proof
+
+**Date:** 2026-09-19
+
+**Symptom / context**
+
+The first Gate 12 pinned Stagehand→Steel provider run kept ResearchBench at 30/30 but failed state isolation: a second Steel session on the same self-hosted endpoint could read cookie/localStorage written by the first.
+
+**Cause**
+
+The pinned self-hosted Steel service reused one Chrome profile across its session lifecycle. Distinct API/session IDs described browser lifecycle, not an independent storage/process isolation boundary.
+
+**Fix**
+
+Keep the owned sandbox contract unchanged, treat one self-hosted Steel endpoint as single-tenant, reject concurrent sessions on that endpoint, prove simultaneous isolation with separate pinned Steel provider processes/endpoints, and scrub visited-origin browser state before sequential endpoint reuse. Add direct provider-container checks for filesystem, process, and loopback-port separation.
+
+**Prevention**
+
+Never infer tenant or sandbox isolation from resource IDs, SDK abstractions, or provider terminology. Test the exact protected state and process/network boundary on the exact pinned provider configuration.
+
+---
+
+## L-025 — Security tests should prove blocked effects, not promise shape
+
+**Date:** 2026-09-19
+
+**Symptom / context**
+
+Navigation to an allowed fixture that redirected toward a blocked target could resolve even though Stagehand's context policy prevented the redirected request from reaching the target.
+
+**Cause**
+
+Browser navigation APIs do not guarantee that a blocked redirect surfaces as a rejected `goto()` promise. Treating rejection shape as the security invariant confused provider/API behavior with the actual network effect.
+
+**Fix**
+
+Keep direct-navigation preflight for typed failures, but test redirect protection with a reachable disallowed sentinel and assert the sentinel receives zero requests.
+
+**Prevention**
+
+For safety boundaries, assert that the prohibited effect did not happen. Promise rejection, response status, and diagnostics may support the test, but they are not substitutes for effect-level evidence.
+
+---
+
+## L-026 — Cleanup commands must use the provider-supported CDP target
+
+**Date:** 2026-09-19
+
+**Symptom / context**
+
+An attempted sequential browser-state scrub sent `Storage.clearDataForOrigin` through Stagehand's root browser connection. The pinned provider returned CDP `-32603 Internal error`, turning every otherwise-successful sandboxed research run into `CLEANUP_FAILED`.
+
+**Cause**
+
+A valid CDP method still has a target/session scope. Using the wrong connection surface can fail even when the command itself is correct.
+
+**Fix**
+
+Send origin-storage cleanup through Stagehand's supported `page.sendCDP(...)` target session, keep cookie cleanup through the context API, and keep cleanup fail-closed before the endpoint is considered safe for sequential reuse.
+
+**Prevention**
+
+Treat CDP method scope as part of the adapter contract. Test cleanup against the exact pinned provider rather than assuming a command accepted by one CDP connection type works on another.

@@ -13,6 +13,7 @@ on:
       - "packages/browser-steel/**"
       - "packages/contracts/**"
       - "packages/run-engine/**"
+      - "packages/sandbox-runtime/**"
       - "packages/run-postgres/**"
       - "apps/api/**"
       - "test-sites/**"
@@ -35,6 +36,7 @@ on:
       - "packages/agent-loop/**"
       - "packages/browser-steel/**"
       - "packages/run-engine/**"
+      - "packages/sandbox-runtime/**"
       - "apps/api/**"
       - "test-sites/**"
       - "infra/steel-image.txt"
@@ -124,6 +126,7 @@ jobs:
           docker run -d --rm \
             --name astra-steel-stagehand \
             --add-host=host.docker.internal:host-gateway \
+            --add-host=blocked.docker.internal:host-gateway \
             -p 3000:3000 \
             -p 9223:9223 \
             -e DOMAIN=localhost:3000 \
@@ -131,16 +134,31 @@ jobs:
             -e CHROME_HEADLESS=true \
             "$IMAGE"
 
+          docker run -d --rm \
+            --name astra-steel-stagehand-secondary \
+            --add-host=host.docker.internal:host-gateway \
+            --add-host=blocked.docker.internal:host-gateway \
+            -p 3001:3000 \
+            -p 9224:9223 \
+            -e DOMAIN=localhost:3001 \
+            -e CDP_DOMAIN=localhost:9224 \
+            -e CHROME_HEADLESS=true \
+            "$IMAGE"
+
           for attempt in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:3000/v1/health >/dev/null; then
-              echo "Steel is healthy."
+            if \
+              curl --fail --silent http://127.0.0.1:3000/v1/health >/dev/null && \
+              curl --fail --silent http://127.0.0.1:3001/v1/health >/dev/null
+            then
+              echo "Both Steel endpoints are healthy."
               exit 0
             fi
             sleep 2
           done
 
           docker logs astra-steel-stagehand || true
-          echo "Steel failed to become healthy." >&2
+          docker logs astra-steel-stagehand-secondary || true
+          echo "Steel endpoints failed to become healthy." >&2
           exit 1
 
       - name: Start pinned PostgreSQL
@@ -173,6 +191,7 @@ jobs:
       - name: Run ten-session Stagehand → Steel acceptance test
         env:
           STEEL_BASE_URL: http://127.0.0.1:3000
+          STEEL_SECONDARY_BASE_URL: http://127.0.0.1:3001
           STEEL_FIXTURE_URL: http://host.docker.internal:4173
         run: pnpm test:stagehand
 
@@ -203,8 +222,10 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          echo "=== Steel logs ==="
+          echo "=== Primary Steel logs ==="
           docker logs astra-steel-stagehand || true
+          echo "=== Secondary Steel logs ==="
+          docker logs astra-steel-stagehand-secondary || true
           echo "=== Fixture logs ==="
           cat /tmp/astra-fixture.log || true
           echo "=== Research fixture logs ==="
@@ -217,6 +238,7 @@ jobs:
         shell: bash
         run: |
           docker stop astra-steel-stagehand >/dev/null 2>&1 || true
+          docker stop astra-steel-stagehand-secondary >/dev/null 2>&1 || true
           docker stop astra-postgres >/dev/null 2>&1 || true
 
           if [[ -f /tmp/astra-fixture.pid ]]; then
