@@ -2,12 +2,15 @@
 
 ## Mission
 
-Build the smallest reliable TinyFish-like browser-agent platform, one evidence-backed gate at a time.
+Build Astra into our company's autonomous consultative sales agent and public proof of the service it sells.
 
-- **Steel**: browser/session/CDP runtime.
-- **Stagehand**: initial semantic browser layer.
-- **E2B**: later isolation layer, only after local agent behavior is measured and reliable.
-- We own product contracts/orchestration; upstream systems remain replaceable adapters.
+Astra should find and research suitable prospects, understand the company and buyer from evidence, sell our AI-native company/workforce transformation service consultatively, qualify real opportunities, propose safe next actions, execute only authorized actions, preserve outcome evidence, and produce sanitized proof that can become public demonstrations.
+
+- **Browser foundation**: Steel + Stagehand are Astra's research and browser-action substrate, not the product identity.
+- **Voice foundation**: the Qwen/GPT-Live/HeyGen work in draft PR #2 is a reusable conversation asset, not something to merge wholesale before measured acceptance.
+- **Owned moat**: sales ontology, customer/opportunity state, strategy, commercial truth, action contracts, evaluation, and experience memory.
+- One visible seller. Internal specialists/validators remain hidden implementation details.
+- External outreach, publishing, credentials, billing, destructive work, or other irreversible production actions require explicit authorization until a later gate deliberately grants bounded autonomy.
 
 Full memory protocol: `docs/project/PROJECT_MEMORY_SYSTEM.md`. Read it only when maintaining or porting project memory.
 
@@ -46,25 +49,31 @@ Do not preload all docs or history.
 - Ask only when a missing choice is genuinely blocking, unsafe to assume, or irreversible.
 - Work on one gate or bounded subtask at a time; the user may reprioritize.
 - Keep diffs focused; avoid unrelated cleanup.
-- Repository reads/searches, focused branches/PRs, and local non-production validation are authorized.
-- Do not perform production, credential, billing, destructive, or externally irreversible actions without explicit authorization.
+- Repository reads/searches, focused branches/PRs, local fixtures, and non-production validation are authorized.
+- Research and drafting are not authorization to send outreach or publish content.
+- Do not perform production, credential, billing, destructive, externally irreversible, or reputation-affecting actions without explicit authorization.
 - Do not store scratch reasoning as project memory.
 
 ## Architecture guardrails
 
 - TypeScript-first initially.
 - Provider-specific types stay in adapters; application code uses owned contracts.
-- Do not fork upstreams without a measured blocker and accepted decision.
-- Do not jump ahead of the evidence-backed roadmap; especially do not add E2B/later layers early.
-- Authorization/capabilities live outside model prompts.
-- Irreversible/ambiguous browser actions must ultimately support `none | committed | unknown` effect semantics.
-- Prefer the smallest architecture that passes current acceptance.
+- Server-owned structured truth outranks model prose for identity, company facts, service claims, qualification, consent, action state, and execution receipts.
+- Models advise; owned policy and tools act.
+- Browser, voice, avatar, CRM, email, calendar, and social providers remain replaceable adapters.
+- Preserve the proven browser foundation; do not replace it merely because the product mission changed.
+- Reuse draft sales/voice work selectively behind owned contracts; do not merge PR #2 wholesale without gate evidence.
+- Do not introduce a runtime swarm of agents unless one role has a measured need. Prefer deterministic reducers/validators plus one strong sales reasoner.
+- Irreversible or ambiguous actions must ultimately support `none | committed | unknown` effect semantics and durable idempotency.
+- Public demo claims must be derived from verified run evidence and sanitized before publication.
+- Prefer the smallest architecture that passes the current sales acceptance gate.
 
 ## Verify
 
 - Run the smallest meaningful checks that prove the change, plus gate-required acceptance tests.
 - Use `pnpm check` when full-repo validation is warranted.
 - Run `pnpm check:memory` when project-memory files/invariants change.
+- From Gate 8 onward, distinguish deterministic contract evidence from model-backed SalesBench evidence.
 - Fix failures caused by the change; do not hide deterministic failures with retries.
 - Do not repeat expensive green checks without new reason.
 - Do not claim completion while required evidence is red.
