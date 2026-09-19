@@ -77,14 +77,24 @@ function qualificationKnownBefore(
 
 function opportunity(
   target: QualificationDimensionKey | null = "transformationNeed",
-  signals: readonly SalesSignal[] = []
+  signals: readonly SalesSignal[] = [],
+  knownDimensions: readonly QualificationDimensionKey[] = []
 ): Opportunity {
+  const qualification = qualificationKnownBefore(target);
+  for (const dimension of knownDimensions) {
+    qualification[dimension] = {
+      status: "known",
+      value: `known-${dimension}`,
+      evidenceIds: []
+    };
+  }
+
   return {
     id: "opportunity-acme",
     prospectId: "prospect-acme",
     buyerIds: [],
     stage: "discovery",
-    qualification: qualificationKnownBefore(target),
+    qualification,
     activeSignals: [...signals],
     evidenceIds: [],
     nextAction: null
@@ -100,6 +110,7 @@ interface ScenarioOptions {
   fit?: Prospect["fit"];
   target?: QualificationDimensionKey | null;
   evidence?: readonly Evidence[];
+  knownDimensions?: readonly QualificationDimensionKey[];
   allowedActions: SalesBenchExpectation["allowedActions"];
   questionRequired?: boolean;
   questionTarget?: QualificationDimensionKey | null;
@@ -121,7 +132,8 @@ function scenario(options: ScenarioOptions): SalesBenchScenario {
       prospect: prospect(options.fit),
       opportunity: opportunity(
         options.target === undefined ? "transformationNeed" : options.target,
-        signals
+        signals,
+        options.knownDimensions
       ),
       availableEvidence: [...(options.evidence ?? [])],
       serviceOffer: ASTRA_SERVICE_OFFER_V1
@@ -391,6 +403,7 @@ export const SALES_BENCH_V1: readonly SalesBenchScenario[] = [
     description: "Existing-supplier handling should not re-ask known workflow pain.",
     signal: "existing_supplier",
     target: "transformationNeed",
+    knownDimensions: ["workflowPain"],
     allowedActions: ["ask_question"],
     questionRequired: true,
     questionTarget: "transformationNeed"
@@ -401,6 +414,7 @@ export const SALES_BENCH_V1: readonly SalesBenchScenario[] = [
     description: "Do not re-ask budget when the budget signal is already known.",
     signal: "budget_question",
     target: "transformationNeed",
+    knownDimensions: ["budgetSignal"],
     allowedActions: ["ask_question", "defer"],
     questionRequired: true,
     questionTarget: "transformationNeed"
@@ -411,6 +425,7 @@ export const SALES_BENCH_V1: readonly SalesBenchScenario[] = [
     description: "Do not re-ask a decision-process fact already known.",
     signal: "decision_process",
     target: "transformationNeed",
+    knownDimensions: ["decisionProcess"],
     allowedActions: ["ask_question"],
     questionRequired: true,
     questionTarget: "transformationNeed"
