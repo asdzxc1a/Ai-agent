@@ -356,29 +356,96 @@ export function emptyQualificationState(): QualificationState {
   };
 }
 
+export function validateEvidenceGraph(input: {
+  evidence: readonly Evidence[];
+  serviceOffer: ServiceOffer;
+}): string[] {
+  const evidenceById = new Map(
+    input.evidence.map((item) => [item.id, item] as const)
+  );
+  const approvedClaims = new Map(
+    input.serviceOffer.approvedClaims.map((claim) => [claim.id, claim] as const)
+  );
+  const errors: string[] = [];
+
+  for (const item of input.evidence) {
+    if (item.kind === "approved_claim") {
+      const approved = approvedClaims.get(item.claimId);
+      if (!approved) {
+        errors.push(`unknown approved claim evidence: ${item.claimId}`);
+      } else if (approved.text !== item.statement) {
+        errors.push(`approved claim text mismatch: ${item.claimId}`);
+      }
+      continue;
+    }
+
+    if (item.kind !== "inferred_hypothesis") continue;
+
+    for (const supportingId of item.supportingEvidenceIds) {
+      const supporting = evidenceById.get(supportingId);
+      if (!supporting) {
+        errors.push(`hypothesis references unknown evidence: ${supportingId}`);
+      } else if (supporting.kind === "unknown") {
+        errors.push(`hypothesis cannot use unknown as evidence: ${supportingId}`);
+      }
+    }
+  }
+
+  return errors;
+}
+
 export function validateDecisionEvidence(input: {
   decision: SalesDecision;
   evidence: readonly Evidence[];
   serviceOffer: ServiceOffer;
 }): string[] {
-  const evidenceIds = new Set(input.evidence.map((item) => item.id));
-  const approvedClaimIds = new Set(
-    input.serviceOffer.approvedClaims.map((claim) => claim.id)
+  const evidenceById = new Map(
+    input.evidence.map((item) => [item.id, item] as const)
   );
-  const errors: string[] = [];
+  const approvedClaims = new Map(
+    input.serviceOffer.approvedClaims.map((claim) => [claim.id, claim] as const)
+  );
+  const errors = validateEvidenceGraph({
+    evidence: input.evidence,
+    serviceOffer: input.serviceOffer
+  });
 
   for (const claim of input.decision.claims) {
     if (claim.kind === "approved_claim") {
-      if (!approvedClaimIds.has(claim.approvedClaimId)) {
+      const approved = approvedClaims.get(claim.approvedClaimId);
+      if (!approved) {
         errors.push(`unknown approved claim: ${claim.approvedClaimId}`);
+      } else if (approved.text !== claim.statement) {
+        errors.push(`approved claim text mismatch: ${claim.approvedClaimId}`);
       }
       continue;
     }
 
+    const referenced = claim.evidenceIds
+      .map((evidenceId) => evidenceById.get(evidenceId))
+      .filter((item): item is Evidence => item !== undefined);
+
     for (const evidenceId of claim.evidenceIds) {
-      if (!evidenceIds.has(evidenceId)) {
+      if (!evidenceById.has(evidenceId)) {
         errors.push(`unknown evidence: ${evidenceId}`);
       }
+    }
+
+    if (
+      claim.kind === "observed_fact" &&
+      !referenced.some((item) =>
+        item.kind === "observed_fact" &&
+        item.statement === claim.statement
+      )
+    ) {
+      errors.push("observed fact claim must match referenced observed evidence");
+    }
+
+    if (
+      claim.kind === "inferred_hypothesis" &&
+      referenced.some((item) => item.kind === "unknown")
+    ) {
+      errors.push("hypothesis claim cannot rely on unknown evidence");
     }
   }
 
