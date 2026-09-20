@@ -101,7 +101,7 @@ Selected final-run timings:
 - replayable SSE: 975ms;
 - durable API restart: 3.13s.
 
-Local final validation after the regression/memory promotion used Node 24.21.0 / pnpm 10.34.5 and passed `pnpm check` with 84/84 tests across 19 files plus all workspace builds.
+Local validation in the Gate 12 worktree used Node 24.13.1 / pnpm 10.34.5, emitted the repository's Node-engine warning (`>=24.21.0 <25` required), and passed `pnpm check` with 84/84 tests across 19 files plus all workspace builds. GitHub Actions used the required Node 24.21.0 runtime.
 
 ## Acceptance interpretation
 
