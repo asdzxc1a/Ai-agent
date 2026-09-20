@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Proven browser foundation → Astra autonomous sales product  
 **Current gate:** Gate 8 — Sales domain contract + SalesBench baseline  
-**Overall status:** Gates 0–7 remain PASSED and are preserved as Astra's browser/research/run foundation. The autonomous-sales product pivot is merged in PR #47 at `68c568c09920c223d690884dd6007a8e180cb190`. Gate 8 is IN_PROGRESS in issue #48 on branch gate-8-sales-domain-salesbench; service truth, sales-domain contracts, consultative policy, and SalesBench are the active work. The Git-centered memory system remains the canonical handoff mechanism.
+**Overall status:** Gates 0–7 remain PASSED and are preserved as Astra's browser/research/run foundation. The autonomous-sales product pivot is merged in PR #47 at `68c568c09920c223d690884dd6007a8e180cb190`. Gate 8 acceptance is PASSED on PR #52 code head `7c8e4f2ea5c9b3f412c25b0fe2ae0a8951299e29`; the remaining Gate 8 action is squash-merge. Gate 9 has not started. The Git-centered memory system remains the canonical handoff mechanism.
 
 ## North star
 
@@ -135,6 +135,17 @@ Structural invariants are checked with:
 pnpm check:memory
 ~~~
 
+## Gate 8 acceptance evidence
+
+Code head: `7c8e4f2ea5c9b3f412c25b0fe2ae0a8951299e29`.
+
+- CI `35452660433`: memory validation, lint, typecheck, **34/34 tests across 9 files**, and all builds passed.
+- Steel `35452660148`: 10-session browser regression + screenshot/diagnostic coverage passed. Artifact `10587865497`, digest `sha256:a9cf1f0afa4efebee124e784390320396bd5d75f6c2e4f49fad6bf037e3a3f13`.
+- Stagehand/Steel/PostgreSQL `35452660180`: semantic 10-session regression, HTTP browser, PostgreSQL, SSE replay, durable restart, and cleanup passed.
+- SalesBench V1 fingerprint: `58a809b67eb92e396b3feab365bcabbe528a410b52b028384f4849345e89a163`.
+- Baseline 0: **36 scenarios, 36/36 hard gates, 31/36 policy matches (86.11%)**, mean score `0.9675925925925927`.
+- Detailed evidence: `benchmarks/salesbench/baseline-0.json` and `docs/project/history/2026-09-19-gate-8-salesbench-baseline.md`.
+
 ## Known risks
 
 1. **Capability risk:** browser/runtime reliability is proven more strongly than broad multi-step agent capability; Gates 8–11 must measure and close that gap before live prospecting expands.
@@ -148,7 +159,7 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 8 — Sales domain contract + SalesBench baseline (issue #48):** finish and verify the sales-domain and sales-bench packages, generate the frozen Baseline 0 report, and run all required regressions before marking the gate passed.
+**Gate 8 / PR #52:** squash-merge the accepted Gate 8 change, then advance hot state to Gate 9 — Owned multi-step sales-agent loop. Do not begin Gate 9 implementation before the Gate 8 merge.
 
 ## Gate completion rule
 
