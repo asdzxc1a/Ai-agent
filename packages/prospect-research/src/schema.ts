@@ -880,6 +880,30 @@ export const ProspectResearchSampleSchema =
 
         if (
           sample.selectionUniverse !==
+            null &&
+          Date.parse(
+            sample
+              .selectionUniverse
+              .sourceAsOfDate +
+              "T00:00:00.000Z"
+          ) >
+            Date.parse(
+              sample.frozenAt
+            )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "selectionUniverse",
+              "sourceAsOfDate"
+            ],
+            message:
+              "selection universe source date must not be after sample freeze"
+          });
+        }
+
+        if (
+          sample.selectionUniverse !==
             null
         ) {
           const candidateIds =
