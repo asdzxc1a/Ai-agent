@@ -217,6 +217,8 @@ export class RunEngine implements RunService {
   readonly #createUsageMeter?: RunUsageMeterFactory;
   readonly #controllers =
     new Map<string, AbortController>();
+  readonly #executions =
+    new Map<string, Promise<void>>();
 
   public constructor({
     repository,
@@ -319,11 +321,33 @@ export class RunEngine implements RunService {
     }
 
     queueMicrotask(() => {
-      void this.#execute(
+      const execution =
+        this.#execute(
+          snapshot.id,
+          input,
+          controller,
+          usageMeter
+        )
+          .catch(
+            async (
+              error: unknown
+            ) => {
+              await this
+                .#handleExecutionRejection(
+                  snapshot.id,
+                  error
+                );
+            }
+          )
+          .finally(() => {
+            this.#executions.delete(
+              snapshot.id
+            );
+          });
+
+      this.#executions.set(
         snapshot.id,
-        input,
-        controller,
-        usageMeter
+        execution
       );
     });
 
@@ -393,18 +417,14 @@ export class RunEngine implements RunService {
           "Run cancellation was requested while no active executor owned the run."
       };
 
-    await this.#repository.appendEvent(
-      runId,
-      "RUN_CANCELLED",
-      {
-        terminalReason
-      }
-    );
-
-    return this.#repository.updateRun(
+    return this.#repository.finalizeRun(
       runId,
       {
         status: "CANCELLED",
+        goalStatus: "FAILED",
+        terminalReason
+      },
+      {
         goalStatus: "FAILED",
         terminalReason
       }
@@ -447,6 +467,66 @@ export class RunEngine implements RunService {
       runId,
       artifactId
     );
+  }
+
+  async #handleExecutionRejection(
+    runId: string,
+    error: unknown
+  ): Promise<void> {
+    void error;
+
+    try {
+      const current =
+        await this.#repository
+          .getRun(runId);
+
+      if (
+        current === undefined ||
+        current.status ===
+          "COMPLETED" ||
+        current.status ===
+          "FAILED" ||
+        current.status ===
+          "CANCELLED"
+      ) {
+        return;
+      }
+
+      const failure:
+        RunFailure = {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "Run execution could not persist its intended terminal state."
+        };
+      const terminalReason:
+        RunTerminalReason = {
+          code:
+            failure.code,
+          message:
+            failure.message
+        };
+
+      await this.#repository
+        .finalizeRun(
+          runId,
+          {
+            status: "FAILED",
+            goalStatus: "FAILED",
+            error: failure,
+            terminalReason
+          },
+          {
+            goalStatus: "FAILED",
+            error: failure,
+            terminalReason
+          }
+        );
+    } catch {
+      // The execution promise remains supervised even if durable
+      // storage is unavailable. A later reconciliation path must
+      // resolve any non-terminal record whose executor was lost.
+    }
   }
 
   async #captureScreenshot(
@@ -1447,27 +1527,23 @@ export class RunEngine implements RunService {
         terminal.status ===
         "CANCELLED"
       ) {
-        await this.#repository.appendEvent(
-          runId,
-          "RUN_CANCELLED",
-          {
-            goalStatus:
-              terminal.goalStatus,
-            terminalReason:
-              terminal.terminalReason
-          }
-        );
-
-        await this.#repository.updateRun(
-          runId,
-          {
-            status: "CANCELLED",
-            goalStatus:
-              terminal.goalStatus,
-            terminalReason:
-              terminal.terminalReason
-          }
-        );
+        await this.#repository
+          .finalizeRun(
+            runId,
+            {
+              status: "CANCELLED",
+              goalStatus:
+                terminal.goalStatus,
+              terminalReason:
+                terminal.terminalReason
+            },
+            {
+              goalStatus:
+                terminal.goalStatus,
+              terminalReason:
+                terminal.terminalReason
+            }
+          );
         return;
       }
 
@@ -1484,55 +1560,47 @@ export class RunEngine implements RunService {
           );
         }
 
-        await this.#repository.appendEvent(
-          runId,
-          "RUN_FAILED",
-          {
-            goalStatus:
-              terminal.goalStatus,
-            error: failure,
-            terminalReason:
-              terminal.terminalReason
-          }
-        );
-
-        await this.#repository.updateRun(
-          runId,
-          {
-            status: "FAILED",
-            goalStatus:
-              terminal.goalStatus,
-            error: failure,
-            terminalReason:
-              terminal.terminalReason
-          }
-        );
+        await this.#repository
+          .finalizeRun(
+            runId,
+            {
+              status: "FAILED",
+              goalStatus:
+                terminal.goalStatus,
+              error: failure,
+              terminalReason:
+                terminal.terminalReason
+            },
+            {
+              goalStatus:
+                terminal.goalStatus,
+              error: failure,
+              terminalReason:
+                terminal.terminalReason
+            }
+          );
         return;
       }
 
-      await this.#repository.appendEvent(
-        runId,
-        "RUN_COMPLETED",
-        {
-          goalStatus:
-            terminal.goalStatus,
-          result,
-          terminalReason:
-            terminal.terminalReason
-        }
-      );
-
-      await this.#repository.updateRun(
-        runId,
-        {
-          status: "COMPLETED",
-          goalStatus:
-            terminal.goalStatus,
-          result,
-          terminalReason:
-            terminal.terminalReason
-        }
-      );
+      await this.#repository
+        .finalizeRun(
+          runId,
+          {
+            status: "COMPLETED",
+            goalStatus:
+              terminal.goalStatus,
+            result,
+            terminalReason:
+              terminal.terminalReason
+          },
+          {
+            goalStatus:
+              terminal.goalStatus,
+            result,
+            terminalReason:
+              terminal.terminalReason
+          }
+        );
     } finally {
       clearTimeout(timeout);
       this.#controllers.delete(
