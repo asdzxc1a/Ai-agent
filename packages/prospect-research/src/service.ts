@@ -33,6 +33,7 @@ import type {
 import {
   buildCompletedProspectResearchAttempt,
   isApprovedResearchUrl,
+  validateHumanBaselineBrief,
   researchNetworkPolicyOptions,
   validateProspectResearchResult
 } from "./validation.js";
@@ -323,12 +324,17 @@ export class ProspectResearchService {
     const parsed =
       ProspectResearchHumanBaselineInputSchema
         .parse(input);
+    const brief =
+      validateHumanBaselineBrief(
+        parsed.brief
+      );
 
     try {
       return await this.#repository
-        .saveHumanBaseline(
-          parsed
-        );
+        .saveHumanBaseline({
+          ...parsed,
+          brief
+        });
     } catch (error) {
       throw new ProspectResearchValidationError([
         error instanceof Error
