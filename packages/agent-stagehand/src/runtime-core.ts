@@ -112,6 +112,61 @@ async function installNetworkPolicy(
     });
 }
 
+function httpOrigin(
+  value: string
+): string | undefined {
+  try {
+    const url = new URL(value);
+
+    if (
+      url.protocol !== "http:" &&
+      url.protocol !== "https:"
+    ) {
+      return undefined;
+    }
+
+    return url.origin;
+  } catch {
+    return undefined;
+  }
+}
+
+async function clearIsolatedBrowserState(
+  stagehand: Stagehand,
+  origins:
+    ReadonlySet<string>
+): Promise<void> {
+  const failures: unknown[] = [];
+
+  try {
+    await stagehand.context
+      .clearCookies();
+  } catch (error) {
+    failures.push(error);
+  }
+
+  for (const origin of origins) {
+    try {
+      await stagehand.context.conn.send(
+        "Storage.clearDataForOrigin",
+        {
+          origin,
+          storageTypes: "all"
+        }
+      );
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new AggregateError(
+      failures,
+      "Failed to clear isolated browser state."
+    );
+  }
+}
+
 function toAgentAction(action: {
   selector: string;
   description: string;
@@ -132,20 +187,49 @@ class StagehandAgentSession implements AgentSession {
   readonly #stagehand: Stagehand;
   readonly #networkPolicy?:
     BrowserNetworkPolicy;
+  readonly #isolated: boolean;
+  readonly #visitedOrigins =
+    new Set<string>();
   #closePromise?: Promise<void>;
 
   public constructor(
     stagehand: Stagehand,
     networkPolicy?:
-      BrowserNetworkPolicy
+      BrowserNetworkPolicy,
+    isolated = false
   ) {
     this.#stagehand = stagehand;
+    this.#isolated = isolated;
 
     if (
       networkPolicy !== undefined
     ) {
       this.#networkPolicy =
         networkPolicy;
+    }
+  }
+
+  #rememberOrigin(
+    value: string
+  ): void {
+    const origin =
+      httpOrigin(value);
+
+    if (origin !== undefined) {
+      this.#visitedOrigins.add(
+        origin
+      );
+    }
+  }
+
+  #rememberCurrentOrigins(): void {
+    for (
+      const page of
+      this.#stagehand.context.pages()
+    ) {
+      this.#rememberOrigin(
+        page.url()
+      );
     }
   }
 
@@ -166,7 +250,9 @@ class StagehandAgentSession implements AgentSession {
             url,
             isNavigation: true
           });
+        this.#rememberOrigin(url);
         await page.goto(url);
+        this.#rememberCurrentOrigins();
       },
       options.signal
     );
@@ -180,6 +266,7 @@ class StagehandAgentSession implements AgentSession {
       () => this.#stagehand.observe(instruction),
       options.signal
     );
+    this.#rememberCurrentOrigins();
     return actions.map(toAgentAction);
   }
 
@@ -211,6 +298,8 @@ class StagehandAgentSession implements AgentSession {
         } as Action),
       options.signal
     );
+
+    this.#rememberCurrentOrigins();
 
     return {
       success: result.success,
@@ -248,12 +337,59 @@ class StagehandAgentSession implements AgentSession {
       options.signal
     );
 
+    this.#rememberCurrentOrigins();
     return parse(value);
   }
 
   public close(): Promise<void> {
-    this.#closePromise ??= this.#stagehand.close();
+    this.#closePromise ??=
+      this.#closeOnce();
     return this.#closePromise;
+  }
+
+  async #closeOnce(): Promise<void> {
+    let cleanupError: unknown;
+
+    if (this.#isolated) {
+      try {
+        this.#rememberCurrentOrigins();
+        await clearIsolatedBrowserState(
+          this.#stagehand,
+          this.#visitedOrigins
+        );
+      } catch (error) {
+        cleanupError = error;
+      }
+    }
+
+    let closeError: unknown;
+
+    try {
+      await this.#stagehand.close();
+    } catch (error) {
+      closeError = error;
+    }
+
+    if (
+      cleanupError !== undefined &&
+      closeError !== undefined
+    ) {
+      throw new AggregateError(
+        [
+          cleanupError,
+          closeError
+        ],
+        "Isolated browser-state cleanup and Stagehand close both failed."
+      );
+    }
+
+    if (cleanupError !== undefined) {
+      throw cleanupError;
+    }
+
+    if (closeError !== undefined) {
+      throw closeError;
+    }
   }
 }
 
@@ -298,7 +434,9 @@ export class StagehandRuntimeCore implements AgentRuntime {
 
     return new StagehandAgentSession(
       stagehand,
-      browser.networkPolicy
+      browser.networkPolicy,
+      browser.isolationId !==
+        undefined
     );
   }
 }

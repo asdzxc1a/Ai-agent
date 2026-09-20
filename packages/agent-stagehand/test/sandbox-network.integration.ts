@@ -493,6 +493,10 @@ test(
       BrowserSession | undefined;
     let secondAgent:
       AgentSession | undefined;
+    let thirdBrowser:
+      BrowserSession | undefined;
+    let thirdAgent:
+      AgentSession | undefined;
 
     try {
       firstBrowser =
@@ -614,6 +618,48 @@ test(
         ).status
       ).not.toBe("released");
 
+      thirdBrowser =
+        await primaryRuntime
+          .createSession({
+            headless: true
+          });
+      thirdAgent =
+        await agentRuntimeInstance
+          .openSession({
+            browser:
+              thirdBrowser
+          });
+
+      await thirdAgent.navigate(
+        browserBaseUrl +
+          "/state"
+      );
+      expect(
+        await extractState(
+          thirdAgent
+        )
+      ).toEqual({
+        cookie: "missing",
+        storage: "missing"
+      });
+
+      const thirdBrowserId =
+        thirdBrowser.id;
+
+      await thirdAgent.close();
+      thirdAgent = undefined;
+      await thirdBrowser.close();
+      thirdBrowser = undefined;
+
+      expect(
+        (
+          await primarySteelClient
+            .getSession(
+              thirdBrowserId
+            )
+        ).status
+      ).toBe("released");
+
       await secondAgent.close();
       secondAgent = undefined;
       await secondBrowser.close();
@@ -636,6 +682,10 @@ test(
       await closePair(
         secondAgent,
         secondBrowser
+      );
+      await closePair(
+        thirdAgent,
+        thirdBrowser
       );
       await closeServer(
         server
