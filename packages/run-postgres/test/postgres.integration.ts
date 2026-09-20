@@ -266,3 +266,69 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
     }
   });
 });
+
+test.each([
+  "STEP_LIMIT_EXCEEDED",
+  "EXECUTION_TIMEOUT",
+  "MODEL_COST_BUDGET_EXCEEDED",
+  "ACTION_EFFECT_UNKNOWN"
+] as const)(
+  "PostgresRunRepository round-trips bounded terminal reason %s",
+  async (code) => {
+    const runId =
+      randomUUID();
+
+    await repository.createRun(
+      pendingRun(runId),
+      request
+    );
+    await repository.updateRun(
+      runId,
+      {
+        status: "RUNNING"
+      }
+    );
+
+    await repository.updateRun(
+      runId,
+      {
+        status: "FAILED",
+        goalState: "BLOCKED",
+        terminalReason: {
+          code,
+          message:
+            "bounded fixture"
+        },
+        error: {
+          code,
+          message:
+            "bounded fixture"
+        }
+      }
+    );
+
+    const reloadedRepository =
+      new PostgresRunRepository(
+        pool
+      );
+    const reloaded =
+      await reloadedRepository.getRun(
+        runId
+      );
+
+    expect(reloaded).toMatchObject({
+      status: "FAILED",
+      goalState: "BLOCKED",
+      terminalReason: {
+        code,
+        message:
+          "bounded fixture"
+      },
+      error: {
+        code,
+        message:
+          "bounded fixture"
+      }
+    });
+  }
+);
