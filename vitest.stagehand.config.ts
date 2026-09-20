@@ -29,6 +29,9 @@ export default defineConfig({
       ),
       "@astra/run-engine": workspaceSource(
         "./packages/run-engine/src/index.ts"
+      ),
+      "@astra/research-bench": workspaceSource(
+        "./packages/research-bench/src/index.ts"
       )
     }
   },
