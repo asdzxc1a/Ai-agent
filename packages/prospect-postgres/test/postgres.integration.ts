@@ -8,7 +8,9 @@ import {
 
 import type {
   CompletedProspectResearchAttempt,
-  FailedProspectResearchAttempt
+  FailedProspectResearchAttempt,
+  ProspectResearchSample,
+  ProspectResearchSampleOutcome
 } from "@astra/prospect-research";
 
 import {
@@ -45,7 +47,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query(
-    "TRUNCATE prospect_research_attempts, prospects, approved_research_targets RESTART IDENTITY CASCADE"
+    "TRUNCATE prospect_research_sample_outcomes, prospect_research_samples, prospect_research_attempts, prospects, approved_research_targets RESTART IDENTITY CASCADE"
   );
 });
 
@@ -158,6 +160,78 @@ function completedAttempt():
   };
 }
 
+function frozenSample():
+  ProspectResearchSample {
+  return {
+    id: "sample.pg",
+    status: "FROZEN",
+    protocolVersion:
+      "gate13-measured-research-v1",
+    targets: [
+      completedAttempt()
+        .target
+    ],
+    criteria: {
+      maxUnsupportedMaterialClaims:
+        0,
+      minUsableBriefRate:
+        0.9,
+      minMedianHumanTimeReductionFraction:
+        0.5,
+      requireNoUnauthorizedActions:
+        true,
+      maxDeliveryCostUsdPerBrief:
+        20
+    },
+    humanBaselineDescription:
+      "Operator researches and drafts the same brief manually.",
+    comparisonBaselineDescription:
+      null,
+    frozenBy:
+      "operator",
+    frozenAt:
+      "2026-09-19T12:01:00Z"
+  };
+}
+
+function measuredOutcome():
+  ProspectResearchSampleOutcome {
+  return {
+    id: "outcome.pg",
+    sampleId: "sample.pg",
+    targetId: "target.pg",
+    attemptId: "run_pg",
+    attemptStatus:
+      "COMPLETED",
+    briefDisposition:
+      "minor_edit",
+    reviewedBy:
+      "operator",
+    reviewedAt:
+      "2026-09-19T12:10:00Z",
+    materialClaimsReviewed:
+      1,
+    unsupportedMaterialClaims:
+      0,
+    corrections: {
+      minor: 1,
+      major: 0,
+      critical: 0
+    },
+    requestedFieldsTotal: 3,
+    requestedFieldsCovered: 3,
+    baselineHumanPreparationMinutes:
+      20,
+    astraHumanReviewMinutes:
+      8,
+    endToEndDurationMs:
+      5_000,
+    deliveryCostUsd: 5,
+    unauthorizedActions: 0,
+    notes: null
+  };
+}
+
 function failedAttempt():
   FailedProspectResearchAttempt {
   return {
@@ -213,6 +287,9 @@ test(
     await first.saveTarget(
       completed.target
     );
+    await first.saveSample(
+      frozenSample()
+    );
     expect(
       await first.getTarget(
         "target.pg"
@@ -230,6 +307,9 @@ test(
       completed
     );
     await first.saveAttempt(failed);
+    await first.saveSampleOutcome(
+      measuredOutcome()
+    );
 
     const second =
       new PostgresProspectResearchRepository(
@@ -260,6 +340,20 @@ test(
     ).toEqual([
       completed,
       failed
+    ]);
+    expect(
+      await second.getSample(
+        "sample.pg"
+      )
+    ).toEqual(
+      frozenSample()
+    );
+    expect(
+      await second.listSampleOutcomes(
+        "sample.pg"
+      )
+    ).toEqual([
+      measuredOutcome()
     ]);
   }
 );
@@ -341,6 +435,65 @@ test(
   }
 );
 
+
+test(
+  "PostgresProspectResearchRepository freezes stored target snapshots and prevents duplicate measured outcomes",
+  async () => {
+    const repository =
+      new PostgresProspectResearchRepository(
+        pool
+      );
+    const completed =
+      completedAttempt();
+
+    await repository.saveTarget(
+      completed.target
+    );
+
+    const widened:
+      ProspectResearchSample = {
+        ...frozenSample(),
+        id:
+          "sample.pg.widened",
+        targets: [
+          {
+            ...completed.target,
+            approvedDomains: [
+              ...completed.target
+                .approvedDomains,
+              "other-example.com"
+            ]
+          }
+        ]
+      };
+
+    await expect(
+      repository.saveSample(
+        widened
+      )
+    ).rejects.toThrow(
+      "Measured research sample target differs from the stored approval"
+    );
+
+    await repository.saveSample(
+      frozenSample()
+    );
+    await repository.saveAttempt(
+      completed
+    );
+    await repository.saveSampleOutcome(
+      measuredOutcome()
+    );
+
+    await expect(
+      repository.saveSampleOutcome({
+        ...measuredOutcome(),
+        id:
+          "outcome.pg.duplicate"
+      })
+    ).rejects.toThrow();
+  }
+);
 
 test(
   "PostgresProspectResearchRepository rejects direct protected-state forgery",
