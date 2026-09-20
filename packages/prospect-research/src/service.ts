@@ -1,24 +1,43 @@
 import type {
   ArtifactStore
 } from "@astra/artifact-store";
+import type {
+  RunCompletionVerifier,
+  RunService
+} from "@astra/run-engine";
 
 import {
   ApprovedResearchTargetSchema,
-  CompletedProspectResearchAttemptSchema,
   FailedProspectResearchAttemptSchema,
   type ApprovedResearchTarget,
   type CompletedProspectResearchAttempt,
-  type FailedProspectResearchAttempt
+  type FailedProspectResearchAttempt,
+  type LiveResearchFailureCode
 } from "./schema.js";
 import type {
   ProspectResearchRepository
 } from "./repository.js";
 import {
+  buildCompletedProspectResearchAttempt,
+  isApprovedResearchUrl,
   researchNetworkPolicyOptions,
-  sameApprovedResearchTarget,
-  validateProspectResearch
+  validateProspectResearchResult
 } from "./validation.js";
 
+type ResearchRunSnapshot =
+  NonNullable<
+    Awaited<
+      ReturnType<
+        RunService["getRun"]
+      >
+    >
+  >;
+
+export type ProspectResearchRunReader =
+  Pick<
+    RunService,
+    "getRun"
+  >;
 
 export class ProspectResearchValidationError
   extends Error {
@@ -41,21 +60,45 @@ export class ProspectResearchValidationError
   }
 }
 
+export interface RecordCompletedProspectResearchInput {
+  targetId: string;
+  runId: string;
+  artifactIdsByEvidenceId:
+    Readonly<
+      Record<
+        string,
+        readonly string[]
+      >
+    >;
+}
+
+export interface RecordFailedProspectResearchInput {
+  targetId: string;
+  runId: string;
+  code?:
+    LiveResearchFailureCode;
+}
+
 export class ProspectResearchService {
   readonly #repository:
     ProspectResearchRepository;
   readonly #artifacts:
     ArtifactStore;
+  readonly #runs:
+    ProspectResearchRunReader;
 
   public constructor(
     repository:
       ProspectResearchRepository,
-    artifacts: ArtifactStore
+    artifacts: ArtifactStore,
+    runs:
+      ProspectResearchRunReader
   ) {
     this.#repository =
       repository;
     this.#artifacts =
       artifacts;
+    this.#runs = runs;
   }
 
   public approvedTarget(
@@ -79,76 +122,260 @@ export class ProspectResearchService {
     return target;
   }
 
-  async #targetErrors(
-    target:
-      ApprovedResearchTarget
-  ): Promise<string[]> {
-    const approved =
-      await this.#repository
-        .getTarget(target.id);
-
-    if (approved === undefined) {
-      return [
-        "research target was not approved before the attempt"
-      ];
-    }
-
-    if (
-      !sameApprovedResearchTarget(
-        approved,
-        target
-      )
-    ) {
-      return [
-        "research attempt target differs from the stored approval"
-      ];
-    }
-
-    return [];
-  }
-
-  public async networkPolicy(
-    targetId: string
-  ) {
+  async #requireTarget(
+    targetId: string,
+    missingMessage: string
+  ): Promise<
+    ApprovedResearchTarget
+  > {
     const target =
       await this.#repository
         .getTarget(targetId);
 
     if (target === undefined) {
       throw new ProspectResearchValidationError([
-        "research target was not approved before network policy creation"
+        missingMessage
       ]);
     }
+
+    return target;
+  }
+
+  async #requireRun(
+    runId: string
+  ): Promise<
+    ResearchRunSnapshot
+  > {
+    const run =
+      await this.#runs
+        .getRun(runId);
+
+    if (run === undefined) {
+      throw new ProspectResearchValidationError([
+        "research run was not found: " +
+          runId
+      ]);
+    }
+
+    return run;
+  }
+
+  async #assertAttemptAvailable(
+    attemptId: string
+  ): Promise<void> {
+    const existing =
+      await this.#repository
+        .getAttempt(attemptId);
+
+    if (existing !== undefined) {
+      throw new ProspectResearchValidationError([
+        "research attempt already exists: " +
+          attemptId
+      ]);
+    }
+  }
+
+  #failureCode(
+    run: ResearchRunSnapshot,
+    requested:
+      LiveResearchFailureCode |
+      undefined
+  ): LiveResearchFailureCode {
+    if (
+      run.status ===
+      "CANCELLED"
+    ) {
+      if (
+        requested !== undefined &&
+        requested !== "CANCELLED"
+      ) {
+        throw new ProspectResearchValidationError([
+          "cancelled research run must be classified as CANCELLED"
+        ]);
+      }
+
+      return "CANCELLED";
+    }
+
+    if (
+      run.status !== "FAILED"
+    ) {
+      throw new ProspectResearchValidationError([
+        "only FAILED or CANCELLED runs can be persisted as live-research failures"
+      ]);
+    }
+
+    const terminalCode =
+      run.terminalReason?.code;
+
+    if (
+      terminalCode ===
+      "RUN_TIMEOUT"
+    ) {
+      if (
+        requested !== undefined &&
+        requested !== "TIMEOUT"
+      ) {
+        throw new ProspectResearchValidationError([
+          "RUN_TIMEOUT must be classified as TIMEOUT"
+        ]);
+      }
+
+      return "TIMEOUT";
+    }
+
+    if (
+      terminalCode ===
+      "CLEANUP_FAILED"
+    ) {
+      if (
+        requested !== undefined &&
+        requested !==
+          "CLEANUP_FAILED"
+      ) {
+        throw new ProspectResearchValidationError([
+          "CLEANUP_FAILED must retain its live-research failure code"
+        ]);
+      }
+
+      return "CLEANUP_FAILED";
+    }
+
+    if (
+      requested === undefined
+    ) {
+      throw new ProspectResearchValidationError([
+        "failed research run requires an explicit server-side live-research failure code"
+      ]);
+    }
+
+    if (
+      requested === "CANCELLED"
+    ) {
+      throw new ProspectResearchValidationError([
+        "FAILED research run cannot be classified as CANCELLED"
+      ]);
+    }
+
+    return requested;
+  }
+
+  public async networkPolicy(
+    targetId: string
+  ) {
+    const target =
+      await this.#requireTarget(
+        targetId,
+        "research target was not approved before network policy creation"
+      );
 
     return researchNetworkPolicyOptions(
       target
     );
   }
 
+  public async completionVerifier(
+    targetId: string
+  ): Promise<
+    RunCompletionVerifier
+  > {
+    const target =
+      await this.#requireTarget(
+        targetId,
+        "research target was not approved before completion verifier creation"
+      );
+
+    return {
+      verify(input) {
+        if (
+          !isApprovedResearchUrl(
+            target,
+            input.request.url
+          )
+        ) {
+          return {
+            verified: false,
+            message:
+              "Research run URL is outside the stored approved domains."
+          };
+        }
+
+        try {
+          validateProspectResearchResult(
+            target,
+            input.result
+          );
+
+          return {
+            verified: true,
+            message:
+              "Prospect research result passed semantic grounding validation."
+          };
+        } catch {
+          return {
+            verified: false,
+            message:
+              "Prospect research result failed semantic grounding validation."
+          };
+        }
+      }
+    };
+  }
+
   public async recordCompleted(
-    input: unknown
+    input:
+      RecordCompletedProspectResearchInput
   ): Promise<
     CompletedProspectResearchAttempt
   > {
-    const attempt =
-      CompletedProspectResearchAttemptSchema
-        .parse(input);
-    const errors = [
-      ...(
-        await this.#targetErrors(
-          attempt.target
-        )
-      ),
-      ...validateProspectResearch(
-        attempt.target,
-        attempt.report
-      )
-    ];
+    const target =
+      await this.#requireTarget(
+        input.targetId,
+        "research target was not approved before the attempt"
+      );
+    const run =
+      await this.#requireRun(
+        input.runId
+      );
+
+    if (
+      run.status !==
+        "COMPLETED" ||
+      run.goalStatus !==
+        "COMPLETED" ||
+      run.terminalReason?.code !==
+        "GOAL_COMPLETED" ||
+      run.result === undefined
+    ) {
+      throw new ProspectResearchValidationError([
+        "only a verifier-accepted completed run can be persisted as prospect research"
+      ]);
+    }
+
+    let result;
+
+    try {
+      result =
+        validateProspectResearchResult(
+          target,
+          run.result
+        );
+    } catch (error) {
+      throw new ProspectResearchValidationError([
+        error instanceof Error
+          ? error.message
+          : "research result failed validation"
+      ]);
+    }
+
+    await this.#assertAttemptAvailable(
+      run.id
+    );
 
     const artifacts =
       await this.#artifacts
         .listArtifacts(
-          attempt.report.runId
+          run.id
         );
     const artifactById =
       new Map(
@@ -157,17 +384,95 @@ export class ProspectResearchService {
             [artifact.id, artifact] as const
         )
       );
+    const errors: string[] = [];
+    const capturedAtByEvidenceId =
+      new Map<string, string>();
+    const artifactIdsByEvidenceId =
+      new Map<
+        string,
+        readonly string[]
+      >();
+    const expectedEvidenceIds =
+      result.evidence.map(
+        (evidence) =>
+          evidence.id
+      );
+    const suppliedEvidenceIds =
+      Object.keys(
+        input
+          .artifactIdsByEvidenceId
+      );
+
+    if (
+      expectedEvidenceIds.length !==
+        suppliedEvidenceIds.length ||
+      expectedEvidenceIds.some(
+        (evidenceId) =>
+          !suppliedEvidenceIds
+            .includes(
+              evidenceId
+            )
+      )
+    ) {
+      errors.push(
+        "server-owned artifact mapping must exactly match research evidence ids"
+      );
+    }
 
     for (
       const evidence of
-      attempt.report.evidence
+      result.evidence
     ) {
-      let hasScreenshot = false;
+      const suppliedArtifactIds =
+        input
+          .artifactIdsByEvidenceId[
+            evidence.id
+          ];
+      const screenshotCaptureTimes:
+        string[] = [];
+
+      if (
+        !Array.isArray(
+          suppliedArtifactIds
+        ) ||
+        suppliedArtifactIds
+          .length === 0
+      ) {
+        errors.push(
+          "research evidence requires server-owned artifact IDs: " +
+            evidence.id
+        );
+        continue;
+      }
+
+      if (
+        new Set(
+          suppliedArtifactIds
+        ).size !==
+          suppliedArtifactIds
+            .length
+      ) {
+        errors.push(
+          "research evidence artifact IDs must be unique: " +
+            evidence.id
+        );
+      }
 
       for (
         const artifactId of
-        evidence.artifactIds
+        suppliedArtifactIds
       ) {
+        if (
+          typeof artifactId !==
+          "string"
+        ) {
+          errors.push(
+            "research evidence artifact ID must be a string: " +
+              evidence.id
+          );
+          continue;
+        }
+
         const artifact =
           artifactById.get(
             artifactId
@@ -187,22 +492,62 @@ export class ProspectResearchService {
           artifact.kind ===
           "SCREENSHOT"
         ) {
-          hasScreenshot = true;
+          screenshotCaptureTimes.push(
+            artifact.createdAt
+          );
         }
       }
 
-      if (!hasScreenshot) {
+      if (
+        screenshotCaptureTimes
+          .length === 0
+      ) {
         errors.push(
           "research evidence requires a screenshot artifact: " +
             evidence.id
         );
+        continue;
       }
+
+      screenshotCaptureTimes
+        .sort();
+      capturedAtByEvidenceId.set(
+        evidence.id,
+        screenshotCaptureTimes[0]!
+      );
+      artifactIdsByEvidenceId.set(
+        evidence.id,
+        [...suppliedArtifactIds]
+      );
     }
 
     if (errors.length > 0) {
       throw new ProspectResearchValidationError(
         errors
       );
+    }
+
+    let attempt:
+      CompletedProspectResearchAttempt;
+
+    try {
+      attempt =
+        buildCompletedProspectResearchAttempt({
+          target,
+          runId:
+            run.id,
+          researchedAt:
+            run.updatedAt,
+          capturedAtByEvidenceId,
+          artifactIdsByEvidenceId,
+          result
+        });
+    } catch (error) {
+      throw new ProspectResearchValidationError([
+        error instanceof Error
+          ? error.message
+          : "research attempt failed validation"
+      ]);
     }
 
     await this.#artifacts
@@ -234,23 +579,60 @@ export class ProspectResearchService {
   }
 
   public async recordFailure(
-    input: unknown
+    input:
+      RecordFailedProspectResearchInput
   ): Promise<
     FailedProspectResearchAttempt
   > {
+    const target =
+      await this.#requireTarget(
+        input.targetId,
+        "research target was not approved before the attempt"
+      );
+    const run =
+      await this.#requireRun(
+        input.runId
+      );
+    const code =
+      this.#failureCode(
+        run,
+        input.code
+      );
+    const message =
+      run.error?.message ??
+      run.terminalReason?.message;
+
+    if (
+      message === undefined ||
+      message.trim().length === 0
+    ) {
+      throw new ProspectResearchValidationError([
+        "terminal research run has no server-owned failure message"
+      ]);
+    }
+
     const attempt =
       FailedProspectResearchAttemptSchema
-        .parse(input);
-    const errors =
-      await this.#targetErrors(
-        attempt.target
-      );
+        .parse({
+          id:
+            run.id,
+          target,
+          createdAt:
+            run.updatedAt,
+          status: "FAILED",
+          runId:
+            run.id,
+          failure: {
+            kind:
+              "LIVE_RESEARCH_FAILURE",
+            code,
+            message
+          }
+        });
 
-    if (errors.length > 0) {
-      throw new ProspectResearchValidationError(
-        errors
-      );
-    }
+    await this.#assertAttemptAvailable(
+      attempt.id
+    );
 
     await this.#repository
       .saveAttempt(attempt);

@@ -4,10 +4,13 @@ import type {
 
 import {
   ApprovedResearchTargetSchema,
-  ProspectResearchAttemptSchema,
   type ApprovedResearchTarget,
   type ProspectResearchAttempt
 } from "./schema.js";
+import {
+  sameApprovedResearchTarget,
+  validateProspectResearchAttemptForPersistence
+} from "./validation.js";
 
 export interface ProspectResearchRepository {
   saveTarget(
@@ -140,8 +143,31 @@ export class InMemoryProspectResearchRepository
       ProspectResearchAttempt
   ): Promise<void> {
     const parsed =
-      ProspectResearchAttemptSchema
-        .parse(attempt);
+      validateProspectResearchAttemptForPersistence(
+        attempt
+      );
+
+    const approved =
+      this.#targets.get(
+        parsed.target.id
+      );
+
+    if (approved === undefined) {
+      throw new Error(
+        "Research target was not approved before the attempt."
+      );
+    }
+
+    if (
+      !sameApprovedResearchTarget(
+        approved,
+        parsed.target
+      )
+    ) {
+      throw new Error(
+        "Research attempt target differs from the stored approval."
+      );
+    }
 
     if (
       this.#attempts.has(

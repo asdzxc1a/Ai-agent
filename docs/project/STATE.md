@@ -1,10 +1,10 @@
 # Current Project State
 
-**Last updated:** 2026-09-19  
+**Last updated:** 2026-09-20  
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Sandbox/network isolation → controlled live prospect research
 **Current gate:** Gate 13 — Evidence-backed live prospect research
-**Overall status:** Gates 0–12 are PASSED. Gate 12 completed in PR #64: Astra now has an owned sandbox/network-policy boundary, fail-closed egress controls, durable isolation IDs, terminal-path sandbox cleanup, sandboxed ResearchBench at 30/30, and measured provider isolation. Pinned self-hosted Steel is treated as single-tenant per endpoint; simultaneous isolated runs require separate verified endpoints. Gate 13 is active in issue #65.
+**Overall status:** Gates 0–12 are PASSED. Gate 13 is active in issue #65. PR #68 merged the approved live-research foundation onto `main`: stored approval provenance, approved-domain sandbox policy, evidence/prospect persistence, and classified live-research failures now exist. PR #69 hardens the boundary so model-facing research cannot own authorization, protected prospect/run identity, Gate 14 qualification state, or capture clocks. No operator-approved real-company/domain sample has been supplied, so no live company research has been run and Gate 13 remains IN_PROGRESS.
 
 ## North star
 
@@ -86,6 +86,18 @@ Final qualification on the frozen suite is 30/30: core 20/20, hard 10/10, zero f
 Untrusted egress is fail-closed: allowed hosts must be explicit, navigation is limited to HTTP/HTTPS, credentials and non-approved ports are rejected, DNS is rechecked, and loopback/private/link-local/metadata/reserved targets fail closed. Stagehand's context-wide domain policy covers redirects, popups, and subresources; direct navigation additionally receives Astra-owned DNS/IP preflight.
 
 Provider isolation is measured rather than inferred. The first pinned Steel provider run showed separate session IDs on one self-hosted endpoint shared cookie/localStorage. Astra therefore rejects concurrent browser sessions on one self-hosted Steel endpoint. Final acceptance proves simultaneous browser-state separation across independent pinned Steel endpoints, filesystem/process/loopback-port separation between provider containers, clean sequential endpoint reuse, independent release, and 30/30 ResearchBench through the sandbox composition.
+
+### Gate 13 approved live-research foundation
+
+`@astra/prospect-research` now owns operator-approved target records, approval provenance, evidence/claim/unknown contracts, target-scoped network policy derivation, semantic completion validation, durable research attempts, and `RESEARCH_EVIDENCE` artifacts. `@astra/prospect-postgres` provides independent migrations and durable restart persistence for approved targets, attempts, and Prospects.
+
+Authorization comes from stored server state rather than model/result prose. The model-facing research result excludes approval state, run/prospect identity, fit/disqualifiers, capture timestamps, and artifact IDs. Durable identities are derived from the stored target and run; Gate 13 Prospect fit remains `unknown` with no disqualifiers so Gate 14 qualification/scoring does not leak backward into research.
+
+Material evidence must reference a real `SCREENSHOT` artifact from the same run. The post-run server/manual audit supplies the evidence→artifact mapping, and durable evidence capture times are taken from the referenced screenshot artifact records. Observed facts must exactly match referenced observed evidence; hypotheses remain explicitly inferred; unknowns remain explicit. Both in-memory and PostgreSQL repositories independently revalidate the stored approval and canonical protected research state before accepting attempts.
+
+Screenshot artifacts are run-scoped and server-timestamped but do not currently record the page URL they depict. Gate 13 therefore still requires the planned manual spot-check of every material observed fact against its claimed public source and screenshot; the implementation does not pretend that source↔screenshot correspondence is automatically proven.
+
+No real-company/domain research has been executed under Gate 13 because no operator-approved fixed sample exists yet.
 
 ### Gate 8 sales-domain foundation
 
@@ -233,7 +245,7 @@ pnpm check:memory
 
 ## Known risks
 
-1. **Live-web research risk:** Gate 12 establishes bounded network/isolation controls, but real public websites remain variable and have not yet been manually audited under the evidence contract. Gate 13 must keep the approved target sample explicit and preserve Gate 11 as the deterministic release gate.
+1. **Live-web research risk:** Gate 12 establishes bounded network/isolation controls and Gate 13 now has a stored-approval/evidence foundation, but no operator-approved real-company sample has been supplied or manually audited. Screenshot artifacts prove same-run capture and server-owned time but do not bind page URL metadata, so every material observed fact still needs the planned source/screenshot spot-check. Gate 11 remains the deterministic release gate.
 2. **Sales-policy risk:** Baseline 0 is only 32/40. Known weaknesses include evidence requests without evidence, weak-fit handoff, and re-asking known qualification facts.
 3. **External-model evidence risk:** no paid hosted-model benchmark is claimed yet.
 4. **Scope risk:** the browser foundation and draft voice branch are large assets; reuse must remain contract-by-contract.
@@ -244,7 +256,7 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 13 — Evidence-backed live prospect research (issue #65):** define the durable evidence/prospect contract and approved-domain enforcement first, then use only a small explicitly approved public-company sample and manually audit each material fact. Gate 11 remains the deterministic release gate.
+**Gate 13 — Evidence-backed live prospect research (issue #65):** wait for the operator to supply the fixed approved company/domain sample; do not choose targets autonomously. Once supplied, register only those targets, run only their approved public domains through the stored-approval + sandbox boundary, preserve blocked/failed attempts honestly, and manually verify every material observed fact against its claimed source and same-run screenshot before considering Gate 13 PASSED. Keep Gate 11 frozen as the deterministic release gate.
 
 Do not start authenticated contact discovery, outreach/email/LinkedIn/X, CRM writes, calendar/social actions, voice/avatar, or new irreversible external side effects in Gate 13.
 

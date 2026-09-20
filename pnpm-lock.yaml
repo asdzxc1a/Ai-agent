@@ -121,6 +121,9 @@ importers:
       '@astra/sales-domain':
         specifier: workspace:*
         version: link:../sales-domain
+      '@astra/run-engine':
+        specifier: workspace:*
+        version: link:../run-engine
       '@astra/sandbox-runtime':
         specifier: workspace:*
         version: link:../sandbox-runtime

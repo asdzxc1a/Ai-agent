@@ -5,10 +5,16 @@ import type {
   SandboxNetworkPolicyOptions
 } from "@astra/sandbox-runtime";
 
-import type {
-  ApprovedResearchTarget,
-  ProspectResearchClaim,
-  ProspectResearchReport
+import {
+  CompletedProspectResearchAttemptSchema,
+  ProspectResearchAttemptSchema,
+  ProspectResearchResultSchema,
+  type ApprovedResearchTarget,
+  type CompletedProspectResearchAttempt,
+  type ProspectResearchAttempt,
+  type ProspectResearchClaim,
+  type ProspectResearchReport,
+  type ProspectResearchResult
 } from "./schema.js";
 
 function normalizedHostname(
@@ -133,6 +139,23 @@ export function researchNetworkPolicyOptions(
   };
 }
 
+function exactUniqueSet(
+  left: readonly string[],
+  right: readonly string[]
+): boolean {
+  return (
+    left.length === right.length &&
+    new Set(left).size ===
+      left.length &&
+    new Set(right).size ===
+      right.length &&
+    left.every(
+      (item) =>
+        right.includes(item)
+    )
+  );
+}
+
 function allClaims(
   report:
     ProspectResearchReport
@@ -163,11 +186,47 @@ export function validateProspectResearch(
   }
 
   if (
+    report.id !==
+    report.runId
+  ) {
+    errors.push(
+      "report id must be server-derived from runId"
+    );
+  }
+
+  if (
+    report.prospect.id !==
+    target.id
+  ) {
+    errors.push(
+      "prospect id must be server-derived from targetId"
+    );
+  }
+
+  if (
     report.prospect.domain !==
     target.domain
   ) {
     errors.push(
       "prospect domain does not match approved target domain"
+    );
+  }
+
+  if (
+    report.prospect.fit !==
+    "unknown"
+  ) {
+    errors.push(
+      "Gate 13 prospect fit must remain unknown"
+    );
+  }
+
+  if (
+    report.prospect
+      .disqualifiers.length !== 0
+  ) {
+    errors.push(
+      "Gate 13 prospect disqualifiers must remain empty"
     );
   }
 
@@ -213,7 +272,21 @@ export function validateProspectResearch(
         "research evidence source is outside approved domains: " +
           evidence.id
       );
-    }
+    }  }
+
+  if (
+    report.prospect
+      .companyName !== null &&
+    !report.evidence.some(
+      (evidence) =>
+        evidence.observation ===
+        report.prospect
+          .companyName
+    )
+  ) {
+    errors.push(
+      "prospect companyName must exactly match observed evidence"
+    );
   }
 
   const claims = allClaims(report);
@@ -293,6 +366,21 @@ export function validateProspectResearch(
     }
   }
 
+  if (
+    !exactUniqueSet(
+      report.prospect
+        .evidenceIds,
+      report.evidence.map(
+        (evidence) =>
+          evidence.id
+      )
+    )
+  ) {
+    errors.push(
+      "prospect evidenceIds must exactly match durable observed evidence"
+    );
+  }
+
   const hypothesisIds =
     new Set(
       claims
@@ -320,6 +408,18 @@ export function validateProspectResearch(
           hypothesisId
       );
     }
+  }
+
+  if (
+    !exactUniqueSet(
+      report.prospect
+        .hypothesisIds,
+      [...hypothesisIds]
+    )
+  ) {
+    errors.push(
+      "prospect hypothesisIds must exactly match durable inferred hypotheses"
+    );
   }
 
   const unknownIds =
@@ -354,7 +454,357 @@ export function validateProspectResearch(
     );
   }
 
+  const graphIds = [
+    ...report.evidence.map(
+      (evidence) =>
+        evidence.id
+    ),
+    ...claims.map(
+      (claim) => claim.id
+    ),
+    ...report.unknowns.map(
+      (unknown) =>
+        unknown.id
+    )
+  ];
+
+  if (
+    new Set(graphIds).size !==
+    graphIds.length
+  ) {
+    errors.push(
+      "research evidence, claim, and unknown ids must be globally unique"
+    );
+  }
+
   return errors;
+}
+
+export function validateProspectResearchAttemptForPersistence(
+  input: unknown
+): ProspectResearchAttempt {
+  const attempt =
+    ProspectResearchAttemptSchema
+      .parse(input);
+
+  if (
+    attempt.status ===
+    "COMPLETED"
+  ) {
+    const errors =
+      validateProspectResearch(
+        attempt.target,
+        attempt.report
+      );
+
+    if (
+      attempt.id !==
+      attempt.report.runId
+    ) {
+      errors.push(
+        "completed attempt id must equal durable runId"
+      );
+    }
+
+    if (
+      attempt.createdAt !==
+      attempt.report.researchedAt
+    ) {
+      errors.push(
+        "completed attempt time must equal durable researchedAt"
+      );
+    }
+
+    if (errors.length > 0) {
+      throw new Error(
+        "Durable prospect research attempt failed validation: " +
+          errors.join("; ")
+      );
+    }
+  } else if (
+    attempt.runId !== null &&
+    attempt.id !==
+      attempt.runId
+  ) {
+    throw new Error(
+      "Failed research attempt id must equal durable runId."
+    );
+  }
+
+  return attempt;
+}
+
+function inferredHypothesisIds(
+  result: ProspectResearchResult
+): string[] {
+  return [
+    ...result.companySummary,
+    ...result
+      .transformationOpportunities,
+    ...result.buyingSignals
+  ]
+    .filter(
+      (claim) =>
+        claim.kind ===
+        "inferred_hypothesis"
+    )
+    .map(
+      (claim) => claim.id
+    );
+}
+
+export function validateProspectResearchResult(
+  target: ApprovedResearchTarget,
+  input: unknown
+): ProspectResearchResult {
+  const result =
+    ProspectResearchResultSchema
+      .parse(input);
+  const researchedAt =
+    "2000-01-01T00:00:00.000Z";
+  const report:
+    ProspectResearchReport = {
+      id: "validation.run",
+      runId:
+        "validation.run",
+      targetId: target.id,
+      researchedAt,
+      prospect: {
+        id: target.id,
+        domain: target.domain,
+        companyName:
+          result.companyName
+            ?.value ?? null,
+        fit: "unknown",
+        disqualifiers: [],
+        evidenceIds:
+          result.evidence.map(
+            (evidence) =>
+              evidence.id
+          ),
+        hypothesisIds:
+          inferredHypothesisIds(
+            result
+          )
+      },
+      companySummary:
+        result.companySummary,
+      transformationOpportunities:
+        result
+          .transformationOpportunities,
+      buyingSignals:
+        result.buyingSignals,
+      unknowns:
+        result.unknowns,
+      evidence:
+        result.evidence.map(
+          (evidence) => ({
+            ...evidence,
+            capturedAt:
+              researchedAt,
+            artifactIds: [
+              "validation." +
+                evidence.id
+            ]
+          })
+        )
+    };
+  const errors =
+    validateProspectResearch(
+      target,
+      report
+    );
+
+  if (
+    result.companyName !== null
+  ) {
+    const evidenceById =
+      new Map(
+        result.evidence.map(
+          (evidence) =>
+            [
+              evidence.id,
+              evidence
+            ] as const
+        )
+      );
+
+    for (
+      const evidenceId of
+      result.companyName
+        .evidenceIds
+    ) {
+      if (
+        !evidenceById.has(
+          evidenceId
+        )
+      ) {
+        errors.push(
+          "company name references unknown observed evidence: " +
+            evidenceId
+        );
+      }
+    }
+
+    if (
+      !result.companyName
+        .evidenceIds.some(
+          (evidenceId) =>
+            evidenceById.get(
+              evidenceId
+            )?.observation ===
+            result.companyName
+              ?.value
+        )
+    ) {
+      errors.push(
+        "company name must exactly match referenced observed evidence"
+      );
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(
+      "Prospect research result failed semantic validation: " +
+        errors.join("; ")
+    );
+  }
+
+  return result;
+}
+
+export interface BuildCompletedProspectResearchAttemptInput {
+  target: ApprovedResearchTarget;
+  runId: string;
+  researchedAt: string;
+  capturedAtByEvidenceId:
+    ReadonlyMap<string, string>;
+  artifactIdsByEvidenceId:
+    ReadonlyMap<
+      string,
+      readonly string[]
+    >;
+  result: unknown;
+}
+
+export function buildCompletedProspectResearchAttempt({
+  target,
+  runId,
+  researchedAt,
+  capturedAtByEvidenceId,
+  artifactIdsByEvidenceId,
+  result: input
+}: BuildCompletedProspectResearchAttemptInput):
+  CompletedProspectResearchAttempt {
+  const result =
+    validateProspectResearchResult(
+      target,
+      input
+    );
+  for (
+    const evidence of
+    result.evidence
+  ) {
+    if (
+      !capturedAtByEvidenceId.has(
+        evidence.id
+      )
+    ) {
+      throw new Error(
+        "Missing server-owned capture time for research evidence: " +
+          evidence.id
+      );
+    }
+
+    if (
+      !artifactIdsByEvidenceId.has(
+        evidence.id
+      )
+    ) {
+      throw new Error(
+        "Missing server-owned artifact IDs for research evidence: " +
+          evidence.id
+      );
+    }
+  }
+
+  const attempt =
+    CompletedProspectResearchAttemptSchema
+      .parse({
+        id: runId,
+        target,
+        createdAt:
+          researchedAt,
+        status: "COMPLETED",
+        report: {
+          id: runId,
+          runId,
+          targetId:
+            target.id,
+          researchedAt,
+          prospect: {
+            id: target.id,
+            domain:
+              target.domain,
+            companyName:
+              result.companyName
+                ?.value ?? null,
+            fit: "unknown",
+            disqualifiers: [],
+            evidenceIds:
+              result.evidence
+                .map(
+                  (evidence) =>
+                    evidence.id
+                ),
+            hypothesisIds:
+              inferredHypothesisIds(
+                result
+              )
+          },
+          companySummary:
+            result
+              .companySummary,
+          transformationOpportunities:
+            result
+              .transformationOpportunities,
+          buyingSignals:
+            result.buyingSignals,
+          unknowns:
+            result.unknowns,
+          evidence:
+            result.evidence.map(
+              (evidence) => ({
+                ...evidence,
+                capturedAt:
+                  capturedAtByEvidenceId
+                    .get(
+                      evidence.id
+                    )!,
+                artifactIds: [
+                  ...artifactIdsByEvidenceId
+                    .get(
+                      evidence.id
+                    )!
+                ]
+              })
+            )
+        }
+      });
+  const errors =
+    validateProspectResearch(
+      target,
+      attempt.report
+    );
+
+  if (errors.length > 0) {
+    throw new Error(
+      "Prospect research attempt failed canonical validation: " +
+        errors.join("; ")
+    );
+  }
+
+  return attempt;
 }
 
 export function toSalesEvidence(
