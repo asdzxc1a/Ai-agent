@@ -695,7 +695,7 @@ test(
         JSON.stringify(processMarker) +
         ";",
       "const found=fs.readdirSync('/proc')",
-      ".filter(x=>/^\\d+$/.test(x))",
+      ".filter(x=>/^\\d+$/.test(x)&&x!==String(process.pid))",
       ".some(x=>{try{return fs.readFileSync('/proc/'+x+'/cmdline','utf8').includes(marker)}catch{return false}});",
       "process.exit(found?0:7);"
     ].join("");
