@@ -620,7 +620,7 @@ export const ProspectResearchSampleSchema =
       z.literal("FROZEN"),
     protocolVersion:
       z.literal(
-        "gate13-measured-research-v1"
+        "gate13-measured-research-v2"
       ),
     purpose:
       z.enum(
