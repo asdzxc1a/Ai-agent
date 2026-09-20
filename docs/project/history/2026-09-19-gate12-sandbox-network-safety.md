@@ -101,7 +101,7 @@ Selected final-run timings:
 - replayable SSE: 975ms;
 - durable API restart: 3.13s.
 
-Local final validation used Node 24.21.0 / pnpm 10.34.5 and passed `pnpm check` with 83/83 tests across 18 files.
+Local final validation used Node 24.21.0 / pnpm 10.34.5 and passed `pnpm check` with 84/84 tests across 19 files.
 
 ## Acceptance interpretation
 
