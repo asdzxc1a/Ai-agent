@@ -134,7 +134,15 @@ export class StagehandRuntimeCore implements AgentRuntime {
       this.#createStagehand(
         browser.cdpUrl
       );
-    await stagehand.init();
+
+    try {
+      await stagehand.init();
+    } catch (error) {
+      await stagehand
+        .close()
+        .catch(() => undefined);
+      throw error;
+    }
 
     return new StagehandAgentSession(
       stagehand
