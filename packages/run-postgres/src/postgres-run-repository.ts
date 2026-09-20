@@ -358,30 +358,65 @@ export class PostgresRunRepository implements RunRepository {
             next.terminalReason
           );
 
-    await this.#pool.query(
-      `
-        UPDATE runs
-        SET
-          status = $2,
-          goal_status = $3,
-          result = $4::jsonb,
-          error = $5::jsonb,
-          terminal_reason = $6::jsonb,
-          updated_at = $7
-        WHERE id = $1
-      `,
-      [
-        runId,
-        next.status,
-        next.goalStatus,
-        resultJson,
-        errorJson,
-        terminalReasonJson,
-        next.updatedAt
-      ]
-    );
+    const updated =
+      await this.#pool.query(
+        `
+          UPDATE runs
+          SET
+            status = $2,
+            goal_status = $3,
+            result = $4::jsonb,
+            error = $5::jsonb,
+            terminal_reason = $6::jsonb,
+            updated_at = $7
+          WHERE id = $1
+            AND status IN (
+              'PENDING',
+              'RUNNING'
+            )
+          RETURNING
+            id,
+            status,
+            goal_status,
+            request,
+            result,
+            error,
+            terminal_reason,
+            created_at,
+            updated_at
+        `,
+        [
+          runId,
+          next.status,
+          next.goalStatus,
+          resultJson,
+          errorJson,
+          terminalReasonJson,
+          next.updatedAt
+        ]
+      );
 
-    return next;
+    const row =
+      updated.rows[0] as
+        | RunRow
+        | undefined;
+
+    if (row !== undefined) {
+      return mapRun(row);
+    }
+
+    const latest =
+      await this.getRun(runId);
+
+    if (latest === undefined) {
+      throw new Error(
+        `Run ${runId} does not exist.`
+      );
+    }
+
+    throw new Error(
+      `Run ${runId} is already terminal.`
+    );
   }
 
   public async finalizeRun(
