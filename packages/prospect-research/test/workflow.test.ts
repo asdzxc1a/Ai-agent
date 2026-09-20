@@ -76,11 +76,19 @@ function sample() {
       id: sampleId,
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v2",
+        "gate13-measured-research-v3",
       purpose:
         "CALIBRATION",
       cohortDefinition:
         "Single-target workflow calibration fixture; diagnostic only.",
+      selectionMethod:
+        "Single deterministic fixture target.",
+      marketScope:
+        "SINGLE_MARKET",
+      marketDescription:
+        "Fixture market",
+      humanBaselineMode:
+        "SCOPE_MATCHED",
       targets: [
         target()
       ],
