@@ -452,6 +452,40 @@ export const ProspectResearchTargetEnrichmentProposalInputSchema =
           }
         }
 
+        const officialEvidence =
+          proposal.evidence.filter(
+            (evidence) =>
+              evidence.kind ===
+                "OFFICIAL_COMPANY" ||
+              evidence.kind ===
+                "OFFICIAL_INVESTOR_RELATIONS"
+          );
+
+        for (
+          const requiredOfficialClaim of [
+            "COMPANY_IDENTITY",
+            "CANONICAL_DOMAIN"
+          ] as const
+        ) {
+          if (
+            !officialEvidence.some(
+              (evidence) =>
+                evidence.supports
+                  .includes(
+                    requiredOfficialClaim
+                  )
+            )
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: ["evidence"],
+              message:
+                "official company/IR evidence must support " +
+                requiredOfficialClaim
+            });
+          }
+        }
+
         for (
           const [
             index,
@@ -459,6 +493,11 @@ export const ProspectResearchTargetEnrichmentProposalInputSchema =
           ] of proposal.evidence
             .entries()
         ) {
+          const evidenceUrl =
+            new URL(
+              evidence.sourceUrl
+            );
+
           if (
             (
               evidence.kind ===
@@ -470,9 +509,7 @@ export const ProspectResearchTargetEnrichmentProposalInputSchema =
               .some(
                 (domain) =>
                   hostnameWithinDomain(
-                    new URL(
-                      evidence.sourceUrl
-                    ).hostname,
+                    evidenceUrl.hostname,
                     domain
                   )
               )
@@ -487,6 +524,42 @@ export const ProspectResearchTargetEnrichmentProposalInputSchema =
               message:
                 "official company/IR evidence must be within proposedDomains"
             });
+          }
+
+          if (
+            evidence.supports
+              .includes(
+                "START_PAGE"
+              )
+          ) {
+            const normalizedEvidence =
+              new URL(
+                evidenceUrl.href
+              );
+            const normalizedStart =
+              new URL(
+                proposal
+                  .proposedStartUrl
+              );
+
+            normalizedEvidence.hash = "";
+            normalizedStart.hash = "";
+
+            if (
+              normalizedEvidence.href !==
+              normalizedStart.href
+            ) {
+              context.addIssue({
+                code: "custom",
+                path: [
+                  "evidence",
+                  index,
+                  "sourceUrl"
+                ],
+                message:
+                  "START_PAGE evidence must reference the exact proposedStartUrl"
+              });
+            }
           }
         }
       }
