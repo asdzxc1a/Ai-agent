@@ -497,12 +497,38 @@ export function validateProspectResearchAttemptForPersistence(
         attempt.report
       );
 
+    if (
+      attempt.id !==
+      attempt.report.runId
+    ) {
+      errors.push(
+        "completed attempt id must equal durable runId"
+      );
+    }
+
+    if (
+      attempt.createdAt !==
+      attempt.report.researchedAt
+    ) {
+      errors.push(
+        "completed attempt time must equal durable researchedAt"
+      );
+    }
+
     if (errors.length > 0) {
       throw new Error(
         "Durable prospect research attempt failed validation: " +
           errors.join("; ")
       );
     }
+  } else if (
+    attempt.runId !== null &&
+    attempt.id !==
+      attempt.runId
+  ) {
+    throw new Error(
+      "Failed research attempt id must equal durable runId."
+    );
   }
 
   return attempt;
