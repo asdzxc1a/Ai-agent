@@ -142,7 +142,7 @@ export function validateProspectResearchSampleOutcomeContext(
       outcome.baselineMeasuredAt
     ) >
       Date.parse(
-        attempt.createdAt
+        attempt.startedAt
       )
   ) {
     throw new Error(
