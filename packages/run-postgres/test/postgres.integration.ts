@@ -332,3 +332,114 @@ test.each([
     });
   }
 );
+
+test(
+  "migration 2 preserves legacy completed evidence without retroactive verification",
+  async () => {
+    const runId =
+      randomUUID();
+    const now =
+      new Date().toISOString();
+
+    await pool.query(
+      "DELETE FROM schema_migrations WHERE version = $1",
+      [2]
+    );
+    await pool.query(`
+      ALTER TABLE runs
+        DROP CONSTRAINT IF EXISTS runs_goal_status_consistency,
+        DROP CONSTRAINT IF EXISTS runs_goal_state,
+        DROP COLUMN IF EXISTS terminal_reason,
+        DROP COLUMN IF EXISTS goal_state
+    `);
+
+    await pool.query(
+      `
+        INSERT INTO runs (
+          id,
+          status,
+          request,
+          result,
+          error,
+          created_at,
+          updated_at,
+          step_sequence,
+          event_sequence
+        )
+        VALUES (
+          $1,
+          'COMPLETED',
+          $2::jsonb,
+          $3::jsonb,
+          NULL,
+          $4,
+          $4,
+          0,
+          0
+        )
+      `,
+      [
+        runId,
+        JSON.stringify(request),
+        JSON.stringify({
+          legacy: true,
+          count: 1
+        }),
+        now
+      ]
+    );
+
+    try {
+      await runPostgresMigrations(
+        pool
+      );
+
+      const migrated =
+        await repository.getRun(
+          runId
+        );
+
+      expect(migrated).toMatchObject({
+        status: "FAILED",
+        goalState: "BLOCKED",
+        terminalReason: {
+          code:
+            "COMPLETION_REJECTED",
+          message:
+            "Legacy completed run predates semantic completion verification."
+        },
+        error: {
+          code:
+            "COMPLETION_REJECTED"
+        }
+      });
+      expect(
+        migrated?.result
+      ).toBeUndefined();
+
+      const steps =
+        await repository.listSteps(
+          runId
+        );
+
+      expect(steps).toHaveLength(1);
+      expect(steps[0]).toMatchObject({
+        sequenceNumber: 1,
+        kind:
+          "LEGACY_UNVERIFIED_RESULT",
+        payload: {
+          previousStatus:
+            "COMPLETED",
+          result: {
+            legacy: true,
+            count: 1
+          }
+        }
+      });
+    } finally {
+      await runPostgresMigrations(
+        pool
+      );
+    }
+  }
+);

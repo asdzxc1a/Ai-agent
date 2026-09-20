@@ -44,42 +44,83 @@ ALTER TABLE runs
   ADD COLUMN goal_state TEXT,
   ADD COLUMN terminal_reason JSONB;
 
+WITH legacy_completed AS (
+  UPDATE runs
+  SET step_sequence = step_sequence + 1
+  WHERE status = 'COMPLETED'
+    AND result IS NOT NULL
+  RETURNING
+    id,
+    step_sequence,
+    result
+)
+INSERT INTO run_steps (
+  run_id,
+  sequence_number,
+  kind,
+  payload
+)
+SELECT
+  id,
+  step_sequence,
+  'LEGACY_UNVERIFIED_RESULT',
+  jsonb_build_object(
+    'previousStatus',
+    'COMPLETED',
+    'result',
+    result
+  )
+FROM legacy_completed;
+
 UPDATE runs
 SET
+  status = CASE
+    WHEN status = 'COMPLETED' THEN 'FAILED'
+    ELSE status
+  END,
   goal_state = CASE status
-    WHEN 'COMPLETED' THEN 'COMPLETED'
+    WHEN 'COMPLETED' THEN 'BLOCKED'
     WHEN 'FAILED' THEN 'FAILED'
     WHEN 'CANCELLED' THEN 'BLOCKED'
     ELSE 'IN_PROGRESS'
   END,
+  terminal_reason = CASE
+    WHEN status = 'COMPLETED'
+      THEN jsonb_build_object(
+        'code', 'COMPLETION_REJECTED',
+        'message',
+        'Legacy completed run predates semantic completion verification.'
+      )
+    WHEN status = 'FAILED'
+      THEN jsonb_build_object(
+        'code', error->>'code',
+        'message', error->>'message'
+      )
+    WHEN status = 'CANCELLED'
+      THEN jsonb_build_object(
+        'code', 'CANCELLED',
+        'message', COALESCE(
+          error->>'message',
+          'Run cancelled.'
+        )
+      )
+    ELSE NULL
+  END,
+  result = CASE
+    WHEN status = 'COMPLETED' THEN NULL
+    ELSE result
+  END,
   error = CASE
+    WHEN status = 'COMPLETED'
+      THEN jsonb_build_object(
+        'code', 'COMPLETION_REJECTED',
+        'message',
+        'Legacy completed run predates semantic completion verification.'
+      )
     WHEN status = 'CANCELLED' AND error IS NULL
       THEN '{"code":"CANCELLED","message":"Run cancelled."}'::jsonb
     ELSE error
   END;
-
-UPDATE runs
-SET terminal_reason = CASE
-  WHEN status = 'COMPLETED'
-    THEN jsonb_build_object(
-      'code', 'GOAL_VERIFIED',
-      'message', 'Migrated completed run.'
-    )
-  WHEN status = 'FAILED'
-    THEN jsonb_build_object(
-      'code', error->>'code',
-      'message', error->>'message'
-    )
-  WHEN status = 'CANCELLED'
-    THEN jsonb_build_object(
-      'code', 'CANCELLED',
-      'message', COALESCE(
-        error->>'message',
-        'Run cancelled.'
-      )
-    )
-  ELSE NULL
-END;
 
 ALTER TABLE runs
   ALTER COLUMN goal_state SET NOT NULL,
