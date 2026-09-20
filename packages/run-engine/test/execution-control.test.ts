@@ -20,6 +20,9 @@ import type {
   BrowserRuntime,
   BrowserSession
 } from "@astra/browser-runtime";
+import {
+  InMemoryArtifactStore
+} from "@astra/artifact-store";
 
 import {
   InMemoryRunRepository,
@@ -866,4 +869,206 @@ test("cancellation still aborts when cancellation-request telemetry fails", asyn
   expect(
     browser.session.closeCalls
   ).toBe(1);
+});
+
+interface ScreenshotSettleState {
+  actionFinished: boolean;
+  observedAfterAction: boolean;
+}
+
+class SettlingScreenshotBrowser
+  implements BrowserSession {
+  public readonly id =
+    "settling-browser";
+  public readonly cdpUrl =
+    "ws://fixture/settling";
+
+  public constructor(
+    private readonly state:
+      ScreenshotSettleState
+  ) {}
+
+  public async captureScreenshot():
+    Promise<Uint8Array> {
+    if (
+      this.state.actionFinished &&
+      !this.state.observedAfterAction
+    ) {
+      throw new Error(
+        "page is still navigating"
+      );
+    }
+
+    return new Uint8Array([
+      0xff,
+      0xd8,
+      0xff,
+      0xd9
+    ]);
+  }
+
+  public async close():
+    Promise<void> {}
+}
+
+class SettlingScreenshotAgent
+  implements AgentSession {
+  public constructor(
+    private readonly state:
+      ScreenshotSettleState
+  ) {}
+
+  public async navigate():
+    Promise<void> {}
+
+  public async observe():
+    Promise<AgentAction[]> {
+    if (this.state.actionFinished) {
+      this.state.observedAfterAction =
+        true;
+      return [];
+    }
+
+    return [
+      {
+        selector: "#next",
+        description:
+          "Navigate to the next page",
+        method: "click"
+      }
+    ];
+  }
+
+  public async act(
+    action: AgentAction
+  ): Promise<AgentActionResult> {
+    this.state.actionFinished = true;
+
+    return {
+      success: true,
+      message: "navigated",
+      actions: [action],
+      effect: "committed"
+    };
+  }
+
+  public async extract<T>(
+    instruction: string,
+    schema: RuntimeSchema<T>
+  ): Promise<T> {
+    void instruction;
+    return schema.parse({});
+  }
+
+  public async close():
+    Promise<void> {}
+}
+
+test("loop screenshots wait for the next stable observation after navigation", async () => {
+  const state:
+    ScreenshotSettleState = {
+      actionFinished: false,
+      observedAfterAction: false
+    };
+  const artifactStore =
+    new InMemoryArtifactStore();
+  const engine =
+    new RunEngine({
+      repository:
+        new InMemoryRunRepository(),
+      browserRuntime: {
+        async createSession() {
+          return new SettlingScreenshotBrowser(
+            state
+          );
+        }
+      },
+      agentRuntime: {
+        async openSession() {
+          return new SettlingScreenshotAgent(
+            state
+          );
+        }
+      },
+      artifactStore,
+      agentLoop:
+        new AgentLoopExecutor({
+          policy: {
+            async decide(input) {
+              if (
+                input.trajectory.length ===
+                0
+              ) {
+                return {
+                  type: "ACTION",
+                  actionIndex: 0,
+                  rationale:
+                    "Navigate once.",
+                  onFailure: "FAIL",
+                  effectRisk:
+                    "REVERSIBLE"
+                };
+              }
+
+              return {
+                type: "COMPLETE",
+                rationale:
+                  "The destination page was observed.",
+                result: {
+                  done: true
+                }
+              };
+            }
+          }
+        }),
+      completionVerifier: {
+        verify({ result }) {
+          return {
+            verified:
+              (
+                result as {
+                  done?: unknown;
+                }
+              ).done === true,
+            message:
+              "Destination observation verified."
+          };
+        }
+      }
+    });
+
+  const started =
+    await engine.createRun({
+      request: {
+        url:
+          "https://fixture.test/start",
+        goal:
+          "Navigate and verify."
+      }
+    });
+  const terminal =
+    await waitForTerminal(
+      engine,
+      started.id
+    );
+
+  expect(terminal.status).toBe(
+    "COMPLETED"
+  );
+  expect(
+    state.observedAfterAction
+  ).toBe(true);
+
+  const names =
+    (
+      await engine.listArtifacts(
+        started.id
+      )
+    ).map(
+      (artifact) => artifact.name
+    );
+
+  expect(names).toContain(
+    "loop-01-after-action.jpg"
+  );
 });

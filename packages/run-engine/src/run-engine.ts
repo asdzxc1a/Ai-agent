@@ -574,9 +574,7 @@ export class RunEngine implements RunService {
 
   async #persistLoopProgress(
     runId: string,
-    browser: BrowserSession | undefined,
-    progress: AgentLoopProgressEvent,
-    artifactErrors: string[]
+    progress: AgentLoopProgressEvent
   ): Promise<void> {
     if (progress.type === "OBSERVED") {
       const payload = {
@@ -690,15 +688,6 @@ export class RunEngine implements RunService {
       "RUN_PROGRESS",
       { phase: "action", ...payload }
     );
-
-    await this.#captureScreenshot(
-      runId,
-      browser,
-      "loop-" +
-        String(progress.iteration).padStart(2, "0") +
-        "-after-action.jpg",
-      artifactErrors
-    );
   }
 
   async #assertUsageBudget(
@@ -761,6 +750,8 @@ export class RunEngine implements RunService {
     let verifiedCompletion = false;
     let selectedAction:
       AgentAction | undefined;
+    let pendingLoopScreenshotIteration:
+      number | undefined;
     let diagnosticCount: number;
 
     try {
@@ -880,17 +871,58 @@ export class RunEngine implements RunService {
                     ...progress.outcome
                       .action
                   };
+                  pendingLoopScreenshotIteration =
+                    progress.iteration;
+                } else if (
+                  progress.type ===
+                    "OBSERVED" &&
+                  pendingLoopScreenshotIteration !==
+                    undefined &&
+                  progress.iteration >
+                    pendingLoopScreenshotIteration
+                ) {
+                  await this.#captureScreenshot(
+                    runId,
+                    browser,
+                    "loop-" +
+                      String(
+                        pendingLoopScreenshotIteration
+                      ).padStart(
+                        2,
+                        "0"
+                      ) +
+                      "-after-action.jpg",
+                    artifactErrors
+                  );
+                  pendingLoopScreenshotIteration =
+                    undefined;
                 }
 
                 await this.#persistLoopProgress(
                   runId,
-                  browser,
-                  progress,
-                  artifactErrors
+                  progress
                 );
               }
           });
         throwIfAborted(signal);
+
+        if (
+          pendingLoopScreenshotIteration !==
+          undefined
+        ) {
+          await this.#captureScreenshot(
+            runId,
+            browser,
+            "loop-" +
+              String(
+                pendingLoopScreenshotIteration
+              ).padStart(2, "0") +
+              "-after-action.jpg",
+            artifactErrors
+          );
+          pendingLoopScreenshotIteration =
+            undefined;
+        }
 
         timings.loopMs =
           Date.now() - startedAt;
