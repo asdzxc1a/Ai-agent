@@ -334,7 +334,8 @@ async function screenshot(
     InMemoryArtifactStore,
   name: string,
   artifactRunId: string =
-    runId
+    runId,
+  semanticSettled = true
 ): Promise<string> {
   const data =
     new Uint8Array([
@@ -371,6 +372,7 @@ async function screenshot(
       metadata: {
         captureVersion:
           "page-evidence-v1",
+        semanticSettled,
         pageUrl,
         pageTitle:
           "Example Systems",
@@ -1239,6 +1241,60 @@ describe(
         })
       ).rejects.toThrow(
         "research evidence requires a screenshot artifact"
+      );
+    });
+
+    it("rejects an immediate screenshot that was not captured after semantic settle", async () => {
+      const artifacts =
+        new InMemoryArtifactStore();
+      const repository =
+        new InMemoryProspectResearchRepository();
+      const artifactIds = {
+        industry:
+          await screenshot(
+            artifacts,
+            "industry.jpg",
+            runId,
+            false
+          ),
+        workflow:
+          await screenshot(
+            artifacts,
+            "workflow.jpg"
+          ),
+        hiring:
+          await screenshot(
+            artifacts,
+            "hiring.jpg"
+          )
+      };
+      const result =
+        researchResult(
+          artifactIds
+        );
+      const research =
+        service(
+          repository,
+          artifacts,
+          completedRun(result)
+        );
+
+      await research.approveTarget(
+        target()
+      );
+
+      await expect(
+        research.recordCompleted({
+          targetId:
+            "target.example",
+          runId,
+          artifactIdsByEvidenceId:
+            artifactMapping(
+              artifactIds
+            )
+        })
+      ).rejects.toThrow(
+        "research screenshot is missing a server-owned page capture receipt"
       );
     });
 
