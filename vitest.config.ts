@@ -12,6 +12,9 @@ export default defineConfig({
       "@astra/agent-runtime": workspaceSource(
         "./packages/agent-runtime/src/index.ts"
       ),
+      "@astra/contracts": workspaceSource(
+        "./packages/contracts/src/index.ts"
+      ),
       "@astra/agent-loop": workspaceSource(
         "./packages/agent-loop/src/index.ts"
       ),

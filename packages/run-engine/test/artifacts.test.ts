@@ -167,6 +167,11 @@ test("failed run leaves redacted debugging artifacts", async () => {
       new EvidenceBrowserRuntime(),
     agentRuntime:
       new FailingAgentRuntime(),
+    completionVerifier: {
+      async verify() {
+        return { verified: true };
+      }
+    },
     artifactStore
   });
 
@@ -274,7 +279,12 @@ test("does not request browser diagnostics when artifact collection is disabled"
   const engine = new RunEngine({
     repository: new InMemoryRunRepository(),
     browserRuntime,
-    agentRuntime: new FailingAgentRuntime()
+    agentRuntime: new FailingAgentRuntime(),
+    completionVerifier: {
+      async verify() {
+        return { verified: true };
+      }
+    }
   });
 
   const started = await engine.createRun({
@@ -330,6 +340,11 @@ test("configured artifact store captures successful lifecycle evidence", async (
           },
           async close() {}
         };
+      }
+    },
+    completionVerifier: {
+      async verify() {
+        return { verified: true };
       }
     },
     artifactStore
@@ -424,6 +439,13 @@ test("artifact-store failures do not change successful run result", async () => 
             return schema.parse({});
           },
           async close() {}
+        };
+      }
+    },
+    completionVerifier: {
+      async verify() {
+        return {
+          verified: true
         };
       }
     },

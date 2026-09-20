@@ -8,6 +8,19 @@ import { join } from "node:path";
 
 import { expect, test } from "vitest";
 
+import type {
+  AgentAction,
+  AgentActionResult,
+  AgentRuntime,
+  AgentSession,
+  OpenAgentSessionOptions,
+  RuntimeSchema
+} from "@astra/agent-runtime";
+import type {
+  BrowserRuntime,
+  BrowserSession,
+  BrowserSessionOptions
+} from "@astra/browser-runtime";
 import type { RunSnapshot } from "@astra/contracts";
 
 import { createApiServer } from "../src/index.js";
@@ -20,7 +33,10 @@ import {
 } from "../../../packages/run-engine/src/index.js";
 import { createStagehandAgentRuntimeForTesting } from "../../../packages/agent-stagehand/src/testing.js";
 import { FixtureLLMClient } from "../../../packages/agent-stagehand/test/fixture-llm.js";
-import { SteelBrowserRuntime } from "../../../packages/browser-steel/src/index.js";
+import {
+  SteelBrowserRuntime,
+  SteelClient
+} from "../../../packages/browser-steel/src/index.js";
 
 const steelBaseUrl =
   process.env.STEEL_BASE_URL ??
@@ -28,6 +44,94 @@ const steelBaseUrl =
 const fixtureUrl =
   process.env.STEEL_FIXTURE_URL ??
   "http://host.docker.internal:4173";
+
+
+class RecordingSteelRuntime
+  implements BrowserRuntime {
+  public session:
+    BrowserSession | undefined;
+  readonly #inner:
+    SteelBrowserRuntime;
+
+  public constructor() {
+    this.#inner =
+      new SteelBrowserRuntime({
+        baseUrl:
+          steelBaseUrl,
+        skipFingerprintInjection:
+          true
+      });
+  }
+
+  public async createSession(
+    options?: BrowserSessionOptions
+  ): Promise<BrowserSession> {
+    this.session =
+      await this.#inner.createSession(
+        options
+      );
+    return this.session;
+  }
+}
+
+class HangingAgentSession
+  implements AgentSession {
+  public observeStarted = false;
+  public closeCalls = 0;
+
+  public async navigate(
+    url: string
+  ): Promise<void> {
+    void url;
+  }
+
+  public async observe(
+    instruction: string
+  ): Promise<AgentAction[]> {
+    void instruction;
+    this.observeStarted = true;
+    return new Promise<
+      AgentAction[]
+    >(() => undefined);
+  }
+
+  public async act(
+    action: AgentAction
+  ): Promise<AgentActionResult> {
+    return {
+      success: true,
+      message: "unexpected",
+      actions: [action]
+    };
+  }
+
+  public async extract<T>(
+    instruction: string,
+    schema: RuntimeSchema<T>
+  ): Promise<T> {
+    void instruction;
+    return schema.parse({});
+  }
+
+  public async close():
+    Promise<void> {
+    this.closeCalls += 1;
+  }
+}
+
+class HangingAgentRuntime
+  implements AgentRuntime {
+  public readonly session =
+    new HangingAgentSession();
+
+  public async openSession(
+    options:
+      OpenAgentSessionOptions
+  ): Promise<AgentSession> {
+    void options;
+    return this.session;
+  }
+}
 
 test("HTTP API executes a real structured browser run with downloadable screenshots", async () => {
   const artifactRoot = await mkdtemp(
@@ -53,7 +157,34 @@ test("HTTP API executes a real structured browser run with downloadable screensh
         new InMemoryRunRepository(),
       browserRuntime,
       agentRuntime,
-      artifactStore
+      artifactStore,
+      completionVerifier: {
+        async verify(input) {
+          const value =
+            input.candidateResult as {
+              count?: unknown;
+              status?: unknown;
+            };
+
+          return (
+            value.count === 1 &&
+            value.status ===
+              "clicked"
+          )
+            ? {
+                verified:
+                  true as const
+              }
+            : {
+                verified:
+                  false as const,
+                goalState:
+                  "FAILED" as const,
+                message:
+                  "Fixture completion state was not verified."
+              };
+        }
+      }
     })
   );
 
@@ -166,6 +297,13 @@ test("HTTP API executes a real structured browser run with downloadable screensh
     expect(terminal?.status).toBe(
       "COMPLETED"
     );
+    expect(
+      terminal?.goalState
+    ).toBe("COMPLETED");
+    expect(
+      terminal?.terminalReason
+        ?.code
+    ).toBe("GOAL_VERIFIED");
     expect(terminal?.result).toEqual({
       count: 1,
       status: "clicked"
@@ -254,3 +392,184 @@ test("HTTP API executes a real structured browser run with downloadable screensh
     });
   }
 });
+
+test(
+  "HTTP cancellation releases the real Steel session without leaving a zombie",
+  async () => {
+    const browserRuntime =
+      new RecordingSteelRuntime();
+    const agentRuntime =
+      new HangingAgentRuntime();
+    const engine =
+      new RunEngine({
+        repository:
+          new InMemoryRunRepository(),
+        browserRuntime,
+        agentRuntime,
+        completionVerifier: {
+          async verify() {
+            return {
+              verified: true
+            };
+          }
+        }
+      });
+    const server =
+      createApiServer(engine);
+
+    await new Promise<void>(
+      (resolve, reject) => {
+        server.once(
+          "error",
+          reject
+        );
+        server.listen(
+          0,
+          "127.0.0.1",
+          resolve
+        );
+      }
+    );
+
+    try {
+      const address =
+        server.address();
+
+      if (
+        address === null ||
+        typeof address ===
+          "string"
+      ) {
+        throw new Error(
+          "API server did not bind a TCP port."
+        );
+      }
+
+      const baseUrl =
+        "http://127.0.0.1:" +
+        String(
+          (
+            address as AddressInfo
+          ).port
+        );
+
+      const acceptedResponse =
+        await fetch(
+          baseUrl +
+            "/v1/runs",
+          {
+            method: "POST",
+            headers: {
+              "content-type":
+                "application/json"
+            },
+            body:
+              JSON.stringify({
+                url:
+                  fixtureUrl +
+                  "/?source=cancel",
+                goal:
+                  "Remain active until cancellation is requested."
+              })
+          }
+        );
+
+      expect(
+        acceptedResponse.status
+      ).toBe(202);
+
+      const accepted =
+        await acceptedResponse.json() as {
+          runId: string;
+        };
+
+      for (
+        let attempt = 0;
+        attempt < 300;
+        attempt += 1
+      ) {
+        if (
+          agentRuntime.session
+            .observeStarted &&
+          browserRuntime.session !==
+            undefined
+        ) {
+          break;
+        }
+
+        await new Promise(
+          (resolve) => {
+            setTimeout(
+              resolve,
+              25
+            );
+          }
+        );
+      }
+
+      expect(
+        agentRuntime.session
+          .observeStarted
+      ).toBe(true);
+      expect(
+        browserRuntime.session
+      ).toBeDefined();
+
+      const sessionId =
+        browserRuntime.session!.id;
+
+      const cancelResponse =
+        await fetch(
+          baseUrl +
+            "/v1/runs/" +
+            accepted.runId +
+            "/cancel",
+          {
+            method: "POST"
+          }
+        );
+
+      expect(
+        cancelResponse.status
+      ).toBe(200);
+
+      const cancelled =
+        await cancelResponse.json() as
+          RunSnapshot;
+
+      expect(
+        cancelled.status
+      ).toBe("CANCELLED");
+      expect(
+        cancelled
+          .terminalReason?.code
+      ).toBe("CANCELLED");
+
+      const steel =
+        new SteelClient(
+          steelBaseUrl
+        );
+      const released =
+        await steel.getSession(
+          sessionId
+        );
+
+      expect(
+        released.status
+      ).toBe("released");
+      expect(
+        agentRuntime.session
+          .closeCalls
+      ).toBe(1);
+    } finally {
+      await new Promise<void>(
+        (resolve) => {
+          server.close(
+            () => resolve()
+          );
+        }
+      );
+    }
+  },
+  120_000
+);

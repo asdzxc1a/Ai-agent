@@ -206,6 +206,11 @@ test("RunEngine persists recoverable multi-step progress without corrupting term
       browserRuntime:
         new FakeBrowserRuntime(),
       agentRuntime: runtime,
+      completionVerifier: {
+        async verify() {
+          return { verified: true };
+        }
+      },
       agentLoop:
         new AgentLoopExecutor({
           policy:

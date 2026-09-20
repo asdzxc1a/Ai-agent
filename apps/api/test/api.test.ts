@@ -138,6 +138,66 @@ class FakeAgentRuntime implements AgentRuntime {
   }
 }
 
+
+class HangingAgentSession
+  implements AgentSession {
+  public observeStarted = false;
+  public closeCalls = 0;
+
+  public async navigate(
+    url: string
+  ): Promise<void> {
+    void url;
+  }
+
+  public async observe(
+    instruction: string
+  ): Promise<AgentAction[]> {
+    void instruction;
+    this.observeStarted = true;
+    return new Promise<
+      AgentAction[]
+    >(() => undefined);
+  }
+
+  public async act(
+    action: AgentAction
+  ): Promise<AgentActionResult> {
+    return {
+      success: true,
+      message: "unexpected",
+      actions: [action]
+    };
+  }
+
+  public async extract<T>(
+    instruction: string,
+    schema: RuntimeSchema<T>
+  ): Promise<T> {
+    void instruction;
+    return schema.parse({});
+  }
+
+  public async close():
+    Promise<void> {
+    this.closeCalls += 1;
+  }
+}
+
+class HangingAgentRuntime
+  implements AgentRuntime {
+  public readonly session =
+    new HangingAgentSession();
+
+  public async openSession(
+    options:
+      OpenAgentSessionOptions
+  ): Promise<AgentSession> {
+    void options;
+    return this.session;
+  }
+}
+
 const servers: Server[] = [];
 
 async function startServer(
@@ -149,6 +209,11 @@ async function startServer(
     repository: new InMemoryRunRepository(),
     browserRuntime,
     agentRuntime,
+    completionVerifier: {
+      async verify() {
+        return { verified: true };
+      }
+    },
     ...(artifactStore === undefined
       ? {}
       : {
@@ -404,6 +469,237 @@ describe("first product API", () => {
         error: { code: string };
       }).error.code
     ).toBe("RUN_NOT_FOUND");
+  });
+
+  it("cancels an active run through the HTTP API", async () => {
+    const browserRuntime =
+      new FakeBrowserRuntime();
+    const agentRuntime =
+      new HangingAgentRuntime();
+    const baseUrl =
+      await startServer(
+        browserRuntime,
+        agentRuntime
+      );
+
+    const acceptedResponse =
+      await fetch(
+        baseUrl + "/v1/runs",
+        {
+          method: "POST",
+          headers: {
+            "content-type":
+              "application/json"
+          },
+          body: JSON.stringify({
+            url:
+              "http://fixture.test/",
+            goal:
+              "Remain active until cancelled."
+          })
+        }
+      );
+
+    const accepted =
+      await acceptedResponse.json() as {
+        runId: string;
+      };
+
+    for (
+      let attempt = 0;
+      attempt < 100;
+      attempt += 1
+    ) {
+      if (
+        agentRuntime.session
+          .observeStarted
+      ) {
+        break;
+      }
+
+      await new Promise(
+        (resolve) => {
+          setTimeout(resolve, 2);
+        }
+      );
+    }
+
+    expect(
+      agentRuntime.session
+        .observeStarted
+    ).toBe(true);
+
+    const cancelResponse =
+      await fetch(
+        baseUrl +
+          "/v1/runs/" +
+          accepted.runId +
+          "/cancel",
+        {
+          method: "POST"
+        }
+      );
+
+    expect(
+      cancelResponse.status
+    ).toBe(200);
+
+    const cancelled =
+      await cancelResponse.json() as
+        RunSnapshot;
+
+    expect(
+      cancelled.status
+    ).toBe("CANCELLED");
+    expect(
+      cancelled.goalState
+    ).toBe("BLOCKED");
+    expect(
+      cancelled.terminalReason
+        ?.code
+    ).toBe("CANCELLED");
+    expect(
+      browserRuntime.session
+        .closeCalls
+    ).toBe(1);
+    expect(
+      agentRuntime.session
+        .closeCalls
+    ).toBe(1);
+
+    const secondCancel =
+      await fetch(
+        baseUrl +
+          "/v1/runs/" +
+          accepted.runId +
+          "/cancel",
+        {
+          method: "POST"
+        }
+      );
+
+    expect(
+      secondCancel.status
+    ).toBe(200);
+    const secondCancelled =
+      await secondCancel.json() as
+        RunSnapshot;
+
+    expect(
+      secondCancelled.status
+    ).toBe("CANCELLED");
+  });
+
+  it("fails closed when cancellation cannot be propagated to a durable RUNNING run", async () => {
+    const repository =
+      new InMemoryRunRepository();
+    const now =
+      new Date().toISOString();
+    const runId =
+      "00000000-0000-4000-8000-000000000098";
+
+    await repository.createRun(
+      {
+        id: runId,
+        status: "RUNNING",
+        goalState:
+          "IN_PROGRESS",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        url:
+          "http://fixture.test/",
+        goal:
+          "Persisted active run."
+      }
+    );
+
+    const server =
+      createApiServer(
+        new RunEngine({
+          repository,
+          browserRuntime:
+            new FakeBrowserRuntime(),
+          agentRuntime:
+            new FakeAgentRuntime(),
+          completionVerifier: {
+            async verify() {
+              return {
+                verified: true
+              };
+            }
+          }
+        })
+      );
+    servers.push(server);
+
+    await new Promise<void>(
+      (resolve, reject) => {
+        server.once(
+          "error",
+          reject
+        );
+        server.listen(
+          0,
+          "127.0.0.1",
+          resolve
+        );
+      }
+    );
+
+    const address =
+      server.address();
+
+    if (
+      address === null ||
+      typeof address === "string"
+    ) {
+      throw new Error(
+        "API server did not bind a TCP port."
+      );
+    }
+
+    const baseUrl =
+      "http://127.0.0.1:" +
+      String(
+        (
+          address as AddressInfo
+        ).port
+      );
+
+    const response =
+      await fetch(
+        baseUrl +
+          "/v1/runs/" +
+          runId +
+          "/cancel",
+        {
+          method: "POST"
+        }
+      );
+
+    expect(response.status).toBe(
+      409
+    );
+    expect(
+      (
+        await response.json() as {
+          error: {
+            code: string;
+          };
+        }
+      ).error.code
+    ).toBe(
+      "CANCELLATION_UNAVAILABLE"
+    );
+    expect(
+      (
+        await repository.getRun(
+          runId
+        )
+      )?.status
+    ).toBe("RUNNING");
   });
 
   it("returns typed 400 and 404 errors", async () => {

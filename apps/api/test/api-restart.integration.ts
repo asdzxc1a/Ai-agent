@@ -99,8 +99,34 @@ test("completed HTTP run survives a fresh Postgres pool and API instance", async
     new RunEngine({
       repository: repositoryA,
       browserRuntime,
-      agentRuntime
-    })
+      agentRuntime,
+      completionVerifier: {
+        async verify(input) {
+          const value =
+            input.candidateResult as {
+              count?: unknown;
+              status?: unknown;
+            };
+
+          return (
+            value.count === 1 &&
+            value.status ===
+              "clicked"
+          )
+            ? {
+                verified:
+                  true as const
+              }
+            : {
+                verified:
+                  false as const,
+                goalState:
+                  "FAILED" as const,
+                message:
+                  "Restart fixture result was not verified."
+              };
+        }
+      }    })
   );
 
   const baseUrlA = await listen(serverA);
@@ -171,8 +197,34 @@ test("completed HTTP run survives a fresh Postgres pool and API instance", async
       new RunEngine({
         repository: repositoryB,
         browserRuntime,
-        agentRuntime
-      })
+        agentRuntime,
+        completionVerifier: {
+          async verify(input) {
+            const value =
+                input.candidateResult as {
+                  count?: unknown;
+                  status?: unknown;
+                };
+
+            return (
+                value.count === 1 &&
+                value.status ===
+                  "clicked"
+            )
+                ? {
+                    verified:
+                        true as const
+                  }
+                : {
+                    verified:
+                        false as const,
+                    goalState:
+                        "FAILED" as const,
+                    message:
+                        "Restart fixture result was not verified."
+                  };
+          }
+        }      })
     );
 
     const baseUrlB = await listen(serverB);
@@ -187,6 +239,13 @@ test("completed HTTP run survives a fresh Postgres pool and API instance", async
       const persisted = await response.json() as RunSnapshot;
 
       expect(persisted.status).toBe("COMPLETED");
+      expect(
+        persisted.goalState
+      ).toBe("COMPLETED");
+      expect(
+        persisted.terminalReason
+          ?.code
+      ).toBe("GOAL_VERIFIED");
       expect(persisted.result).toEqual({
         count: 1,
         status: "clicked"

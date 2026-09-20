@@ -44,6 +44,8 @@ function pendingRun(id: string): RunSnapshot {
   return {
     id,
     status: "PENDING",
+    goalState:
+      "IN_PROGRESS",
     createdAt: now,
     updatedAt: now
   };
@@ -103,16 +105,26 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
 
   await expect(
     repository.updateRun(runId, {
-      status: "COMPLETED"
+      status: "COMPLETED",
+      result: {
+        count: 1,
+        status: "clicked"
+      }
     })
   ).rejects.toThrow(
-    "COMPLETED runs must contain a validated result."
+    "COMPLETED runs must have goalState COMPLETED."
   );
 
   const completed = await repository.updateRun(
     runId,
     {
       status: "COMPLETED",
+      goalState: "COMPLETED",
+      terminalReason: {
+        code: "GOAL_VERIFIED",
+        message:
+          "Durable fixture verified."
+      },
       result: {
         count: 1,
         status: "clicked"
@@ -120,9 +132,26 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
     }
   );
 
-  expect(completed.result).toEqual({
-    count: 1,
-    status: "clicked"
+  expect(completed).toMatchObject({
+    status: "COMPLETED",
+    goalState: "COMPLETED",
+    terminalReason: {
+      code: "GOAL_VERIFIED"
+    },
+    result: {
+      count: 1,
+      status: "clicked"
+    }
+  });
+
+  expect(
+    await repository.getRun(runId)
+  ).toMatchObject({
+    status: "COMPLETED",
+    goalState: "COMPLETED",
+    terminalReason: {
+      code: "GOAL_VERIFIED"
+    }
   });
 
   expect(
@@ -159,6 +188,11 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
     failedId,
     {
       status: "FAILED",
+      goalState: "FAILED",
+      terminalReason: {
+        code: "EXECUTION_FAILED",
+        message: "fixture failure"
+      },
       error: {
         code: "EXECUTION_FAILED",
         message: "fixture failure"
@@ -171,7 +205,59 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
     message: "fixture failure"
   });
 
-  expect((await repository.getRun(failedId))?.error).toEqual(
-    failed.error
+  expect(
+    await repository.getRun(failedId)
+  ).toMatchObject({
+    status: "FAILED",
+    goalState: "FAILED",
+    terminalReason: {
+      code: "EXECUTION_FAILED"
+    },
+    error: failed.error
+  });
+
+  const cancelledId =
+    randomUUID();
+  await repository.createRun(
+    pendingRun(cancelledId),
+    request
   );
+
+  const cancelled =
+    await repository.updateRun(
+      cancelledId,
+      {
+        status: "CANCELLED",
+        goalState: "BLOCKED",
+        terminalReason: {
+          code: "CANCELLED",
+          message:
+            "operator cancelled"
+        },
+        error: {
+          code: "CANCELLED",
+          message:
+            "operator cancelled"
+        }
+      }
+    );
+
+  expect(cancelled).toMatchObject({
+    status: "CANCELLED",
+    goalState: "BLOCKED",
+    terminalReason: {
+      code: "CANCELLED"
+    }
+  });
+  expect(
+    await repository.getRun(
+      cancelledId
+    )
+  ).toMatchObject({
+    status: "CANCELLED",
+    goalState: "BLOCKED",
+    terminalReason: {
+      code: "CANCELLED"
+    }
+  });
 });

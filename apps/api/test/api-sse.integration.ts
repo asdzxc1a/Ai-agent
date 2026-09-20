@@ -280,7 +280,34 @@ test("PostgreSQL SSE resumes after disconnect without duplicate events", async (
   const runEngine = new RunEngine({
     repository,
     browserRuntime: new FakeBrowserRuntime(),
-    agentRuntime: new SlowAgentRuntime()
+    agentRuntime: new SlowAgentRuntime(),
+    completionVerifier: {
+      async verify(input) {
+        const value =
+          input.candidateResult as {
+            count?: unknown;
+            status?: unknown;
+          };
+
+        return (
+          value.count === 1 &&
+          value.status ===
+            "clicked"
+        )
+          ? {
+              verified:
+                true as const
+            }
+          : {
+              verified:
+                false as const,
+              goalState:
+                "FAILED" as const,
+              message:
+                "SSE fixture result was not verified."
+            };
+      }
+    }
   });
   const server = createApiServer(runEngine);
   const baseUrl = await listen(server);
@@ -396,6 +423,12 @@ test("PostgreSQL SSE resumes after disconnect without duplicate events", async (
     expect(
       terminalEvent?.data.payload
     ).toEqual({
+      goalState: "COMPLETED",
+      reason: {
+        code: "GOAL_VERIFIED",
+        message:
+          "Owned completion verifier accepted the run result."
+      },
       result: {
         count: 1,
         status: "clicked"

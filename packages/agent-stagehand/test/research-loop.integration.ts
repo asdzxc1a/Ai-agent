@@ -148,6 +148,37 @@ test(
               new ResearchFixtureLLMClient()
           ),
         artifactStore,
+        completionVerifier: {
+          async verify(input) {
+            const parsed =
+              researchResultSchema.safeParse(
+                input.candidateResult
+              );
+            const successfulActions =
+              input.trajectory.filter(
+                (entry) =>
+                  entry.actionOutcome
+                    ?.success === true
+              ).length;
+
+            return (
+              parsed.success &&
+              successfulActions === 3
+            )
+              ? {
+                  verified:
+                    true as const
+                }
+              : {
+                  verified:
+                    false as const,
+                  goalState:
+                    "FAILED" as const,
+                  message:
+                    "Research completion evidence did not match the deterministic task."
+                };
+          }
+        },
         agentLoop:
           new AgentLoopExecutor({
             policy:
@@ -178,6 +209,13 @@ test(
     expect(
       terminal.status
     ).toBe("COMPLETED");
+    expect(
+      terminal.goalState
+    ).toBe("COMPLETED");
+    expect(
+      terminal.terminalReason
+        ?.code
+    ).toBe("GOAL_VERIFIED");
     expect(
       terminal.result
     ).toEqual({
@@ -219,6 +257,29 @@ test(
       true,
       true
     ]);
+
+    expect(
+      actions.map(
+        (step) =>
+          (
+            step.payload as {
+              effect: string;
+            }
+          ).effect
+      )
+    ).toEqual([
+      "committed",
+      "committed",
+      "committed"
+    ]);
+
+    expect(
+      steps.some(
+        (step) =>
+          step.kind ===
+          "GOAL_VERIFIED"
+      )
+    ).toBe(true);
 
     expect(
       decisions.map(
