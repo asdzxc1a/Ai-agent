@@ -893,3 +893,37 @@ A fixed 15-minute human baseline entered after seeing Astra output would also cr
 
 Only if a later experiment is deliberately redesigned with a documented statistical/commercial rationale and a new protocol version. Existing calibration and acceptance results are never relabeled retroactively.
 
+---
+
+## D-031 — First Gate 13 acceptance is single-market and uses the human's normal tools
+
+**Date:** 2026-09-20
+**Status:** Accepted
+
+**Decision**
+
+The first Gate 13 acceptance cohort must represent one commercial market and compare Astra against the existing human workflow using that workflow's normal research tools.
+
+Cross-market U.S./China work remains valuable calibration evidence because the source ecosystems differ materially, but it cannot support one pooled Gate 13 commercial verdict. Scope-matched human baselines are also calibration-only; acceptance uses the real human process even when that gives the human access to more sources than Astra's current one-page workflow.
+
+Every frozen sample records its selection method, market scope/description, and human-baseline mode. Gate 13 acceptance rejects `CROSS_MARKET` and `SCOPE_MATCHED` sample settings.
+
+**Why**
+
+The product question is whether Astra saves meaningful human preparation effort without increasing factual risk, not whether Astra can beat an artificially restricted human on the same page. The September audit asked for comparison with a human researcher using normal tools.
+
+The China source stack is not interchangeable with the U.S. stack. Mainland LinkedIn local recruiting/talent-insight support was discontinued, while local official registries, Weixin/WeChat, Chinese recruitment platforms, and local media/video ecosystems carry materially different signals. Pooling markets before Astra has a region-specific source policy could hide a strong result in one market behind a weak result in another.
+
+**Consequences**
+
+- the six-company U.S./China set remains cross-market calibration only;
+- first commercial acceptance uses one market plus one explicit niche/cohort definition;
+- acceptance sample selection method is frozen before results to reduce hand-picking bias;
+- the human acceptance baseline uses normal tools and is measured before Astra starts each corresponding target;
+- China should receive a separate acceptance cohort when its local multi-source research policy is implemented and qualified;
+- calibration may still use scope-matched baselines to debug workflow mechanics.
+
+**Revisit when**
+
+A region-specific multi-source research capability has deterministic and live evidence strong enough to justify a new cross-market protocol version or separately accepted regional cohorts.
+

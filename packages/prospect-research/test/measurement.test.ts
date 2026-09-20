@@ -70,13 +70,33 @@ function sample(
       status:
         "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v2",
+        "gate13-measured-research-v3",
       purpose,
       cohortDefinition:
         purpose ===
           "CALIBRATION"
           ? "Cross-region calibration set used to test the workflow and measurement mechanics; not a Gate 13 pass/fail sample."
           : "Chosen industrial/logistics niche acceptance cohort with comparable operating complexity.",
+      selectionMethod:
+        purpose ===
+          "CALIBRATION"
+          ? "Purposefully selected stress cases across two markets."
+          : "Predefined inclusion criteria and deterministic company selection within one commercial niche.",
+      marketScope:
+        purpose ===
+          "CALIBRATION"
+          ? "CROSS_MARKET"
+          : "SINGLE_MARKET",
+      marketDescription:
+        purpose ===
+          "CALIBRATION"
+          ? "United States and China"
+          : "United States",
+      humanBaselineMode:
+        purpose ===
+          "CALIBRATION"
+          ? "SCOPE_MATCHED"
+          : "NORMAL_TOOLS",
       targets:
         Array.from(
           {
@@ -517,8 +537,36 @@ describe(
           ProspectResearchSampleSchema
             .parse({
               ...acceptance,
+              marketScope:
+                "CROSS_MARKET"
+            })
+        ).toThrow(
+          "acceptance must use one market"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              humanBaselineMode:
+                "SCOPE_MATCHED"
+            })
+        ).toThrow(
+          "must compare against the human workflow using its normal tools"
+        );
+
+        const acceptanceForThresholds =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptanceForThresholds,
               criteria: {
-                ...acceptance
+                ...acceptanceForThresholds
                   .criteria,
                 minUsableBriefRate:
                   0.89
@@ -529,9 +577,9 @@ describe(
         expect(() =>
           ProspectResearchSampleSchema
             .parse({
-              ...acceptance,
+              ...acceptanceForThresholds,
               criteria: {
-                ...acceptance
+                ...acceptanceForThresholds
                   .criteria,
                 minMedianHumanTimeReductionFraction:
                   0.49

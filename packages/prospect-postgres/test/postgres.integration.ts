@@ -167,11 +167,19 @@ function frozenSample():
     id: "sample.pg",
     status: "FROZEN",
     protocolVersion:
-      "gate13-measured-research-v2",
+      "gate13-measured-research-v3",
     purpose:
       "CALIBRATION",
     cohortDefinition:
       "PostgreSQL persistence calibration fixture; not a Gate 13 acceptance cohort.",
+    selectionMethod:
+      "Single deterministic persistence fixture target.",
+    marketScope:
+      "SINGLE_MARKET",
+    marketDescription:
+      "Fixture market",
+    humanBaselineMode:
+      "SCOPE_MATCHED",
     targets: [
       completedAttempt()
         .target

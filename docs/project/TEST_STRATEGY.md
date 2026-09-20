@@ -270,7 +270,8 @@ Before the first measured sample:
 - keep the merged Gate 13 audit-hardening regressions green: request/redirect policy, terminal atomicity/supervision/reconciliation, >100-event SSE replay, settled capture provenance, uncertainty handoff, prohibited buyer-visible prose, and bounded diagnostics/cleanup;
 - keep execution serial/single-owner and the read-only/action-free operator composition green;
 - persist approvals first, then distinguish `CALIBRATION` from `ACCEPTANCE` samples; calibration may contain at most 10 targets and is diagnostic-only;
-- Gate 13 acceptance uses 30–50 frozen targets from one explicit commercial niche and requires frozen-sample membership on every measured run;
+- the first Gate 13 acceptance uses 30–50 frozen U.S. industrial/logistics targets from one explicit cohort definition and a selection method frozen before results;
+- acceptance is single-market and compares against the human researcher's normal tools; cross-market and scope-matched baselines are calibration-only;
 - durably freeze decision thresholds and a cost-ceiling rationale before results; the quality/time minimums cannot be weakened;
 - for acceptance targets, record a measured human baseline before the Astra attempt starts; fixed-cap estimates are calibration-only;
 - record blind versus unblinded review and use blind review where practical;
@@ -278,8 +279,8 @@ Before the first measured sample:
 
 For every research attempt record:
 
-- target/sample identity, sample purpose, cohort definition, durable attempt ID/status, and reviewed brief disposition;
-- human-baseline provenance/timestamp and blind/unblinded review mode;
+- target/sample identity, sample purpose, cohort definition, frozen selection method, market scope/description, durable attempt ID/status, and reviewed brief disposition;
+- human-baseline mode/provenance/timestamp and blind/unblinded review mode;
 - material source/evidence receipts and manual audit result;
 - requested-field coverage and explicit unknowns;
 - unsupported-claim/correction count and severity;
