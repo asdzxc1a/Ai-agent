@@ -273,14 +273,14 @@ Before the first measured sample:
 - the first Gate 13 acceptance uses 30–50 frozen U.S. industrial/logistics targets from one explicit cohort definition and a selection method frozen before results;
 - acceptance is single-market and compares against the human researcher's normal tools; cross-market and scope-matched baselines are calibration-only;
 - durably freeze decision thresholds and a cost-ceiling rationale before results; the quality/time minimums cannot be weakened;
-- for acceptance targets, record a measured human baseline before the Astra attempt starts; fixed-cap estimates are calibration-only;
+- for acceptance targets, persist a measured human baseline as separate server-timestamped durable state before the Astra attempt is allowed to start; fixed-cap estimates are calibration-only;
 - record blind versus unblinded review and use blind review where practical;
 - do not report an acceptance pass/fail verdict until every frozen target has exactly one recorded outcome.
 
 For every research attempt record:
 
 - target/sample identity, sample purpose, cohort definition, frozen selection method, market scope/description, durable attempt ID/status, and reviewed brief disposition;
-- human-baseline mode/provenance/timestamp and blind/unblinded review mode;
+- durable human-baseline ID, mode/provenance/server timestamp, preparation minutes/tooling description, and blind/unblinded review mode;
 - material source/evidence receipts and manual audit result;
 - requested-field coverage and explicit unknowns;
 - unsupported-claim/correction count and severity;
@@ -379,7 +379,7 @@ Relevant failures preserve enough evidence to reproduce the problem:
 
 - deterministic contract/security tests: 100% pass;
 - Gate 11 core research suite: >=95% first-attempt expected-state success before sandbox/live research expansion;
-- Gate 13 calibration samples are diagnostic only; Gate 13 acceptance requires 30–50 niche targets, zero observed unsupported material claims, measured pre-attempt human baselines, and frozen usability/time/cost thresholds;
+- Gate 13 calibration samples are diagnostic only; Gate 13 acceptance requires 30–50 niche targets, zero observed unsupported material claims, durable pre-run measured-human baselines, and frozen usability/time/cost thresholds;
 - zero known unsupported commercial claims in hard-gated SalesBench, including final rendered prose;
 - zero unconfirmed real action executions;
 - zero known false-completed runs in the deterministic qualification sample;
