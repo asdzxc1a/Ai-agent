@@ -12,6 +12,7 @@ import {
 export interface ProspectResearchSampleMetrics {
   targetCount: number;
   outcomeCount: number;
+  usableBriefCount: number;
   usableBriefRate: number;
   unsupportedMaterialClaims: number;
   medianHumanTimeReductionFraction:
@@ -19,7 +20,15 @@ export interface ProspectResearchSampleMetrics {
   requestedFieldCoverageRate:
     number;
   unauthorizedActions: number;
-  maxDeliveryCostUsdPerBrief:
+  totalInfrastructureCostUsd: number;
+  maxInfrastructureCostUsdPerAttempt:
+    number | null;
+  totalHumanReviewLaborCostUsd:
+    number;
+  totalOtherDeliveryCostUsd:
+    number;
+  totalDeliveryCostUsd: number;
+  totalDeliveryCostUsdPerUsableBrief:
     number | null;
 }
 
@@ -29,6 +38,14 @@ export interface ProspectResearchSampleEvaluation {
   metrics:
     ProspectResearchSampleMetrics;
   failures: string[];
+}
+
+function money(
+  value: number
+): number {
+  return Math.round(
+    value * 1_000_000
+  ) / 1_000_000;
 }
 
 function median(
@@ -274,15 +291,63 @@ export function evaluateProspectResearchSample(
         outcome
           .baselineHumanPreparationMinutes
     );
-  const maxCost =
+  const totalInfrastructureCostUsd =
+    money(
+      outcomes.reduce(
+        (sum, outcome) =>
+          sum +
+          outcome
+            .infrastructureCostUsd,
+        0
+      )
+    );
+  const maxInfrastructureCostUsdPerAttempt =
     outcomes.length === 0
       ? null
       : Math.max(
           ...outcomes.map(
             (outcome) =>
               outcome
-                .deliveryCostUsd
+                .infrastructureCostUsd
           )
+        );
+  const totalHumanReviewLaborCostUsd =
+    money(
+      outcomes.reduce(
+        (sum, outcome) =>
+          sum +
+          (
+            outcome
+              .astraHumanReviewMinutes /
+            60
+          ) *
+          sample
+            .reviewLaborRateUsdPerHour,
+        0
+      )
+    );
+  const totalOtherDeliveryCostUsd =
+    money(
+      outcomes.reduce(
+        (sum, outcome) =>
+          sum +
+          outcome
+            .otherDeliveryCostUsd,
+        0
+      )
+    );
+  const totalDeliveryCostUsd =
+    money(
+      totalInfrastructureCostUsd +
+      totalHumanReviewLaborCostUsd +
+      totalOtherDeliveryCostUsd
+    );
+  const totalDeliveryCostUsdPerUsableBrief =
+    usable === 0
+      ? null
+      : money(
+          totalDeliveryCostUsd /
+          usable
         );
   const metrics:
     ProspectResearchSampleMetrics = {
@@ -290,6 +355,8 @@ export function evaluateProspectResearchSample(
         sample.targets.length,
       outcomeCount:
         outcomes.length,
+      usableBriefCount:
+        usable,
       usableBriefRate:
         sample.targets.length === 0
           ? 0
@@ -308,8 +375,12 @@ export function evaluateProspectResearchSample(
             totalRequested,
       unauthorizedActions:
         unauthorized,
-      maxDeliveryCostUsdPerBrief:
-        maxCost
+      totalInfrastructureCostUsd,
+      maxInfrastructureCostUsdPerAttempt,
+      totalHumanReviewLaborCostUsd,
+      totalOtherDeliveryCostUsd,
+      totalDeliveryCostUsd,
+      totalDeliveryCostUsdPerUsableBrief
     };
 
   if (!complete) {
@@ -378,13 +449,26 @@ export function evaluateProspectResearchSample(
   }
 
   if (
-    maxCost === null ||
-    maxCost >
+    maxInfrastructureCostUsdPerAttempt ===
+      null ||
+    maxInfrastructureCostUsdPerAttempt >
       sample.criteria
-        .maxDeliveryCostUsdPerBrief
+        .maxInfrastructureCostUsdPerAttempt
   ) {
     failures.push(
-      "delivery cost exceeds the frozen per-brief threshold"
+      "infrastructure cost exceeds the frozen per-attempt threshold"
+    );
+  }
+
+  if (
+    totalDeliveryCostUsdPerUsableBrief ===
+      null ||
+    totalDeliveryCostUsdPerUsableBrief >
+      sample.criteria
+        .maxTotalDeliveryCostUsdPerUsableBrief
+  ) {
+    failures.push(
+      "total delivery cost per usable brief exceeds the frozen threshold"
     );
   }
 
