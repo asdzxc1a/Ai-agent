@@ -501,3 +501,25 @@ Keep passed infrastructure as reusable substrate, preserve D-021's capability-fi
 
 After a foundation milestone, require the next roadmap gate to name a user/business outcome and a measurable capability gap. Do not add another infrastructure layer merely because it is available. Product mission may change; verified foundation evidence should not be discarded.
 
+
+---
+
+## L-020 — A perfect baseline can reveal benchmark leakage
+
+**Date:** 2026-09-19
+
+**Symptom / context**
+
+The first deterministic SalesBench run scored 36/36 policy matches with a perfect 1.0 aggregate, even though the baseline policy was intentionally simple and should not represent complete consultative-sales capability.
+
+**Cause**
+
+Several scenario expectations had been authored too closely around the baseline policy's current branches. The benchmark was measuring conformance to the implementation rather than independently expressing the product's desired consultative behavior.
+
+**Fix**
+
+Before freezing the scenario fingerprint, keep the policy unchanged and revise scenario expectations from the charter/product contract for nuanced cases such as executive skepticism, incumbent renewal, budget deferral, future timing, and weak/vague fit. Regenerate Baseline 0 once, then freeze the fingerprint and committed report.
+
+**Prevention**
+
+Treat an unexpectedly perfect new benchmark as a possible evaluator-design failure. Freeze benchmark inputs/expectations before optimization, version their fingerprint, and require benchmark changes to be explicit code review rather than silent score improvement.

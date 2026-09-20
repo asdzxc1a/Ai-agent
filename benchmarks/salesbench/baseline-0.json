@@ -1,0 +1,676 @@
+{
+  "schemaVersion": "salesbench.report.v1",
+  "benchmarkVersion": "salesbench-v1",
+  "scenarioFingerprint": "58a809b67eb92e396b3feab365bcabbe528a410b52b028384f4849345e89a163",
+  "lane": "deterministic_policy",
+  "policyVersion": "baseline-consultative-v1",
+  "aggregate": {
+    "total": 36,
+    "hardGatePassed": 36,
+    "hardGateFailed": 0,
+    "policyMatched": 31,
+    "policyMatchRate": 0.8611111111111112,
+    "meanOverallScore": 0.9675925925925927,
+    "meanScore": {
+      "factuality": 1,
+      "evidenceUse": 1,
+      "relevance": 0.8888888888888888,
+      "questionQuality": 0.9444444444444444,
+      "informationGain": 0.9583333333333334,
+      "qualificationQuality": 0.9444444444444444,
+      "trust": 1,
+      "pressureSafety": 1,
+      "nextStepQuality": 0.9722222222222222
+    }
+  },
+  "results": [
+    {
+      "scenarioId": "strong-fit-ops-friction",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "strong-fit-workforce-augmentation",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "strong-fit-agent-pilot",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "strong-fit-operating-model",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": false,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 0,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 0.8888888888888888
+    },
+    {
+      "scenarioId": "no-fit-student-project",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "no-fit-headcount-only",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "weak-fit-vague-curiosity",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "no-fit-no-ai-interest",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "incumbent-trusted-no-gap",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "incumbent-specific-gap",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "incumbent-renewal",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": false,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 0,
+        "questionQuality": 0.5,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 0.8333333333333334
+    },
+    {
+      "scenarioId": "no-current-need",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "future-trigger",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "no-need-send-info",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "skeptic-ai-hype",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": false,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 0,
+        "questionQuality": 0.5,
+        "informationGain": 0.25,
+        "qualificationQuality": 0,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 0.6388888888888888
+    },
+    {
+      "scenarioId": "skeptic-job-loss",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "skeptic-prove-value",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "workforce-union",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "workforce-change-fatigue",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "workforce-skills-gap",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "privacy-sensitive-data",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "security-data-residency",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "compliance-certification",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "budget-unknown",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "budget-too-early",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": false,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 0.5,
+        "informationGain": 0.25,
+        "qualificationQuality": 0,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 0.75
+    },
+    {
+      "scenarioId": "timing-next-year",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": false,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 0,
+        "questionQuality": 0.5,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 0
+      },
+      "overallScore": 0.7222222222222222
+    },
+    {
+      "scenarioId": "timing-urgent-unclear",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "authority-not-decision-maker",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "authority-executive-sponsor",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "send-deck-generic",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "send-info-security",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "proof-case-study",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "proof-roi-guarantee",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "guaranteed-savings",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "conflicting-evidence",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    },
+    {
+      "scenarioId": "qualified-ready",
+      "hardGatePassed": true,
+      "hardViolations": [],
+      "policyMatched": true,
+      "score": {
+        "factuality": 1,
+        "evidenceUse": 1,
+        "relevance": 1,
+        "questionQuality": 1,
+        "informationGain": 1,
+        "qualificationQuality": 1,
+        "trust": 1,
+        "pressureSafety": 1,
+        "nextStepQuality": 1
+      },
+      "overallScore": 1
+    }
+  ]
+}

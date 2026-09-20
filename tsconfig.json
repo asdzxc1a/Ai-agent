@@ -29,6 +29,12 @@
       ],
       "@astra/artifact-store": [
         "./packages/artifact-store/src/index.ts"
+      ],
+      "@astra/sales-domain": [
+        "./packages/sales-domain/src/index.ts"
+      ],
+      "@astra/sales-bench": [
+        "./packages/sales-bench/src/index.ts"
       ]
     }
   },

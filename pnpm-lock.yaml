@@ -119,6 +119,21 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
 
+  packages/sales-bench:
+    dependencies:
+      '@astra/sales-domain':
+        specifier: workspace:*
+        version: link:../sales-domain
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
+  packages/sales-domain:
+    dependencies:
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
 packages:
 
   '@ai-sdk/amazon-bedrock@3.0.131':

@@ -13,6 +13,7 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
+    "salesbench:baseline": "pnpm --filter @astra/sales-domain build && pnpm --filter @astra/sales-bench build && node packages/sales-bench/dist/baseline-cli.js",
     "test:steel": "vitest run --config vitest.steel.config.ts",
     "test:stagehand": "vitest run --config vitest.stagehand.config.ts",
     "build": "pnpm --recursive --if-present build",

@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Proven browser foundation → Astra autonomous sales product  
 **Current gate:** Gate 8 — Sales domain contract + SalesBench baseline  
-**Overall status:** Gates 0–7 remain PASSED and are preserved as Astra's browser/research/run foundation. The autonomous-sales product pivot is merged in PR #47 at `68c568c09920c223d690884dd6007a8e180cb190`. Gate 8 has not started implementation yet; issue #48 is the active working-memory anchor. The Git-centered memory system remains the canonical handoff mechanism.
+**Overall status:** Gates 0–7 remain PASSED and are preserved as Astra's browser/research/run foundation. The autonomous-sales product pivot is merged in PR #47 at `68c568c09920c223d690884dd6007a8e180cb190`. Gate 8 is IN_PROGRESS in issue #48 on branch gate-8-sales-domain-salesbench; service truth, sales-domain contracts, consultative policy, and SalesBench are the active work. The Git-centered memory system remains the canonical handoff mechanism.
 
 ## North star
 
@@ -148,7 +148,7 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 8 — Sales domain contract + SalesBench baseline (issue #48):** implement the service/claim boundary, owned sales-domain schemas, first AI-native transformation ontology, consultative policy, deterministic SalesBench, and honest Baseline 0 before any live prospect outreach or voice integration.
+**Gate 8 — Sales domain contract + SalesBench baseline (issue #48):** finish and verify the sales-domain and sales-bench packages, generate the frozen Baseline 0 report, and run all required regressions before marking the gate passed.
 
 ## Gate completion rule
 
