@@ -26,6 +26,8 @@ export {
   PROSPECT_RESEARCH_BRIEF_DISPOSITIONS,
   PROSPECT_RESEARCH_HUMAN_TIME_METHODS,
   PROSPECT_RESEARCH_HUMAN_BASELINE_MODES,
+  PROSPECT_RESEARCH_ENRICHMENT_EVIDENCE_CLAIMS,
+  PROSPECT_RESEARCH_ENRICHMENT_EVIDENCE_KINDS,
   PROSPECT_RESEARCH_MARKET_SCOPES,
   PROSPECT_RESEARCH_REVIEW_MODES,
   PROSPECT_RESEARCH_REVIEW_RUBRIC_VERSION,
@@ -59,6 +61,9 @@ export type {
   ProspectResearchSampleCriteria,
   ProspectResearchSelectionUniverse,
   ProspectResearchSampleOutcome,
+  ProspectResearchTargetEnrichmentEvidence,
+  ProspectResearchTargetEnrichmentProposal,
+  ProspectResearchTargetEnrichmentProposalInput,
   ProspectResearchUnknown
 } from "./schema.js";
 
