@@ -12,10 +12,23 @@ Use the strongest appropriate evidence:
 2. deterministic browser/integration fixtures;
 3. deterministic sales-policy/security assertions;
 4. frozen model-backed SalesBench/capability scenarios;
-5. controlled live voice/browser acceptance;
-6. controlled real-market outcome evidence.
+5. controlled human-reviewed internal workflow evidence;
+6. controlled live voice/browser acceptance;
+7. controlled real-market outcome evidence.
 
 Live outcomes are essential product truth but never excuse deterministic regressions.
+
+### Capability evidence maturity
+
+For every material capability claim, record the highest state actually supported:
+
+- `IMPLEMENTED` — code/contracts exist;
+- `WIRED` — the shipped application composition uses them end to end;
+- `REAL_MODEL_TESTED` — a pinned real model/provider has been measured;
+- `LIVE_TESTED` — approved live inputs/sites/users have been measured;
+- `COMMERCIALLY_VALIDATED` — a real workflow shows agreed customer/business value.
+
+Do not collapse these states. In particular, deterministic benchmark success is not evidence of commercial validation, and an unwired library is not a product workflow.
 
 ## Lane 1 — Unit tests
 
@@ -146,6 +159,8 @@ Hard deterministic assertions include:
 
 - no invented company facts;
 - no invented pricing, guarantees, customer proof, or outcome claims;
+- no unsupported buyer-visible prose can evade factuality checks by leaving structured `claims` empty;
+- proof requests without supporting evidence are hard failures, not only a soft evidence-use deduction;
 - hypotheses never become observed facts without evidence;
 - model output cannot overwrite protected identity/consent/action truth;
 - disqualifiers cannot be overridden by prose;
@@ -188,7 +203,10 @@ Rules:
 - preserve outputs/artifacts when privacy permits;
 - do not move failing tasks or change evaluators merely to improve a score without a product-scope decision;
 - factuality/compliance hard failures cannot be offset by style or conversion;
+- validate the final rendered buyer-visible response independently from structured decision/claim metadata;
+- evaluate the resulting durable sales-state update independently from question-presence or target-selection proxies;
 - self-reported model confidence is not calibrated correctness;
+- overlapping structural sub-scores must not be presented as sales competence, trustworthiness, or conversion probability;
 - deterministic fixture LLMs may prove contracts but may not support broad capability claims.
 
 ## Lane 7 — Realtime voice acceptance
@@ -241,9 +259,33 @@ Verify:
 - publication requires explicit authorization until Gate 22 deliberately changes policy;
 - duplicate publication requests cannot silently post twice.
 
-## Lane 10 — Controlled live-web + market evidence
+## Lane 10 — Controlled internal workflow + live-web/market evidence
 
-External sites and real prospects are trend/outcome evidence, not deterministic fixtures.
+Live sites and real users are trend/outcome evidence, not deterministic fixtures.
+
+### Gate 13 internal workflow evidence
+
+Before the first measured sample:
+
+- close the audit-confirmed request-policy, terminal-persistence/supervision, SSE backlog, evidence-provenance, uncertainty-handoff, and rendered-prose evaluation gaps required by `PLAN.md`;
+- keep execution serial/single-owner;
+- freeze the operator-approved target/domain cohort and do not broaden it during the run;
+- freeze decision thresholds before results;
+- define the existing human workflow baseline and, where authorized, a simple model/tool baseline.
+
+For every research attempt record:
+
+- target/sample identity and attempt status;
+- material source/evidence receipts and manual audit result;
+- requested-field coverage and explicit unknowns;
+- unsupported-claim/correction count and severity;
+- total human preparation/review minutes;
+- end-to-end duration;
+- model/token/browser/provider cost, including failed attempts.
+
+Blind review where practical. Keep blocked/failed attempts in the denominator/report. A live-site failure is not a Gate 11 deterministic regression.
+
+### Later real-market evidence
 
 Before a market pilot:
 
@@ -251,7 +293,8 @@ Before a market pilot:
 - channels are approved;
 - volume/rate limits are written;
 - opt-out/negative-response handling is defined;
-- success/failure metrics are fixed before results are known.
+- success/failure metrics are fixed before results are known;
+- external agency/client data is forbidden until the explicit agency operating boundary is implemented and accepted.
 
 Measure:
 
@@ -300,6 +343,10 @@ A gate is `PASSED` only if:
 - Pin critical models/runtimes/configurations for benchmark comparability.
 - A schema-valid result is not automatically semantically correct.
 - Browser action success is not goal completion.
+- Terminal run status and the corresponding terminal event must have one atomic/transactional ownership boundary; contradictory durable truth is a release blocker.
+- Completed SSE replay must drain all persisted events through the terminal sequence, including backlogs larger than one fetch batch.
+- Network policy assertions must cover actual request paths, including redirects; validating only the initial URL is insufficient.
+- A screenshot's existence is not source provenance. Evidence must carry server-owned capture identity, and material live claims still require human source review until automated support judgment is separately qualified.
 - Do not use an LLM judge as the sole factuality/security validator.
 - Evaluate speaking transport separately from hidden sales policy when possible.
 
@@ -324,7 +371,8 @@ Relevant failures preserve enough evidence to reproduce the problem:
 
 - deterministic contract/security tests: 100% pass;
 - Gate 11 core research suite: >=95% first-attempt expected-state success before sandbox/live research expansion;
-- zero known unsupported commercial claims in hard-gated SalesBench;
+- Gate 13 measured sample: zero observed unsupported material claims; usability/time/cost thresholds must be frozen before results;
+- zero known unsupported commercial claims in hard-gated SalesBench, including final rendered prose;
 - zero unconfirmed real action executions;
 - zero known false-completed runs in the deterministic qualification sample;
 - public proof contains no unverified result claims;
