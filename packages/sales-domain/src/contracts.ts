@@ -16,20 +16,168 @@ export const EVIDENCE_KINDS = [
   "unknown"
 ] as const;
 
-export const ObservedEvidenceSchema = z.object({
-  id: IdentifierSchema,
-  kind: z.literal("observed_fact"),
-  statement: TextSchema.max(2000),
-  sourceUrl: z.string().url(),
-  capturedAt: z.string().datetime({ offset: true })
-}).strict();
+export const EVIDENCE_UNCERTAINTY = [
+  "none",
+  "limited",
+  "material"
+] as const;
+
+const Sha256Schema =
+  z.string()
+    .regex(
+      /^[a-f0-9]{64}$/
+    );
+
+export const EvidenceCaptureReceiptSchema =
+  z.object({
+    artifactId:
+      IdentifierSchema,
+    captureVersion:
+      z.literal(
+        "page-evidence-v1"
+      ),
+    pageUrl:
+      z.string().url(),
+    capturedAt:
+      z.string().datetime({
+        offset: true
+      }),
+    pageContentSha256:
+      Sha256Schema,
+    screenshotSha256:
+      Sha256Schema
+  }).strict();
+
+export const ObservedEvidenceSchema =
+  z.object({
+    id: IdentifierSchema,
+    kind:
+      z.literal(
+        "observed_fact"
+      ),
+    statement:
+      TextSchema.max(2000),
+    sourceUrl:
+      z.string().url(),
+    capturedAt:
+      z.string().datetime({
+        offset: true
+      }),
+    uncertainty:
+      z.enum(
+        EVIDENCE_UNCERTAINTY
+      ).optional(),
+    uncertaintyNote:
+      z.string()
+        .trim()
+        .min(1)
+        .max(1000)
+        .nullable()
+        .optional(),
+    artifactIds:
+      z.array(
+        IdentifierSchema
+      ).min(1).max(32)
+        .optional(),
+    captureReceipts:
+      z.array(
+        EvidenceCaptureReceiptSchema
+      ).min(1).max(32)
+        .optional()
+  }).strict()
+    .superRefine(
+      (evidence, context) => {
+        if (
+          evidence.uncertainty ===
+            "none" &&
+          evidence.uncertaintyNote !==
+            undefined &&
+          evidence.uncertaintyNote !==
+            null
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "uncertaintyNote"
+            ],
+            message:
+              "uncertaintyNote must be null when uncertainty is none"
+          });
+        }
+
+        if (
+          evidence.uncertainty !==
+            undefined &&
+          evidence.uncertainty !==
+            "none" &&
+          (
+            evidence.uncertaintyNote ===
+              undefined ||
+            evidence.uncertaintyNote ===
+              null
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "uncertaintyNote"
+            ],
+            message:
+              "limited or material uncertainty requires a note"
+          });
+        }
+
+        if (
+          evidence.captureReceipts !==
+            undefined &&
+          evidence.artifactIds ===
+            undefined
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "artifactIds"
+            ],
+            message:
+              "capture receipts require artifact IDs"
+          });
+        }
+
+        if (
+          evidence.captureReceipts !==
+            undefined &&
+          evidence.artifactIds !==
+            undefined &&
+          !evidence.captureReceipts
+            .every(
+              (receipt) =>
+                evidence.artifactIds!
+                  .includes(
+                    receipt.artifactId
+                  )
+            )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "captureReceipts"
+            ],
+            message:
+              "capture receipts must reference mapped artifact IDs"
+          });
+        }
+      }
+    );
 
 export const HypothesisEvidenceSchema = z.object({
   id: IdentifierSchema,
   kind: z.literal("inferred_hypothesis"),
   statement: TextSchema.max(2000),
   supportingEvidenceIds: z.array(IdentifierSchema).min(1).max(32),
-  confidence: z.number().min(0).max(1)
+  confidence: z.number().min(0).max(1),
+  uncertainty:
+    TextSchema.max(1000)
+      .optional()
 }).strict();
 
 export const ApprovedClaimEvidenceSchema = z.object({
