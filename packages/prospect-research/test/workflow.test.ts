@@ -142,6 +142,12 @@ class ReadOnlyResearchAgent
   public actCalls = 0;
   public navigateCalls = 0;
 
+  public constructor(
+    private readonly researchResult:
+      ProspectResearchResult =
+        result()
+  ) {}
+
   public async navigate(
     url: string
   ): Promise<void> {
@@ -190,7 +196,7 @@ class ReadOnlyResearchAgent
     );
 
     return schema.parse(
-      result()
+      this.researchResult
     );
   }
 
@@ -210,10 +216,21 @@ class ReadOnlyResearchAgent
 
 class ReadOnlyResearchRuntime
   implements AgentRuntime {
-  public readonly session =
-    new ReadOnlyResearchAgent();
+  public readonly session:
+    ReadOnlyResearchAgent;
   public openedBrowser:
     BrowserSession | undefined;
+
+  public constructor(
+    researchResult:
+      ProspectResearchResult =
+        result()
+  ) {
+    this.session =
+      new ReadOnlyResearchAgent(
+        researchResult
+      );
+  }
 
   public async openSession(
     options:
@@ -440,6 +457,84 @@ describe(
           browser.session
             .closeCalls
         ).toBe(1);
+      }
+    );
+
+    it(
+      "rejects completion when read-only extraction cites an approved-domain page that was not observed",
+      async () => {
+        const repository =
+          new InMemoryProspectResearchRepository();
+        const unobserved =
+          result();
+
+        unobserved.evidence[0] = {
+          ...unobserved
+            .evidence[0]!,
+          sourceUrl:
+            "https://example.com/careers"
+        };
+
+        const workflow =
+          new ProspectResearchWorkflow({
+            repository,
+            runRepository:
+              new InMemoryRunRepository(),
+            artifactStore:
+              new InMemoryArtifactStore(),
+            browserRuntime:
+              new ReadOnlyBrowserRuntime(),
+            agentRuntime:
+              new ReadOnlyResearchRuntime(
+                unobserved
+              ),
+            sandboxRuntimeFactory(
+              policy
+            ) {
+              return new LocalSandboxRuntime({
+                ...policy,
+                resolver: {
+                  async resolve() {
+                    return [
+                      "93.184.216.34"
+                    ];
+                  }
+                }
+              });
+            }
+          });
+
+        await workflow
+          .approveTarget(
+            target()
+          );
+
+        const started =
+          await workflow.start({
+            targetId:
+              "target.workflow"
+          });
+        const terminal =
+          await waitForTerminal(
+            workflow,
+            started.id
+          );
+
+        expect(
+          terminal?.status
+        ).toBe("FAILED");
+        expect(
+          terminal?.error?.code
+        ).toBe(
+          "COMPLETION_REJECTED"
+        );
+        expect(
+          terminal
+            ?.terminalReason
+            ?.message
+        ).toContain(
+          "approved start page"
+        );
       }
     );
   }
