@@ -273,17 +273,17 @@ Before the first measured sample:
 - the first Gate 13 acceptance uses the complete 43-equity IYT U.S. transportation snapshot dated 2026-09-17; source URL/date, methodology URL, declared count, exact candidate target IDs, and `COMPLETE_UNIVERSE` strategy are frozen before target enrichment;
 - acceptance is single-market and compares against the human researcher's normal tools; cross-market and scope-matched baselines are calibration-only;
 - durably freeze decision thresholds and a cost-ceiling rationale before results; the quality/time minimums cannot be weakened;
-- for acceptance targets, persist a measured human baseline as separate server-timestamped durable state before the Astra attempt is allowed to start; fixed-cap estimates are calibration-only;
+- for acceptance targets, persist a measured human baseline as separate server-timestamped durable state before the Astra attempt is allowed to start; persist the human's structured brief and cited evidence in that baseline; fixed-cap estimates are calibration-only;
 - record blind versus unblinded review and use blind review where practical;
 - do not report an acceptance pass/fail verdict until every frozen target has exactly one recorded outcome.
 
 For every research attempt record:
 
 - target/sample identity, sample purpose, cohort definition, frozen selection method, candidate-universe source/date/membership/strategy, market scope/description, durable attempt ID/status, and reviewed brief disposition;
-- durable human-baseline ID, mode/provenance/server timestamp, preparation minutes/tooling description, and blind/unblinded review mode;
+- durable human-baseline ID, mode/provenance/server timestamp, preparation minutes/tooling description, structured human brief/evidence, and blind/unblinded review mode;
 - material source/evidence receipts and manual audit result;
 - requested-field coverage and explicit unknowns;
-- unsupported-claim/correction count and severity;
+- human and Astra usable-brief disposition, unsupported-material-claim counts, requested-field coverage, plus Astra correction count/severity;
 - total Astra-side human preparation minutes, broken down into target setup, evidence mapping/source audit, corrections/finalization, failure triage, and other measured operator work;
 - end-to-end duration;
 - complete model/token/browser/provider delivery cost, including failed attempts;
@@ -380,7 +380,7 @@ Relevant failures preserve enough evidence to reproduce the problem:
 
 - deterministic contract/security tests: 100% pass;
 - Gate 11 core research suite: >=95% first-attempt expected-state success before sandbox/live research expansion;
-- Gate 13 calibration samples are diagnostic only; first Gate 13 acceptance requires the complete frozen 43-member U.S. transportation universe, zero observed unsupported material claims, durable pre-run measured-human baselines, total Astra-side human-labor accounting, and frozen usability/time/cost thresholds;
+- Gate 13 calibration samples are diagnostic only; first Gate 13 acceptance requires the complete frozen 43-member U.S. transportation universe, zero observed unsupported Astra material claims, durable pre-run measured-human baselines with persisted briefs/evidence, paired human/Astra quality reporting, total Astra-side human-labor accounting, and frozen usability/time/cost thresholds;
 - zero known unsupported commercial claims in hard-gated SalesBench, including final rendered prose;
 - zero unconfirmed real action executions;
 - zero known false-completed runs in the deterministic qualification sample;
