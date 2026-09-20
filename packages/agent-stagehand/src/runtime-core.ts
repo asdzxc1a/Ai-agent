@@ -76,40 +76,142 @@ async function abortable<T>(
   });
 }
 
+interface StagehandFetchSession {
+  send<T = unknown>(
+    method: string,
+    params?: object
+  ): Promise<T>;
+}
+
+interface StagehandFetchPausedEvent {
+  requestId: string;
+  request: {
+    url: string;
+  };
+  resourceType?: string;
+}
+
+interface StagehandPolicyContext {
+  setDomainPolicy(
+    policy: {
+      allowedDomains?: string[];
+      blockedDomains?: string[];
+    } | null
+  ): Promise<void>;
+
+  handleDomainPolicyRequestPaused?: (
+    session: StagehandFetchSession,
+    event: StagehandFetchPausedEvent
+  ) => Promise<void>;
+}
+
 async function installNetworkPolicy(
   stagehand: Stagehand,
   policy: BrowserNetworkPolicy
 ): Promise<void> {
+  const domainPolicy =
+    policy.domainPolicy;
+
   if (
-    policy.domainPolicy ===
-    undefined
+    domainPolicy?.allowedDomains ===
+      undefined ||
+    domainPolicy.allowedDomains
+      .length === 0
   ) {
-    return;
+    throw new Error(
+      "Stagehand network enforcement requires a non-empty allowedDomains policy."
+    );
   }
 
-  await stagehand.context
-    .setDomainPolicy({
-      ...(policy.domainPolicy
-        .allowedDomains ===
-        undefined
-        ? {}
-        : {
-            allowedDomains: [
-              ...policy.domainPolicy
-                .allowedDomains
-            ]
-          }),
-      ...(policy.domainPolicy
+  const context =
+    stagehand.context as unknown as
+      StagehandPolicyContext;
+  const originalHandler =
+    context
+      .handleDomainPolicyRequestPaused;
+
+  if (
+    typeof originalHandler !==
+    "function"
+  ) {
+    throw new Error(
+      "Pinned Stagehand request-policy interception hook is unavailable."
+    );
+  }
+
+  // Stagehand v3.7.0 already owns fail-closed Fetch interception
+  // across current and future page/OOPIF sessions. Its built-in
+  // decision is domain-only, so replace only that decision point
+  // with Astra's full scheme/credential/port/DNS/IP policy while
+  // preserving Stagehand's pre-resume target lifecycle.
+  context.handleDomainPolicyRequestPaused =
+    async (
+      session,
+      event
+    ) => {
+      try {
+        await policy.assertAllowed({
+          url: event.request.url,
+          ...(event.resourceType ===
+            undefined
+            ? {}
+            : {
+                resourceType:
+                  event.resourceType
+              }),
+          isNavigation:
+            event.resourceType ===
+            "Document"
+        });
+      } catch {
+        await session
+          .send(
+            "Fetch.failRequest",
+            {
+              requestId:
+                event.requestId,
+              errorReason:
+                "BlockedByClient"
+            }
+          )
+          .catch(() => undefined);
+        return;
+      }
+
+      await session
+        .send(
+          "Fetch.continueRequest",
+          {
+            requestId:
+              event.requestId
+          }
+        )
+        .catch(() => undefined);
+    };
+
+  try {
+    await context.setDomainPolicy({
+      allowedDomains: [
+        ...domainPolicy
+          .allowedDomains
+      ],
+      ...(domainPolicy
         .blockedDomains ===
         undefined
         ? {}
         : {
             blockedDomains: [
-              ...policy.domainPolicy
+              ...domainPolicy
                 .blockedDomains
             ]
           })
     });
+  } catch (error) {
+    context
+      .handleDomainPolicyRequestPaused =
+      originalHandler;
+    throw error;
+  }
 }
 
 function httpOrigin(
