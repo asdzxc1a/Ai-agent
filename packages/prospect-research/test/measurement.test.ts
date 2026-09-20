@@ -70,13 +70,33 @@ function sample(
       status:
         "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v2",
+        "gate13-measured-research-v3",
       purpose,
       cohortDefinition:
         purpose ===
           "CALIBRATION"
           ? "Cross-region calibration set used to test the workflow and measurement mechanics; not a Gate 13 pass/fail sample."
           : "Chosen industrial/logistics niche acceptance cohort with comparable operating complexity.",
+      selectionMethod:
+        purpose ===
+          "CALIBRATION"
+          ? "Purposefully selected stress cases across two markets."
+          : "Predefined inclusion criteria and deterministic company selection within one commercial niche.",
+      marketScope:
+        purpose ===
+          "CALIBRATION"
+          ? "CROSS_MARKET"
+          : "SINGLE_MARKET",
+      marketDescription:
+        purpose ===
+          "CALIBRATION"
+          ? "United States and China"
+          : "United States",
+      humanBaselineMode:
+        purpose ===
+          "CALIBRATION"
+          ? "SCOPE_MATCHED"
+          : "NORMAL_TOOLS",
       targets:
         Array.from(
           {
