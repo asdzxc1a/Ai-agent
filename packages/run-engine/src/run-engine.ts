@@ -179,6 +179,68 @@ function sha256(
     .digest("hex");
 }
 
+const DEFAULT_DIAGNOSTICS_TIMEOUT_MS =
+  10_000;
+const DEFAULT_CLEANUP_TIMEOUT_MS =
+  10_000;
+
+function positiveTimeout(
+  value: number,
+  name: string
+): number {
+  if (
+    !Number.isInteger(value) ||
+    value < 1
+  ) {
+    throw new RangeError(
+      name +
+        " must be a positive integer."
+    );
+  }
+
+  return value;
+}
+
+async function withDeadline<T>(
+  operation: Promise<T>,
+  timeoutMs: number,
+  label: string
+): Promise<T> {
+  let timer:
+    ReturnType<
+      typeof setTimeout
+    > | undefined;
+
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>(
+        (_resolve, reject) => {
+          timer = setTimeout(
+            () => {
+              reject(
+                new Error(
+                  label +
+                    " exceeded " +
+                    String(
+                      timeoutMs
+                    ) +
+                    " ms."
+                )
+              );
+            },
+            timeoutMs
+          );
+        }
+      )
+    ]);
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+  }
+}
+
 function actionSummary(
   action: AgentAction | undefined
 ):
@@ -212,6 +274,8 @@ export interface RunEngineOptions {
   completionVerifier?: RunCompletionVerifier;
   executionBudget?: RunExecutionBudget;
   createUsageMeter?: RunUsageMeterFactory;
+  diagnosticsTimeoutMs?: number;
+  cleanupTimeoutMs?: number;
 }
 
 export class RunEngine implements RunService {
@@ -224,6 +288,10 @@ export class RunEngine implements RunService {
   readonly #executionBudget:
     NormalizedRunExecutionBudget;
   readonly #createUsageMeter?: RunUsageMeterFactory;
+  readonly #diagnosticsTimeoutMs:
+    number;
+  readonly #cleanupTimeoutMs:
+    number;
   readonly #controllers =
     new Map<string, AbortController>();
   readonly #executions =
@@ -237,7 +305,11 @@ export class RunEngine implements RunService {
     agentLoop,
     completionVerifier,
     executionBudget,
-    createUsageMeter
+    createUsageMeter,
+    diagnosticsTimeoutMs =
+      DEFAULT_DIAGNOSTICS_TIMEOUT_MS,
+    cleanupTimeoutMs =
+      DEFAULT_CLEANUP_TIMEOUT_MS
   }: RunEngineOptions) {
     this.#repository = repository;
     this.#browserRuntime = browserRuntime;
@@ -259,6 +331,16 @@ export class RunEngine implements RunService {
     this.#executionBudget =
       normalizeRunExecutionBudget(
         executionBudget
+      );
+    this.#diagnosticsTimeoutMs =
+      positiveTimeout(
+        diagnosticsTimeoutMs,
+        "Run diagnosticsTimeoutMs"
+      );
+    this.#cleanupTimeoutMs =
+      positiveTimeout(
+        cleanupTimeoutMs,
+        "Run cleanupTimeoutMs"
       );
 
     if (createUsageMeter !== undefined) {
@@ -730,11 +812,27 @@ export class RunEngine implements RunService {
       return [];
     }
 
-    let diagnostics: BrowserDiagnostic[];
+    let diagnostics:
+      BrowserDiagnostic[];
+    const startedAt =
+      Date.now();
+    const remainingMs = () =>
+      Math.max(
+        1,
+        this.#diagnosticsTimeoutMs -
+          (
+            Date.now() -
+            startedAt
+          )
+      );
 
     try {
       diagnostics =
-        await browser.getDiagnostics();
+        await withDeadline(
+          browser.getDiagnostics(),
+          remainingMs(),
+          "Browser diagnostics"
+        );
     } catch (error) {
       artifactErrors.push(
         `browser-diagnostics: ${errorMessage(error)}`
@@ -747,14 +845,20 @@ export class RunEngine implements RunService {
       diagnostics.length > 0
     ) {
       try {
-        await this.#artifactStore.putJsonArtifact({
-          runId,
-          kind: "DIAGNOSTICS",
-          name: "browser-diagnostics.json",
-          value: {
-            diagnostics
-          }
-        });
+        await withDeadline(
+          this.#artifactStore
+            .putJsonArtifact({
+              runId,
+              kind: "DIAGNOSTICS",
+              name:
+                "browser-diagnostics.json",
+              value: {
+                diagnostics
+              }
+            }),
+          remainingMs(),
+          "Browser diagnostics artifact persistence"
+        );
       } catch (error) {
         artifactErrors.push(
           `browser-diagnostics.json: ${errorMessage(error)}`
@@ -1524,7 +1628,11 @@ export class RunEngine implements RunService {
 
       if (agent !== undefined) {
         try {
-          await agent.close();
+          await withDeadline(
+            agent.close(),
+            this.#cleanupTimeoutMs,
+            "Agent cleanup"
+          );
           agentClosed = true;
         } catch (error) {
           cleanupErrors.push(
@@ -1535,7 +1643,11 @@ export class RunEngine implements RunService {
 
       if (browser !== undefined) {
         try {
-          await browser.close();
+          await withDeadline(
+            browser.close(),
+            this.#cleanupTimeoutMs,
+            "Browser cleanup"
+          );
           browserClosed = true;
         } catch (error) {
           cleanupErrors.push(
