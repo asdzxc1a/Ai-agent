@@ -1035,8 +1035,9 @@ export class RunEngine implements RunService {
             "COMPLETE"
               ? {}
               : {
-                  reason:
+                  reasonCode:
                     loopResult.reason
+                      .code
                 })
           }
         );

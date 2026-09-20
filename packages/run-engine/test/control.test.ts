@@ -1011,3 +1011,97 @@ test(
     );
   }
 );
+
+test(
+  "loop terminal progress excludes raw policy failure detail",
+  async () => {
+    const repository =
+      new InMemoryRunRepository();
+    const engine = new RunEngine({
+      repository,
+      browserRuntime:
+        new ControlBrowserRuntime(),
+      agentRuntime:
+        new ControlAgentRuntime(),
+      agentLoop:
+        new AgentLoopExecutor({
+          policy: {
+            async decide() {
+              throw new Error(
+                "provider-secret-detail"
+              );
+            }
+          }
+        }),
+      completionVerifier: {
+        async verify() {
+          return {
+            verified: true
+          };
+        }
+      }
+    });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Fail without leaking provider detail into progress."
+        }
+      });
+
+    const terminal =
+      await waitForTerminal(
+        engine,
+        started.id
+      );
+
+    expect(terminal.status).toBe(
+      "FAILED"
+    );
+    expect(
+      terminal.terminalReason
+        ?.code
+    ).toBe(
+      "INVALID_AGENT_DECISION"
+    );
+
+    const steps =
+      await repository.listSteps(
+        started.id
+      );
+    const resultStep =
+      steps.find(
+        (step) =>
+          step.kind ===
+          "AGENT_LOOP_RESULT"
+      );
+
+    expect(
+      resultStep?.payload
+    ).toMatchObject({
+      kind: "FAIL",
+      reasonCode:
+        "INVALID_AGENT_DECISION"
+    });
+    expect(
+      JSON.stringify(
+        steps.filter(
+          (step) =>
+            step.kind.startsWith(
+              "AGENT_LOOP_"
+            )
+        )
+      )
+    ).not.toContain(
+      "provider-secret-detail"
+    );
+    expect(
+      terminal.error?.message
+    ).toBe(
+      "provider-secret-detail"
+    );
+  }
+);
