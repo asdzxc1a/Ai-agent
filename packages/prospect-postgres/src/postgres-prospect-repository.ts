@@ -7,11 +7,16 @@ import {
 import {
   ApprovedResearchTargetSchema,
   ProspectResearchAttemptSchema,
+  ProspectResearchSampleOutcomeSchema,
+  ProspectResearchSampleSchema,
   sameApprovedResearchTarget,
   validateProspectResearchAttemptForPersistence,
+  validateProspectResearchSampleOutcomeContext,
   type ApprovedResearchTarget,
   type ProspectResearchAttempt,
-  type ProspectResearchRepository
+  type ProspectResearchRepository,
+  type ProspectResearchSample,
+  type ProspectResearchSampleOutcome
 } from "@astra/prospect-research";
 import {
   ProspectSchema,
@@ -28,6 +33,14 @@ interface AttemptRow {
 
 interface ProspectRow {
   prospect: unknown;
+}
+
+interface SampleRow {
+  sample: unknown;
+}
+
+interface SampleOutcomeRow {
+  outcome: unknown;
 }
 
 export function createProspectPostgresPool(
@@ -362,6 +375,251 @@ export class PostgresProspectResearchRepository
               row as
                 AttemptRow
             ).attempt
+          )
+    );
+  }
+
+  public async saveSample(
+    input:
+      ProspectResearchSample
+  ): Promise<void> {
+    const sample =
+      ProspectResearchSampleSchema
+        .parse(input);
+    const client =
+      await this.#pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      for (
+        const target of
+        sample.targets
+      ) {
+        const result =
+          await client.query(
+            `
+              SELECT target
+              FROM approved_research_targets
+              WHERE id = $1
+              FOR SHARE
+            `,
+            [target.id]
+          );
+        const row =
+          result.rows[0] as
+            | TargetRow
+            | undefined;
+
+        if (row === undefined) {
+          throw new Error(
+            "Measured research sample target was not approved: " +
+              target.id
+          );
+        }
+
+        const approved =
+          ApprovedResearchTargetSchema
+            .parse(
+              row.target
+            );
+
+        if (
+          !sameApprovedResearchTarget(
+            approved,
+            target
+          )
+        ) {
+          throw new Error(
+            "Measured research sample target differs from the stored approval: " +
+              target.id
+          );
+        }
+      }
+
+      await client.query(
+        `
+          INSERT INTO prospect_research_samples (
+            id,
+            sample,
+            frozen_at
+          )
+          VALUES ($1, $2::jsonb, $3)
+        `,
+        [
+          sample.id,
+          JSON.stringify(sample),
+          sample.frozenAt
+        ]
+      );
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query(
+        "ROLLBACK"
+      ).catch(
+        () => undefined
+      );
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async getSample(
+    sampleId: string
+  ): Promise<
+    ProspectResearchSample |
+    undefined
+  > {
+    const result =
+      await this.#pool.query(
+        `
+          SELECT sample
+          FROM prospect_research_samples
+          WHERE id = $1
+        `,
+        [sampleId]
+      );
+    const row =
+      result.rows[0] as
+        | SampleRow
+        | undefined;
+
+    return row === undefined
+      ? undefined
+      : ProspectResearchSampleSchema
+          .parse(row.sample);
+  }
+
+  public async saveSampleOutcome(
+    input:
+      ProspectResearchSampleOutcome
+  ): Promise<void> {
+    const outcome =
+      ProspectResearchSampleOutcomeSchema
+        .parse(input);
+    const client =
+      await this.#pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const sampleResult =
+        await client.query(
+          `
+            SELECT sample
+            FROM prospect_research_samples
+            WHERE id = $1
+            FOR SHARE
+          `,
+          [outcome.sampleId]
+        );
+      const sampleRow =
+        sampleResult.rows[0] as
+          | SampleRow
+          | undefined;
+
+      if (sampleRow === undefined) {
+        throw new Error(
+          "Measured research sample does not exist: " +
+            outcome.sampleId
+        );
+      }
+
+      const attemptResult =
+        await client.query(
+          `
+            SELECT attempt
+            FROM prospect_research_attempts
+            WHERE id = $1
+            FOR SHARE
+          `,
+          [outcome.attemptId]
+        );
+      const attemptRow =
+        attemptResult.rows[0] as
+          | AttemptRow
+          | undefined;
+
+      if (attemptRow === undefined) {
+        throw new Error(
+          "Measured research outcome attempt does not exist: " +
+            outcome.attemptId
+        );
+      }
+
+      validateProspectResearchSampleOutcomeContext(
+        ProspectResearchSampleSchema
+          .parse(
+            sampleRow.sample
+          ),
+        ProspectResearchAttemptSchema
+          .parse(
+            attemptRow.attempt
+          ),
+        outcome
+      );
+
+      await client.query(
+        `
+          INSERT INTO prospect_research_sample_outcomes (
+            id,
+            sample_id,
+            target_id,
+            attempt_id,
+            outcome,
+            reviewed_at
+          )
+          VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+        `,
+        [
+          outcome.id,
+          outcome.sampleId,
+          outcome.targetId,
+          outcome.attemptId,
+          JSON.stringify(outcome),
+          outcome.reviewedAt
+        ]
+      );
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query(
+        "ROLLBACK"
+      ).catch(
+        () => undefined
+      );
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async listSampleOutcomes(
+    sampleId: string
+  ): Promise<
+    ProspectResearchSampleOutcome[]
+  > {
+    const result =
+      await this.#pool.query(
+        `
+          SELECT outcome
+          FROM prospect_research_sample_outcomes
+          WHERE sample_id = $1
+          ORDER BY reviewed_at ASC, id ASC
+        `,
+        [sampleId]
+      );
+
+    return result.rows.map(
+      (row) =>
+        ProspectResearchSampleOutcomeSchema
+          .parse(
+            (
+              row as
+                SampleOutcomeRow
+            ).outcome
           )
     );
   }
