@@ -268,7 +268,7 @@ pnpm check:memory
 
 ## Known risks
 
-1. **Product/value risk — current Gate 13 blocker:** the six-company U.S./China set is useful only as a calibration/stress sample and cannot close Gate 13. The acceptance experiment still needs a 30–50 company cohort from one explicit commercial niche plus a measured human baseline for each target before its Astra run. Astra still has no human-audited live brief, measured preparation-time reduction, or measured live delivery cost.
+1. **Product/value risk — current Gate 13 blocker:** the six-company U.S./China set is calibration/stress evidence only. The first acceptance experiment is now defined as 30–50 U.S. industrial/logistics companies selected by a frozen method, compared against a human researcher using normal tools with the human baseline measured before each Astra run. Astra still has no human-audited live acceptance cohort, measured preparation-time reduction, or measured live delivery cost.
 2. **Semantic-support risk — measured-sample control:** capture receipts prove source-page/screenshot identity and hashes, not whether a natural-language claim is actually supported. Every material observed fact still requires human source-page/screenshot review in Gate 13.
 3. **Scale ownership risk:** cancellation intent and Steel endpoint exclusivity are not yet durable cross-process leases/fences. Gate 13 therefore stays serial/single-owner; multiple workers require durable ownership/fencing and centralized endpoint allocation.
 4. **Future renderer/state-update risk:** PR #74 closes the current `SalesDecision` buyer-visible prose loophole, but any future shipped final-response renderer and durable conversation state update need their own independent output evaluation before release claims.
@@ -276,9 +276,9 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 13 — calibrate, then run the 30–50 target acceptance cohort (issue #65):** treat the existing six-company U.S./China set as `CALIBRATION` only. It may validate workflow mechanics, reviewer instructions, source-page fit, and cost accounting, but it cannot produce a Gate 13 pass/fail verdict.
+**Gate 13 — calibrate, then run the U.S. industrial/logistics acceptance cohort (issue #65):** treat the existing six-company U.S./China set as `CALIBRATION` only. It may validate workflow mechanics, reviewer instructions, source-page fit, China/U.S. source differences, and cost accounting, but it cannot produce a Gate 13 verdict.
 
-For Gate 13 acceptance, freeze 30–50 explicitly approved companies from one defined commercial niche. For every acceptance target, measure the human baseline before starting the Astra attempt and record whether review is blind or unblinded. Then run serially through: stored approval → frozen-sample membership → bounded read-only model-backed public research → semantically settled capture receipts → evidence/uncertainty review → human source audit → accepted/corrected brief or explicit live failure. Keep failed attempts in the denominator and freeze the cost ceiling/rationale before results.
+For acceptance, freeze 30–50 explicitly approved **U.S. industrial/logistics** companies using a selection method written before results. The human comparator uses its normal research tools. Measure that human baseline before starting the corresponding Astra attempt and record blind/unblinded review. Then run serially through: stored approval → frozen-sample membership → bounded read-only model-backed public research → semantically settled capture receipts → evidence/uncertainty review → human source audit → accepted/corrected brief or explicit live failure. Keep failed attempts in the denominator and freeze the cost ceiling/rationale before results. China receives a separate acceptance cohort only after its local multi-source source policy is implemented and qualified.
 
 Do not start authenticated contact discovery, outreach/email/LinkedIn/X, CRM writes, calendar/social actions, voice/avatar, agency-client data ingestion, or new irreversible external side effects in Gate 13.
 
