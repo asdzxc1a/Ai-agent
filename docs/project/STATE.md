@@ -201,7 +201,7 @@ Astra does not yet have:
 | --- | --- | --- |
 | Browser/run substrate | `WIRED` | Generic run API + deterministic/pinned integration path works; not yet a complete sales operator app |
 | ResearchBench v1 | `WIRED` | 30/30 deterministic fixture qualification; not a real-model arbitrary-web result |
-| Gate 13 approved research foundation | `WIRED` | Approved-target policy, durable research truth, capture receipts, run recovery, and bounded provider path are integrated; no approved real-company sample has been live-tested |
+| Gate 13 approved research foundation | `IMPLEMENTED` | Approved-target policy, durable research truth, capture receipts, run recovery, and bounded provider substrate exist; the complete prospect-research operator composition is not yet shipped/live-tested |
 | Consultative seller | `IMPLEMENTED` | Sales-domain schemas/policy exist; no deployed persistent seller |
 | Human handoff/action plane | none | Planned; no merged real handoff |
 | Agency/client operation | none | Auth/tenancy/per-client controls not built |
