@@ -108,24 +108,39 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
       goalStatus: "COMPLETED"
     })
   ).rejects.toThrow(
-    "Terminal runs must contain a typed terminal reason."
+    "Terminal runs must use finalizeRun()."
   );
 
-  const completed = await repository.updateRun(
-    runId,
-    {
-      status: "COMPLETED",
-      goalStatus: "COMPLETED",
-      result: {
-        count: 1,
-        status: "clicked"
+  const completed =
+    await repository.finalizeRun(
+      runId,
+      {
+        status: "COMPLETED",
+        goalStatus: "COMPLETED",
+        result: {
+          count: 1,
+          status: "clicked"
+        },
+        terminalReason: {
+          code: "GOAL_COMPLETED",
+          message:
+            "fixture verified"
+        }
       },
-      terminalReason: {
-        code: "GOAL_COMPLETED",
-        message: "fixture verified"
+      {
+        goalStatus:
+          "COMPLETED",
+        result: {
+          count: 1,
+          status: "clicked"
+        },
+        terminalReason: {
+          code: "GOAL_COMPLETED",
+          message:
+            "fixture verified"
+        }
       }
-    }
-  );
+    );
 
   expect(completed.result).toEqual({
     count: 1,
@@ -138,23 +153,36 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
     )
   ).toEqual([1, 2]);
 
-  expect(
-    (await repository.listEvents(runId)).map(
-      (event) => event.sequenceNumber
-    )
-  ).toEqual([1, 2]);
+  const completedEvents =
+    await repository.listEvents(
+      runId
+    );
 
-  const afterFirstEvent = await repository.listEventsAfter(
-    runId,
-    1,
-    10
-  );
+  expect(
+    completedEvents.map(
+      (event) =>
+        event.sequenceNumber
+    )
+  ).toEqual([1, 2, 3]);
+  expect(
+    completedEvents.at(-1)
+      ?.eventType
+  ).toBe("RUN_COMPLETED");
+
+  const afterFirstEvent =
+    await repository
+      .listEventsAfter(
+        runId,
+        1,
+        10
+      );
 
   expect(
     afterFirstEvent.map(
-      (event) => event.sequenceNumber
+      (event) =>
+        event.sequenceNumber
     )
-  ).toEqual([2]);
+  ).toEqual([2, 3]);
 
   const failedId = randomUUID();
   await repository.createRun(
@@ -162,21 +190,41 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
     request
   );
 
-  const failed = await repository.updateRun(
-    failedId,
-    {
-      status: "FAILED",
-      goalStatus: "FAILED",
-      error: {
-        code: "EXECUTION_FAILED",
-        message: "fixture failure"
+  const failed =
+    await repository.finalizeRun(
+      failedId,
+      {
+        status: "FAILED",
+        goalStatus: "FAILED",
+        error: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "fixture failure"
+        },
+        terminalReason: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "fixture failure"
+        }
       },
-      terminalReason: {
-        code: "EXECUTION_FAILED",
-        message: "fixture failure"
+      {
+        goalStatus: "FAILED",
+        error: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "fixture failure"
+        },
+        terminalReason: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "fixture failure"
+        }
       }
-    }
-  );
+    );
 
   expect(failed.error).toEqual({
     code: "EXECUTION_FAILED",
@@ -208,10 +256,18 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
   );
 
   const cancelled =
-    await repository.updateRun(
+    await repository.finalizeRun(
       cancelledId,
       {
         status: "CANCELLED",
+        goalStatus: "FAILED",
+        terminalReason: {
+          code: "RUN_CANCELLED",
+          message:
+            "fixture cancellation"
+        }
+      },
+      {
         goalStatus: "FAILED",
         terminalReason: {
           code: "RUN_CANCELLED",
@@ -238,3 +294,258 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
     message: "fixture cancellation"
   });
 });
+
+test(
+  "PostgresRunRepository lists only non-terminal runs for startup reconciliation",
+  async () => {
+    const pendingId =
+      randomUUID();
+    const runningId =
+      randomUUID();
+    const completedId =
+      randomUUID();
+
+    await repository.createRun(
+      pendingRun(pendingId),
+      request
+    );
+    await repository.createRun(
+      pendingRun(runningId),
+      request
+    );
+    await repository.createRun(
+      pendingRun(completedId),
+      request
+    );
+
+    await repository.updateRun(
+      runningId,
+      {
+        status: "RUNNING"
+      }
+    );
+    await repository.finalizeRun(
+      completedId,
+      {
+        status: "COMPLETED",
+        goalStatus:
+          "COMPLETED",
+        result: {
+          ok: true
+        },
+        terminalReason: {
+          code:
+            "GOAL_COMPLETED",
+          message:
+            "fixture verified"
+        }
+      },
+      {
+        goalStatus:
+          "COMPLETED",
+        result: {
+          ok: true
+        },
+        terminalReason: {
+          code:
+            "GOAL_COMPLETED",
+          message:
+            "fixture verified"
+        }
+      }
+    );
+
+    const active =
+      await repository
+        .listActiveRuns();
+
+    expect(active).toHaveLength(2);
+    expect(active).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: pendingId,
+          status: "PENDING"
+        }),
+        expect.objectContaining({
+          id: runningId,
+          status: "RUNNING"
+        })
+      ])
+    );
+  }
+);
+
+test(
+  "PostgresRunRepository cannot overwrite a terminal run with a stale non-terminal update",
+  async () => {
+    const runId =
+      randomUUID();
+
+    await repository.createRun(
+      pendingRun(runId),
+      request
+    );
+    await repository.updateRun(
+      runId,
+      {
+        status: "RUNNING"
+      }
+    );
+    await repository.finalizeRun(
+      runId,
+      {
+        status: "FAILED",
+        goalStatus: "FAILED",
+        error: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "terminal fixture"
+        },
+        terminalReason: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "terminal fixture"
+        }
+      },
+      {
+        goalStatus: "FAILED",
+        error: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "terminal fixture"
+        },
+        terminalReason: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "terminal fixture"
+        }
+      }
+    );
+
+    await expect(
+      repository.updateRun(
+        runId,
+        {
+          status: "RUNNING",
+          goalStatus:
+            "IN_PROGRESS"
+        }
+      )
+    ).rejects.toThrow(
+      `Run ${runId} is already terminal.`
+    );
+
+    await expect(
+      repository.getRun(
+        runId
+      )
+    ).resolves.toMatchObject({
+      status: "FAILED",
+      goalStatus: "FAILED"
+    });
+    expect(
+      (
+        await repository
+          .listEvents(runId)
+      ).map(
+        (event) =>
+          event.eventType
+      )
+    ).toEqual([
+      "RUN_FAILED"
+    ]);
+  }
+);
+
+test(
+  "PostgresRunRepository rolls back terminal state, event, and sequence together",
+  async () => {
+    const runId =
+      randomUUID();
+
+    await repository.createRun(
+      pendingRun(runId),
+      request
+    );
+    await repository.updateRun(
+      runId,
+      {
+        status: "RUNNING"
+      }
+    );
+    const started =
+      await repository.appendEvent(
+        runId,
+        "RUN_STARTED",
+        {
+          status: "RUNNING"
+        }
+      );
+
+    expect(
+      started.sequenceNumber
+    ).toBe(1);
+
+    await expect(
+      repository.finalizeRun(
+        runId,
+        {
+          status: "COMPLETED",
+          goalStatus:
+            "COMPLETED",
+          result: {
+            ok: true
+          },
+          terminalReason: {
+            code:
+              "GOAL_COMPLETED",
+            message:
+              "fixture verified"
+          }
+        },
+        {
+          impossible:
+            BigInt(1)
+        }
+      )
+    ).rejects.toThrow();
+
+    expect(
+      (
+        await repository.getRun(
+          runId
+        )
+      )?.status
+    ).toBe("RUNNING");
+    expect(
+      (
+        await repository.listEvents(
+          runId
+        )
+      ).map(
+        (event) =>
+          event.eventType
+      )
+    ).toEqual([
+      "RUN_STARTED"
+    ]);
+
+    const next =
+      await repository.appendEvent(
+        runId,
+        "RUN_PROGRESS",
+        {
+          recovered: true
+        }
+      );
+
+    expect(
+      next.sequenceNumber
+    ).toBe(2);
+  }
+);
+

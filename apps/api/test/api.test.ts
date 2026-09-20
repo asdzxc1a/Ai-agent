@@ -286,6 +286,11 @@ class ReplayRunService
     return this.#runId;
   }
 
+  public async reconcileInterruptedRuns():
+    Promise<RunSnapshot[]> {
+    return [];
+  }
+
   public async createRun():
     Promise<RunSnapshot> {
     throw new Error(
