@@ -133,6 +133,7 @@ jobs:
             --name astra-steel-stagehand \
             --add-host=host.docker.internal:host-gateway \
             --add-host=blocked.docker.internal:host-gateway \
+            --add-host=astra-public.test:host-gateway \
             -p 3000:3000 \
             -p 9223:9223 \
             -e DOMAIN=localhost:3000 \
@@ -144,6 +145,7 @@ jobs:
             --name astra-steel-stagehand-secondary \
             --add-host=host.docker.internal:host-gateway \
             --add-host=blocked.docker.internal:host-gateway \
+            --add-host=astra-public.test:host-gateway \
             -p 3001:3000 \
             -p 9224:9223 \
             -e DOMAIN=localhost:3001 \
