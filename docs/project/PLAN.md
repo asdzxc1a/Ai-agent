@@ -386,8 +386,11 @@ Build:
 - constrain the research composition to research-safe actions; effect labels describe retry semantics and never authorize the first side effect;
 - keep Gate 13 execution serial/single-owner while durable worker ownership, fencing, and cross-process endpoint reservations are not implemented;
 - keep the merged smallest complete operator workflow green: stored approval → frozen-sample membership → bounded read-only model-backed research on the approved start page → evidence/uncertainty review → accepted/corrected brief or explicit live failure;
-- once the operator supplies the actual targets, human-baseline description, and cost ceiling, freeze the durable sample before browsing and compare Astra with the existing human workflow and, where authorized, a simple model/tool baseline;
-- record every attempt, review minutes, correction count/severity, unsupported material claims, requested-field coverage, duration, and complete provider/browser cost.
+- use small cross-region samples only for calibration/stress testing; they may not close Gate 13;
+- for Gate 13 acceptance, freeze 30–50 approved companies from one explicit commercial niche, consistent with D-030 and the September audit;
+- require a measured human baseline for each acceptance target before its Astra attempt starts; fixed-cap baseline estimates are calibration-only;
+- record whether review was blind or unblinded and prefer blind review where practical;
+- freeze a rationale-backed cost ceiling before results and record every attempt, review minutes, correction count/severity, unsupported material claims, requested-field coverage, duration, and complete provider/browser cost.
 
 Non-goals:
 
@@ -409,7 +412,9 @@ Acceptance:
 - the merged operator workflow remains read-only/action-free and can produce a reviewable accepted/corrected brief without contacting the prospect;
 - every measured run requires both stored approval and membership in the durable frozen sample;
 - the measured cohort contains only explicitly approved frozen targets, cannot be overwritten/widened after freeze, and is never broadened during the run;
-- incomplete measured cohorts return no pass/fail verdict; exactly one outcome per frozen target is required before Gate 13 evaluation can pass;
+- calibration cohorts return no pass/fail verdict even when complete;
+- Gate 13 acceptance cohorts contain 30–50 frozen targets from the chosen niche; incomplete cohorts return no verdict and exactly one outcome per frozen target is required;
+- acceptance outcomes use `MEASURED_HUMAN` baseline provenance recorded before the corresponding Astra attempt; baseline source and review mode remain durable evidence;
 - every material observed fact in the measured sample is manually checked against its claimed source;
 - unsupported hypotheses are never represented as observed facts and unknowns remain explicit;
 - live-site failures remain `LIVE_RESEARCH_FAILURE` and do not change the frozen Gate 11 deterministic release result;
