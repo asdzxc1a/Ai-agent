@@ -74,7 +74,8 @@ The acceptance experiment must:
 - freeze **30–50 approved U.S. companies from the explicit industrial/logistics niche** before browsing, with the selection method recorded before results;
 - compare against the existing human researcher using their **normal tools**, not an artificially one-page-restricted baseline;
 - use an actually measured human baseline for each acceptance target, recorded before Astra starts that target;
-- freeze the cost ceiling and rationale before results;
+- freeze the cost model before results: loaded human-review labor rate, infrastructure-per-attempt ceiling, total-delivery-cost-per-usable-brief ceiling, and rationale;
+- for the first acceptance plan, use $60/hour loaded review labor, $5 maximum infrastructure cost per attempt, and $25 maximum total delivery cost per usable brief as explicit hypotheses rather than product pricing;
 - record blind versus unblinded review;
 - run only frozen sample members through the bounded read-only research path;
 - manually audit every material observed fact against its source page/screenshot;
