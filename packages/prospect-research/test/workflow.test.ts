@@ -76,7 +76,7 @@ function sample() {
       id: sampleId,
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v6",
+        "gate13-measured-research-v7",
       purpose:
         "CALIBRATION",
       cohortDefinition:
@@ -151,7 +151,7 @@ function acceptanceSample() {
         "sample.acceptance.workflow",
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v6",
+        "gate13-measured-research-v7",
       purpose:
         "ACCEPTANCE",
       cohortDefinition:
@@ -644,6 +644,8 @@ describe(
                 20,
               toolingDescription:
                 "Scope-matched calibration fixture tools.",
+              brief:
+                result(),
               notes: null
             });
         await workflow
@@ -787,6 +789,16 @@ describe(
               "operator",
             reviewedAt:
               "2026-09-20T12:20:00.000Z",
+            humanBriefDisposition:
+              "accepted",
+            humanMaterialClaimsReviewed:
+              1,
+            humanUnsupportedMaterialClaims:
+              0,
+            humanRequestedFieldsTotal:
+              3,
+            humanRequestedFieldsCovered:
+              3,
             reviewMode:
               "UNBLINDED",
             baselineSource:
@@ -846,13 +858,21 @@ describe(
             targetCount: 1,
             outcomeCount: 1,
             usableBriefRate: 1,
+            humanUsableBriefRate:
+              1,
+            usableBriefRateDeltaVsHuman:
+              0,
             unsupportedMaterialClaims:
+              0,
+            humanUnsupportedMaterialClaims:
               0,
             medianHumanTimeReductionFraction:
               0.6,
             medianAstraHumanPreparationMinutes:
               8,
             requestedFieldCoverageRate:
+              1,
+            humanRequestedFieldCoverageRate:
               1,
             unauthorizedActions:
               0,
@@ -953,6 +973,8 @@ describe(
                 18,
               toolingDescription:
                 "Normal human research tools.",
+              brief:
+                result(),
               notes: null
             });
 
