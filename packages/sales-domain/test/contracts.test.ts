@@ -33,7 +33,29 @@ describe("sales-domain contracts", () => {
       kind: "observed_fact",
       statement: "The company describes a global support operation.",
       sourceUrl: "https://example.test/about",
-      capturedAt: "2026-09-19T12:00:00.000Z"
+      capturedAt: "2026-09-19T12:00:00.000Z",
+      uncertainty: "limited",
+      uncertaintyNote:
+        "Public source is descriptive but not quantitative.",
+      artifactIds: [
+        "artifact.capture"
+      ],
+      captureReceipts: [
+        {
+          artifactId:
+            "artifact.capture",
+          captureVersion:
+            "page-evidence-v1",
+          pageUrl:
+            "https://example.test/about",
+          capturedAt:
+            "2026-09-19T12:00:00.000Z",
+          pageContentSha256:
+            "a".repeat(64),
+          screenshotSha256:
+            "b".repeat(64)
+        }
+      ]
     }).kind).toBe("observed_fact");
 
     expect(() => EvidenceSchema.parse({
