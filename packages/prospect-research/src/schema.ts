@@ -593,6 +593,18 @@ export const PROSPECT_RESEARCH_REVIEW_MODES =
     "UNBLINDED"
   ] as const;
 
+export const PROSPECT_RESEARCH_HUMAN_BASELINE_MODES =
+  [
+    "SCOPE_MATCHED",
+    "NORMAL_TOOLS"
+  ] as const;
+
+export const PROSPECT_RESEARCH_MARKET_SCOPES =
+  [
+    "SINGLE_MARKET",
+    "CROSS_MARKET"
+  ] as const;
+
 export const ProspectResearchSampleCriteriaSchema =
   z.object({
     maxUnsupportedMaterialClaims:
@@ -620,7 +632,7 @@ export const ProspectResearchSampleSchema =
       z.literal("FROZEN"),
     protocolVersion:
       z.literal(
-        "gate13-measured-research-v2"
+        "gate13-measured-research-v3"
       ),
     purpose:
       z.enum(
@@ -628,6 +640,18 @@ export const ProspectResearchSampleSchema =
       ),
     cohortDefinition:
       TextSchema.max(4000),
+    selectionMethod:
+      TextSchema.max(4000),
+    marketScope:
+      z.enum(
+        PROSPECT_RESEARCH_MARKET_SCOPES
+      ),
+    marketDescription:
+      TextSchema.max(1000),
+    humanBaselineMode:
+      z.enum(
+        PROSPECT_RESEARCH_HUMAN_BASELINE_MODES
+      ),
     targets:
       z.array(
         ApprovedResearchTargetSchema
@@ -679,6 +703,38 @@ export const ProspectResearchSampleSchema =
             path: ["targets"],
             message:
               "Gate 13 acceptance samples must contain 30 to 50 frozen targets"
+          });
+        }
+
+        if (
+          sample.purpose ===
+            "ACCEPTANCE" &&
+          sample.marketScope !==
+            "SINGLE_MARKET"
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "marketScope"
+            ],
+            message:
+              "Gate 13 acceptance must use one market; cross-market samples are calibration-only"
+          });
+        }
+
+        if (
+          sample.purpose ===
+            "ACCEPTANCE" &&
+          sample.humanBaselineMode !==
+            "NORMAL_TOOLS"
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "humanBaselineMode"
+            ],
+            message:
+              "Gate 13 acceptance must compare against the human workflow using its normal tools"
           });
         }
 
