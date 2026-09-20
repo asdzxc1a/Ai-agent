@@ -367,31 +367,58 @@ Acceptance:
 
 Purpose:
 
-- use Astra's browser foundation on approved real companies without contacting them.
+- turn the approved-target/evidence foundation into one complete human-supervised research workflow for our own company;
+- close audit-confirmed trust gaps before a measured live-web sample can count as product evidence;
+- measure whether Astra reduces preparation effort without increasing factual risk.
 
 Build:
 
-- input: approved company URL/domain plus optional ICP context;
-- evidence bundle containing source URL, observation, capture time, and uncertainty;
-- company summary, likely transformation opportunities, buying signals, and explicit unknowns;
-- observed-fact vs hypothesis separation;
-- durable `Prospect` record;
-- artifacts sufficient to audit each material claim.
+- retain the merged approved-target registry, evidence contract, classified live failures, durable Prospects, and Gate 12 sandbox boundary;
+- close the demonstrated trust gaps that can invalidate the experiment:
+  - enforce the full network policy on every browser request/navigation path, including redirects, with scheme/credentials/port/hostname/resolved-address checks and a regression for an allowed URL redirecting to a forbidden port;
+  - supervise run-execution promises and make terminal run state plus terminal event atomic/transactional, with reconciliation for interrupted jobs;
+  - drain SSE replay through the terminal sequence even when the persisted backlog exceeds one event batch;
+  - add server-owned capture receipts binding run, final page URL, capture time, content hash/relevant excerpt, and screenshot/artifact identity;
+  - preserve research uncertainty and provenance when evidence crosses into sales-domain state;
+  - add adversarial missing-evidence/fabricated-prose failures and evaluate the final buyer-visible response/state update independently before SalesBench is used for release claims;
+  - constrain the research composition to research-safe actions; effect labels describe retry semantics and never authorize the first side effect;
+  - give diagnostics and cleanup their own bounded deadlines so optional evidence cannot indefinitely hold browser resources;
+- keep Gate 13 execution serial/single-owner while durable worker ownership, fencing, and cross-process endpoint reservations are not implemented;
+- compose the smallest complete operator workflow: approved target → bounded model-backed research → evidence/uncertainty review → accepted or corrected brief;
+- once the operator supplies and freezes the approved sample, compare Astra with the existing human workflow and, where authorized, a simple model/tool baseline;
+- record every attempt, review minutes, correction count/severity, unsupported material claims, requested-field coverage, duration, and complete provider/browser cost.
 
 Non-goals:
 
 - no authenticated contact discovery;
-- no outreach;
+- no outreach/email/LinkedIn/X;
 - no CRM writes;
-- no social posting.
+- no social posting;
+- no voice/avatar;
+- no scheduling/calendar actions;
+- no multi-worker or agency-client operation;
+- no new irreversible external side effect.
 
 Acceptance:
 
-- controlled public-web sample uses approved companies only;
-- material facts/evidence are manually spot-checked against sources;
-- unsupported hypotheses are never presented as observed facts;
-- research failures are classified separately from deterministic release regressions;
-- deterministic Gate 11 remains the release gate.
+- regressions reproduce and then close the audit-confirmed redirect-policy, terminal-persistence/supervision, and >100-event SSE replay failures;
+- material research evidence has server-owned provenance receipts; manual source/screenshot spot-checks remain mandatory for the measured sample until automated support judgment is separately qualified;
+- uncertainty/provenance survive the research → sales-domain handoff;
+- final buyer/operator-visible prose cannot pass factuality solely because structured `claims` is empty;
+- one complete operator workflow produces a reviewable accepted/corrected brief without contacting the prospect;
+- the measured cohort contains only explicitly approved, frozen targets and is never broadened during the run;
+- every material observed fact in the measured sample is manually checked against its claimed source;
+- unsupported hypotheses are never represented as observed facts and unknowns remain explicit;
+- live-site failures remain `LIVE_RESEARCH_FAILURE` and do not change the frozen Gate 11 deterministic release result;
+- experiment thresholds are written before results. Initial proposed decision criteria are: zero observed unsupported material claims, at least 90% of briefs usable with only a minor edit, at least 50% reduction in median total human preparation time including review, no unauthorized action, and measured delivery cost compatible with the intended business model;
+- deterministic Gate 11 remains the release gate and Gate 12 sandbox/network regressions remain green.
+
+### Ordering after Gate 13
+
+- prove the text seller before realtime voice;
+- prove one durable human handoff before adding voice/avatar complexity;
+- do not add multiple workers until durable cancellation intent, leased/fenced ownership, atomic transitions, reconciliation, and centrally owned Steel endpoint allocation exist;
+- before accepting any external agency/client data, add and pass an explicit agency operating boundary covering identity/authorization, tenant/client ownership, per-client offer/ICP/claims, approval roles, budgets, retention/export/deletion, audit, and recovery.
 
 ---
 
@@ -483,48 +510,13 @@ Acceptance:
 
 ---
 
-## Gate 17 — Realtime voice route selection + live acceptance
+## Gate 17 — Durable action plane + real human handoff
 
 **Status:** NOT_STARTED
 
 Purpose:
 
-- add natural voice only after sales state/policy is testable independently;
-- choose one canonical realtime route by evidence rather than branch history.
-
-Build:
-
-- one owned conversation/voice adapter contract;
-- benchmark strongest reusable work from draft PR #2 (Qwen→GPT-Live and/or native GPT-Live);
-- interruption/barge-in;
-- transcript-to-durable-sales-state correlation;
-- latency/transport metrics;
-- optional avatar behind a renderer interface.
-
-Non-goals:
-
-- no requirement to keep two production voice architectures;
-- no avatar rewrite;
-- no real external sales actions.
-
-Acceptance:
-
-- deterministic/mock transport tests pass;
-- at least 20 scripted live conversations complete without state corruption;
-- human microphone tests cover interruption, unclear speech, and long turns;
-- speaking layer adds no unsupported commercial claims;
-- measured latency/reliability selects one canonical route;
-- avatar, if enabled, passes a separate drift/reconnect acceptance.
-
----
-
-## Gate 18 — Durable action plane + real human handoff
-
-**Status:** NOT_STARTED
-
-Purpose:
-
-- create real business value with one safe external action.
+- prove one safe, useful business handoff after the text seller works and before adding realtime voice complexity.
 
 Build:
 
@@ -544,7 +536,45 @@ Acceptance:
 - ambiguous provider failure is `unknown`, never guessed;
 - cross-prospect/session execution is blocked;
 - secrets cannot enter client-visible receipts, learning artifacts, or public proof;
-- one approved controlled handoff succeeds end to end.
+- one approved controlled handoff succeeds end to end;
+- handoff acceptance and human correction effort are recorded as product evidence.
+
+---
+
+## Gate 18 — Realtime voice route selection + live acceptance
+
+**Status:** NOT_STARTED
+
+Purpose:
+
+- add natural voice only after the text seller and one durable human handoff are accepted;
+- choose one canonical realtime route by measured outcome, latency, and reliability rather than branch history;
+- defer this gate if voice has no demonstrated value relative to its transport, QA, and support cost.
+
+Build:
+
+- one owned conversation/voice adapter contract;
+- benchmark strongest reusable work from draft PR #2 (Qwen→GPT-Live and/or native GPT-Live);
+- interruption/barge-in;
+- transcript-to-durable-sales-state correlation;
+- latency/transport/cost metrics;
+- optional avatar behind a renderer interface.
+
+Non-goals:
+
+- no requirement to keep two production voice architectures;
+- no avatar rewrite;
+- no new autonomous external sales actions.
+
+Acceptance:
+
+- deterministic/mock transport tests pass;
+- at least 20 scripted live conversations complete without state corruption;
+- human microphone tests cover interruption, unclear speech, and long turns;
+- speaking layer adds no unsupported commercial claims;
+- measured latency/reliability/cost selects one canonical route;
+- an explicit measured user/business outcome justifies retaining voice rather than text-only operation;
+- avatar, if enabled, passes a separate drift/reconnect acceptance.
 
 ---
 
@@ -687,9 +717,11 @@ Measure separately:
 Acceptance:
 
 - pilot size/channels are explicitly authorized before launch;
+- the Gate 13 internal value experiment has already established a useful human-supervised workflow; this gate does not substitute feature breadth for that evidence;
 - no success claim relies only on simulated buyers;
 - negative outcomes remain in the report;
-- go/no-go thresholds for expanding autonomy are written before results are known.
+- go/no-go thresholds for expanding autonomy are written before results are known;
+- if any participant supplies data for an organization other than our own company, the explicit agency operating boundary described after Gate 13 must be implemented and passed first.
 
 ---
 
