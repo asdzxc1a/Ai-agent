@@ -6,6 +6,7 @@ import {
 
 import {
   ApprovedResearchTargetSchema,
+  ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   evaluateProspectResearchSample,
@@ -70,7 +71,7 @@ function sample(
       status:
         "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v3",
+        "gate13-measured-research-v4",
       purpose,
       cohortDefinition:
         purpose ===
@@ -147,6 +148,7 @@ function outcome(input: {
   baselineSource?:
     | "FIXED_CAP"
     | "MEASURED_HUMAN";
+  baselineRecordedAt?: string;
   baselineMinutes?: number;
   reviewMinutes?: number;
   costUsd?: number;
@@ -186,6 +188,11 @@ function outcome(input: {
         String(
           input.targetIndex
         ).padStart(2, "0"),
+      baselineId:
+        "baseline." +
+        String(
+          input.targetIndex
+        ).padStart(2, "0"),
       attemptStatus,
       briefDisposition,
       reviewedBy:
@@ -198,6 +205,7 @@ function outcome(input: {
         input.baselineSource ??
         "MEASURED_HUMAN",
       baselineMeasuredAt:
+        input.baselineRecordedAt ??
         "2026-09-20T11:30:00.000Z",
       materialClaimsReviewed:
         notProduced
@@ -238,6 +246,47 @@ function outcome(input: {
       unauthorizedActions:
         0,
       notes: null
+    });
+}
+
+function baseline(input: {
+  sampleId: string;
+  targetIndex: number;
+  source?:
+    | "FIXED_CAP"
+    | "MEASURED_HUMAN";
+  recordedAt?: string;
+  minutes?: number;
+}) {
+  const suffix =
+    String(
+      input.targetIndex
+    ).padStart(2, "0");
+
+  return ProspectResearchHumanBaselineSchema
+    .parse({
+      id:
+        "baseline." +
+        suffix,
+      sampleId:
+        input.sampleId,
+      targetId:
+        "target." +
+        suffix,
+      source:
+        input.source ??
+        "MEASURED_HUMAN",
+      preparedBy:
+        "human.researcher",
+      humanPreparationMinutes:
+        input.minutes ??
+        20,
+      toolingDescription:
+        "Normal human research tools for the declared sample baseline.",
+      notes: null,
+      recordedAt:
+        input.recordedAt ??
+        "2026-09-20T11:30:00.000Z"
     });
 }
 
@@ -455,6 +504,14 @@ describe(
                 "Fixture access block."
             }
           };
+        const fixedCapBaseline =
+          baseline({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            source:
+              "FIXED_CAP"
+          });
         const fixedCap =
           outcome({
             sampleId:
@@ -465,48 +522,110 @@ describe(
             briefDisposition:
               "not_produced",
             baselineSource:
-              "FIXED_CAP"
+              "FIXED_CAP",
+            baselineRecordedAt:
+              fixedCapBaseline
+                .recordedAt,
+            baselineMinutes:
+              fixedCapBaseline
+                .humanPreparationMinutes
           });
 
         expect(() =>
           validateProspectResearchSampleOutcomeContext(
             acceptance,
             attempt,
+            fixedCapBaseline,
             fixedCap
           )
         ).toThrow(
           "require a measured human baseline"
         );
 
-        const lateBaseline = {
-          ...fixedCap,
-          baselineSource:
-            "MEASURED_HUMAN" as const,
-          baselineMeasuredAt:
-            "2026-09-20T12:01:00.000Z"
-        };
+        const lateBaseline =
+          baseline({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            recordedAt:
+              "2026-09-20T12:01:00.000Z"
+          });
+        const lateOutcome =
+          outcome({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            attemptStatus:
+              "FAILED",
+            briefDisposition:
+              "not_produced",
+            baselineRecordedAt:
+              lateBaseline
+                .recordedAt,
+            baselineMinutes:
+              lateBaseline
+                .humanPreparationMinutes
+          });
 
         expect(() =>
           validateProspectResearchSampleOutcomeContext(
             acceptance,
             attempt,
-            lateBaseline
+            lateBaseline,
+            lateOutcome
           )
         ).toThrow(
           "must be measured before the Astra attempt starts"
         );
 
+        const validBaseline =
+          baseline({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            recordedAt:
+              "2026-09-20T11:59:00.000Z"
+          });
+        const validOutcome =
+          outcome({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            attemptStatus:
+              "FAILED",
+            briefDisposition:
+              "not_produced",
+            baselineRecordedAt:
+              validBaseline
+                .recordedAt,
+            baselineMinutes:
+              validBaseline
+                .humanPreparationMinutes
+          });
+
         expect(() =>
           validateProspectResearchSampleOutcomeContext(
             acceptance,
             attempt,
-            {
-              ...lateBaseline,
-              baselineMeasuredAt:
-                "2026-09-20T11:59:00.000Z"
-            }
+            validBaseline,
+            validOutcome
           )
         ).not.toThrow();
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            validBaseline,
+            {
+              ...validOutcome,
+              baselineHumanPreparationMinutes:
+                99
+            }
+          )
+        ).toThrow(
+          "differs from durable baseline truth"
+        );
       }
     );
 
