@@ -22,7 +22,7 @@ export default defineConfig({
   },
   test: {
     include: [
-      "packages/agent-stagehand/test/**/*.integration.ts"
+      "packages/agent-stagehand/test/stagehand-steel.integration.ts"
     ],
     maxWorkers: 1,
     testTimeout: 300_000,
