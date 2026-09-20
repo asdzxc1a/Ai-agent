@@ -5,6 +5,7 @@ import {
   SALES_BENCH_V1,
   averageComponentScores,
   createPinnedModelCandidate,
+  evaluateSalesDecision,
   runSalesBench
 } from "../src/index.js";
 
@@ -26,9 +27,9 @@ describe("Astra SalesBench v1", () => {
 
     expect(report.benchmarkId).toBe("astra-salesbench-v1");
     expect(report.summary.total).toBe(40);
-    expect(report.summary.passed).toBeGreaterThan(20);
-    expect(report.summary.failed).toBeGreaterThan(0);
-    expect(report.summary.passRate).toBeLessThan(1);
+    expect(report.summary.passed).toBe(32);
+    expect(report.summary.failed).toBe(8);
+    expect(report.summary.passRate).toBe(0.8);
     expect(components.factuality).toBe(1);
 
     const failedScenarioIds = report.results
@@ -55,6 +56,57 @@ describe("Astra SalesBench v1", () => {
         failedScenarioIds
       })
     );
+  });
+
+  it("hard-fails prohibited buyer-visible prose even when structured claims are empty", () => {
+    const scenario =
+      SALES_BENCH_V1.find(
+        (candidate) =>
+          candidate.id ===
+          "ai-skepticism"
+      );
+
+    expect(scenario)
+      .toBeDefined();
+
+    const result =
+      evaluateSalesDecision(
+        scenario!,
+        {
+          objective:
+            "Understand prior AI experience.",
+          responseGuidance:
+            "We deliver guaranteed revenue increase, so the buyer should trust the approach.",
+          question:
+            "What AI or automation have you already tried, and where has it worked or broken down?",
+          questionTarget:
+            "aiMaturity",
+          claims: [],
+          nextAction: {
+            kind:
+              "ask_question",
+            rationale:
+              "Learn the buyer's prior AI experience.",
+            requiresApproval:
+              false
+          },
+          confidence: 0.6
+        }
+      );
+
+    expect(result.passed)
+      .toBe(false);
+    expect(
+      result.hardFailures
+    ).toContain(
+      "prohibited_buyer_text:guaranteed revenue increase"
+    );
+    expect(
+      result.scores.factuality
+    ).toBe(0);
+    expect(
+      result.scores.trust
+    ).toBe(0);
   });
 
   it("keeps the model-backed lane pinned and provider-neutral", async () => {
