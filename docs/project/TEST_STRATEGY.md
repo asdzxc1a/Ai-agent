@@ -269,14 +269,17 @@ Before the first measured sample:
 
 - keep the merged Gate 13 audit-hardening regressions green: request/redirect policy, terminal atomicity/supervision/reconciliation, >100-event SSE replay, settled capture provenance, uncertainty handoff, prohibited buyer-visible prose, and bounded diagnostics/cleanup;
 - keep execution serial/single-owner and the read-only/action-free operator composition green;
-- persist approvals first, then freeze the operator-approved target/domain cohort and require frozen-sample membership on every measured run;
-- durably freeze decision thresholds before results; the quality/time minimums cannot be weakened, and the operator must supply the positive per-brief cost ceiling;
-- define the existing human workflow baseline and, where authorized, a simple model/tool baseline;
-- do not report a sample pass/fail verdict until every frozen target has exactly one recorded outcome.
+- persist approvals first, then distinguish `CALIBRATION` from `ACCEPTANCE` samples; calibration may contain at most 10 targets and is diagnostic-only;
+- Gate 13 acceptance uses 30–50 frozen targets from one explicit commercial niche and requires frozen-sample membership on every measured run;
+- durably freeze decision thresholds and a cost-ceiling rationale before results; the quality/time minimums cannot be weakened;
+- for acceptance targets, record a measured human baseline before the Astra attempt starts; fixed-cap estimates are calibration-only;
+- record blind versus unblinded review and use blind review where practical;
+- do not report an acceptance pass/fail verdict until every frozen target has exactly one recorded outcome.
 
 For every research attempt record:
 
-- target/sample identity, durable attempt ID/status, and reviewed brief disposition;
+- target/sample identity, sample purpose, cohort definition, durable attempt ID/status, and reviewed brief disposition;
+- human-baseline provenance/timestamp and blind/unblinded review mode;
 - material source/evidence receipts and manual audit result;
 - requested-field coverage and explicit unknowns;
 - unsupported-claim/correction count and severity;
@@ -375,7 +378,7 @@ Relevant failures preserve enough evidence to reproduce the problem:
 
 - deterministic contract/security tests: 100% pass;
 - Gate 11 core research suite: >=95% first-attempt expected-state success before sandbox/live research expansion;
-- Gate 13 measured sample: zero observed unsupported material claims; usability/time/cost thresholds must be frozen before results;
+- Gate 13 calibration samples are diagnostic only; Gate 13 acceptance requires 30–50 niche targets, zero observed unsupported material claims, measured pre-attempt human baselines, and frozen usability/time/cost thresholds;
 - zero known unsupported commercial claims in hard-gated SalesBench, including final rendered prose;
 - zero unconfirmed real action executions;
 - zero known false-completed runs in the deterministic qualification sample;
