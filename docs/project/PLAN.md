@@ -381,10 +381,12 @@ Build:
   - PR #73: material evidence uses semantically settled server-owned capture receipts binding final page URL, capture time, page-content hash, screenshot hash, and artifact identity; research uncertainty/provenance survives into sales evidence;
   - PR #74: prohibited buyer-visible commercial prose hard-fails even when structured `claims` is empty; frozen SalesBench v1 remains 32/40;
   - PR #75: diagnostics and each cleanup operation have independent bounded deadlines, and browser/provider cleanup is attempted even after agent cleanup failure/timeout;
+  - PR #77: the first operator research composition is stored-approval-only, serial, read-only, action-free, source-page constrained, and persists only after operator artifact review;
+  - PR #78: the measured cohort/criteria are durable and pre-registered; measured runs require frozen-sample membership; failed live attempts remain in the denominator; incomplete cohorts cannot report a pass;
 - constrain the research composition to research-safe actions; effect labels describe retry semantics and never authorize the first side effect;
 - keep Gate 13 execution serial/single-owner while durable worker ownership, fencing, and cross-process endpoint reservations are not implemented;
-- compose the smallest complete operator workflow: approved target → bounded model-backed research → evidence/uncertainty review → accepted or corrected brief;
-- once the operator supplies and freezes the approved sample, compare Astra with the existing human workflow and, where authorized, a simple model/tool baseline;
+- keep the merged smallest complete operator workflow green: stored approval → frozen-sample membership → bounded read-only model-backed research on the approved start page → evidence/uncertainty review → accepted/corrected brief or explicit live failure;
+- once the operator supplies the actual targets, human-baseline description, and cost ceiling, freeze the durable sample before browsing and compare Astra with the existing human workflow and, where authorized, a simple model/tool baseline;
 - record every attempt, review minutes, correction count/severity, unsupported material claims, requested-field coverage, duration, and complete provider/browser cost.
 
 Non-goals:
@@ -404,12 +406,14 @@ Acceptance:
 - material research evidence has server-owned semantically settled provenance receipts; manual source/screenshot spot-checks remain mandatory for the measured sample until automated semantic-support judgment is separately qualified;
 - uncertainty/provenance survive the research → sales-domain handoff;
 - current buyer-visible `SalesDecision` prose cannot pass prohibited-claim checks solely because structured `claims` is empty; any future shipped renderer/state-update pipeline requires an independent equivalent check;
-- one complete operator workflow produces a reviewable accepted/corrected brief without contacting the prospect;
-- the measured cohort contains only explicitly approved, frozen targets and is never broadened during the run;
+- the merged operator workflow remains read-only/action-free and can produce a reviewable accepted/corrected brief without contacting the prospect;
+- every measured run requires both stored approval and membership in the durable frozen sample;
+- the measured cohort contains only explicitly approved frozen targets, cannot be overwritten/widened after freeze, and is never broadened during the run;
+- incomplete measured cohorts return no pass/fail verdict; exactly one outcome per frozen target is required before Gate 13 evaluation can pass;
 - every material observed fact in the measured sample is manually checked against its claimed source;
 - unsupported hypotheses are never represented as observed facts and unknowns remain explicit;
 - live-site failures remain `LIVE_RESEARCH_FAILURE` and do not change the frozen Gate 11 deterministic release result;
-- experiment thresholds are written before results. Initial proposed decision criteria are: zero observed unsupported material claims, at least 90% of briefs usable with only a minor edit, at least 50% reduction in median total human preparation time including review, no unauthorized action, and measured delivery cost compatible with the intended business model;
+- experiment thresholds are frozen durably before results: zero observed unsupported material claims, at least 90% of briefs usable with only a minor edit, at least 50% reduction in median total human preparation time including review, zero unauthorized actions, and an operator-supplied positive maximum delivery cost per brief;
 - deterministic Gate 11 remains the release gate and Gate 12 sandbox/network regressions remain green.
 
 ### Ordering after Gate 13

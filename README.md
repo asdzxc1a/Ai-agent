@@ -63,12 +63,13 @@ A separate draft sales/voice branch, [PR #2](https://github.com/asdzxc1a/Ai-agen
 
 **Gate 13 — Evidence-backed live prospect research**
 
-The audit-confirmed pre-sample trust hardening is now merged: request-path policy, SSE backlog replay, atomic terminal persistence/recovery, page/screenshot capture receipts, research uncertainty/provenance handoff, buyer-visible prohibited-prose checks, and bounded diagnostics/cleanup all have regressions on `main`.
+The audit-confirmed pre-sample hardening is now merged: request-path policy, SSE backlog replay, atomic terminal persistence/recovery, page/screenshot capture receipts, research uncertainty/provenance handoff, buyer-visible prohibited-prose checks, bounded diagnostics/cleanup, the serial read-only operator workflow, and a durable pre-registered sample/evaluation protocol all have regressions on `main`.
 
-Gate 13 is still **IN_PROGRESS** because no operator-approved real-company/domain cohort has been supplied or researched. The next measured step is:
+Gate 13 is still **IN_PROGRESS** because no operator-approved real-company/domain cohort has been supplied or researched. There is no remaining autonomous code step before the measured sample. The next step is:
 
-- freeze the operator-approved target/domain cohort before any real browsing;
-- run only those targets through the bounded research path;
+- supply the explicit approved targets, human-baseline description, and per-brief delivery-cost ceiling;
+- freeze that exact cohort/criteria durably before any real browsing;
+- run only those frozen targets through the bounded read-only research path;
 - manually audit every material observed fact against its source page/screenshot;
 - produce an accepted or corrected brief without contacting the prospect;
 - measure review time, corrections, coverage, duration, failures, and complete delivery cost against the existing human workflow.

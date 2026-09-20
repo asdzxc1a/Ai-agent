@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Sandbox/network isolation → controlled live prospect research
 **Current gate:** Gate 13 — Evidence-backed live prospect research
-**Overall status:** Gates 0–12 are PASSED. Gate 13 is active in issue #65. PRs #68–#75 now provide the approved-research foundation plus the September audit's pre-sample trust hardening: server-owned approval/research truth, full request-path network enforcement, >100-event SSE replay, atomic terminal event+snapshot persistence with startup reconciliation, semantically settled page/screenshot capture receipts, uncertainty/provenance handoff into sales evidence, buyer-visible prohibited-prose hard failures, and bounded diagnostics/cleanup. Gate 13 remains IN_PROGRESS because no operator-approved real-company/domain cohort has been supplied or researched, no complete measured brief has been human-audited, and no preparation-time/cost result exists yet.
+**Overall status:** Gates 0–12 are PASSED. Gate 13 is active in issue #65. PRs #68–#78 now provide the approved-research foundation, September audit hardening, a serial read-only operator research composition, and a durable pre-registered measured-sample protocol. The measured run requires stored approval plus frozen-sample membership, preserves failed live attempts in the denominator, and cannot report a pass before every frozen target has exactly one reviewed outcome. Gate 13 remains IN_PROGRESS because no operator-approved real-company/domain cohort has been supplied or researched, no material live claim has been human-audited, and no preparation-time/cost result exists yet.
 
 ## North star
 
@@ -100,11 +100,13 @@ September audit hardening is now merged:
 - PR #72 makes terminal event + terminal run snapshot one owned repository operation, transactional in PostgreSQL, supervises background execution rejection, blocks stale non-terminal resurrection, and reconciles orphaned `PENDING/RUNNING` records before the API serves requests;
 - PR #73 binds material research screenshots to semantically settled page captures with final page URL, server capture time, page-content SHA-256, screenshot SHA-256, and artifact identity; raw page text is not persisted; uncertainty/provenance survive into sales evidence;
 - PR #74 hard-fails prohibited buyer-visible commercial prose even when structured `claims` is empty while preserving the frozen SalesBench v1 Baseline 0 at exactly 32/40;
-- PR #75 gives optional diagnostics and each cleanup operation independent bounded deadlines, preserving best-effort diagnostics and typed `CLEANUP_FAILED` semantics while still attempting browser/provider release.
+- PR #75 gives optional diagnostics and each cleanup operation independent bounded deadlines, preserving best-effort diagnostics and typed `CLEANUP_FAILED` semantics while still attempting browser/provider release;
+- PR #77 composes the smallest complete Gate 13 operator workflow: stored approval only, target-scoped sandbox policy/verifier, serial read-only execution that never calls `act()`, settled final evidence capture, rejection of unobserved page citations, and operator-reviewed evidence mapping before persistence;
+- PR #78 makes the measured experiment durable and pre-registered: frozen approved-target snapshots, non-weakenable quality/time thresholds, operator-supplied cost ceiling, per-target human-review outcomes, failed-attempt denominator preservation, deterministic sample evaluation, and PostgreSQL restart persistence.
 
 Capture receipts prove which semantically settled page/screenshot bytes were recorded; they do **not** independently prove that a natural-language observation is semantically supported by the page. Gate 13 therefore still requires a human source-page/screenshot audit for every material observed fact in the measured sample.
 
-No real-company/domain research has been executed under Gate 13 because no operator-approved fixed sample exists yet. Gate 13 stays serial/single-owner while multi-worker leases/fencing, durable cancellation intent, and centralized Steel endpoint ownership remain later scale work.
+No real-company/domain research has been executed under Gate 13 because no operator-approved fixed sample exists yet. The code path is now ready to freeze and run that sample once the operator supplies the targets, human-baseline description, and per-brief cost ceiling. Gate 13 stays serial/single-owner while multi-worker leases/fencing, durable cancellation intent, and centralized Steel endpoint ownership remain later scale work.
 
 ### Gate 8 sales-domain foundation
 
@@ -201,7 +203,7 @@ Astra does not yet have:
 | --- | --- | --- |
 | Browser/run substrate | `WIRED` | Generic run API + deterministic/pinned integration path works; not yet a complete sales operator app |
 | ResearchBench v1 | `WIRED` | 30/30 deterministic fixture qualification; not a real-model arbitrary-web result |
-| Gate 13 approved research foundation | `IMPLEMENTED` | Approved-target policy, durable research truth, capture receipts, run recovery, and bounded provider substrate exist; the complete prospect-research operator composition is not yet shipped/live-tested |
+| Gate 13 operator research workflow | `WIRED` | Stored approval → frozen sample → serial read-only research → settled evidence capture → operator review → durable attempt/outcome evaluation is composed on `main`; no real-company sample has been live-tested |
 | Consultative seller | `IMPLEMENTED` | Sales-domain schemas/policy exist; no deployed persistent seller |
 | Human handoff/action plane | none | Planned; no merged real handoff |
 | Agency/client operation | none | Auth/tenancy/per-client controls not built |
@@ -266,7 +268,7 @@ pnpm check:memory
 
 ## Known risks
 
-1. **Product/value risk — current Gate 13 blocker:** no operator-approved real-company/domain cohort has been supplied, so Astra has no human-audited live brief, no measured preparation-time reduction, and no measured live delivery cost.
+1. **Product/value risk — current Gate 13 blocker:** no operator-approved real-company/domain cohort, human-baseline description, or per-brief cost ceiling has been supplied, so the durable measured sample cannot yet be frozen or run. Astra still has no human-audited live brief, measured preparation-time reduction, or measured live delivery cost.
 2. **Semantic-support risk — measured-sample control:** capture receipts prove source-page/screenshot identity and hashes, not whether a natural-language claim is actually supported. Every material observed fact still requires human source-page/screenshot review in Gate 13.
 3. **Scale ownership risk:** cancellation intent and Steel endpoint exclusivity are not yet durable cross-process leases/fences. Gate 13 therefore stays serial/single-owner; multiple workers require durable ownership/fencing and centralized endpoint allocation.
 4. **Future renderer/state-update risk:** PR #74 closes the current `SalesDecision` buyer-visible prose loophole, but any future shipped final-response renderer and durable conversation state update need their own independent output evaluation before release claims.
@@ -274,9 +276,9 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 13 — freeze and run the measured operator-approved sample (issue #65):** obtain the operator's explicit fixed company/domain cohort and approval provenance. Do not choose, infer, or broaden targets autonomously.
+**Gate 13 — freeze and run the measured operator-approved sample (issue #65):** obtain the operator's explicit fixed company/domain cohort plus approval provenance, human-baseline description, and a positive maximum delivery-cost-per-brief threshold. Do not choose, infer, or broaden targets autonomously.
 
-Once supplied, keep execution serial and run only the frozen approved domains through: approved target → bounded model-backed public research → semantically settled capture receipts → evidence/uncertainty review → human source audit → accepted/corrected brief. Record every attempt, unsupported-claim/correction count and severity, requested-field coverage, total human preparation/review minutes, duration, live-site failures, model/token/browser/provider cost, and whether the brief met the pre-frozen decision criteria.
+Once supplied, persist the approvals, freeze the exact durable sample/criteria before browsing, then keep execution serial and run only sample members through: stored approval → frozen-sample membership → bounded read-only model-backed public research → semantically settled capture receipts → evidence/uncertainty review → human source audit → accepted/corrected brief or explicit live failure. Record one measured outcome per frozen target, including unsupported claims, correction severity, requested-field coverage, manual baseline minutes, Astra review minutes, duration, live-site failure, complete cost, and unauthorized-action count. Gate 13 can pass only after the durable sample evaluation is complete and its recorded result is reviewed.
 
 Do not start authenticated contact discovery, outreach/email/LinkedIn/X, CRM writes, calendar/social actions, voice/avatar, agency-client data ingestion, or new irreversible external side effects in Gate 13.
 

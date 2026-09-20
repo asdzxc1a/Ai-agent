@@ -268,20 +268,22 @@ Live sites and real users are trend/outcome evidence, not deterministic fixtures
 Before the first measured sample:
 
 - keep the merged Gate 13 audit-hardening regressions green: request/redirect policy, terminal atomicity/supervision/reconciliation, >100-event SSE replay, settled capture provenance, uncertainty handoff, prohibited buyer-visible prose, and bounded diagnostics/cleanup;
-- keep execution serial/single-owner;
-- freeze the operator-approved target/domain cohort and do not broaden it during the run;
-- freeze decision thresholds before results;
-- define the existing human workflow baseline and, where authorized, a simple model/tool baseline.
+- keep execution serial/single-owner and the read-only/action-free operator composition green;
+- persist approvals first, then freeze the operator-approved target/domain cohort and require frozen-sample membership on every measured run;
+- durably freeze decision thresholds before results; the quality/time minimums cannot be weakened, and the operator must supply the positive per-brief cost ceiling;
+- define the existing human workflow baseline and, where authorized, a simple model/tool baseline;
+- do not report a sample pass/fail verdict until every frozen target has exactly one recorded outcome.
 
 For every research attempt record:
 
-- target/sample identity and attempt status;
+- target/sample identity, durable attempt ID/status, and reviewed brief disposition;
 - material source/evidence receipts and manual audit result;
 - requested-field coverage and explicit unknowns;
 - unsupported-claim/correction count and severity;
 - total human preparation/review minutes;
 - end-to-end duration;
-- model/token/browser/provider cost, including failed attempts.
+- complete model/token/browser/provider delivery cost, including failed attempts;
+- unauthorized-action count, which must remain zero.
 
 Blind review where practical. Keep blocked/failed attempts in the denominator/report. A live-site failure is not a Gate 11 deterministic regression.
 
