@@ -4,9 +4,16 @@ import type {
 
 import {
   ApprovedResearchTargetSchema,
+  ProspectResearchSampleOutcomeSchema,
+  ProspectResearchSampleSchema,
   type ApprovedResearchTarget,
-  type ProspectResearchAttempt
+  type ProspectResearchAttempt,
+  type ProspectResearchSample,
+  type ProspectResearchSampleOutcome
 } from "./schema.js";
+import {
+  validateProspectResearchSampleOutcomeContext
+} from "./measurement.js";
 import {
   sameApprovedResearchTarget,
   validateProspectResearchAttemptForPersistence
@@ -52,6 +59,29 @@ export interface ProspectResearchRepository {
   ): Promise<
     ProspectResearchAttempt[]
   >;
+
+  saveSample(
+    sample:
+      ProspectResearchSample
+  ): Promise<void>;
+
+  getSample(
+    sampleId: string
+  ): Promise<
+    ProspectResearchSample |
+    undefined
+  >;
+
+  saveSampleOutcome(
+    outcome:
+      ProspectResearchSampleOutcome
+  ): Promise<void>;
+
+  listSampleOutcomes(
+    sampleId: string
+  ): Promise<
+    ProspectResearchSampleOutcome[]
+  >;
 }
 
 export class InMemoryProspectResearchRepository
@@ -68,6 +98,16 @@ export class InMemoryProspectResearchRepository
     >();
   readonly #prospects =
     new Map<string, Prospect>();
+  readonly #samples =
+    new Map<
+      string,
+      ProspectResearchSample
+    >();
+  readonly #sampleOutcomes =
+    new Map<
+      string,
+      ProspectResearchSampleOutcome
+    >();
 
   public async saveTarget(
     input:
@@ -257,6 +297,182 @@ export class InMemoryProspectResearchRepository
         (left, right) =>
           left.createdAt.localeCompare(
             right.createdAt
+          ) ||
+          left.id.localeCompare(
+            right.id
+          )
+      );
+  }
+
+  public async saveSample(
+    input:
+      ProspectResearchSample
+  ): Promise<void> {
+    const sample =
+      ProspectResearchSampleSchema
+        .parse(input);
+
+    if (
+      this.#samples.has(
+        sample.id
+      )
+    ) {
+      throw new Error(
+        "Measured research sample already exists: " +
+          sample.id
+      );
+    }
+
+    for (
+      const target of
+      sample.targets
+    ) {
+      const approved =
+        this.#targets.get(
+          target.id
+        );
+
+      if (approved === undefined) {
+        throw new Error(
+          "Measured research sample target was not approved: " +
+            target.id
+        );
+      }
+
+      if (
+        !sameApprovedResearchTarget(
+          approved,
+          target
+        )
+      ) {
+        throw new Error(
+          "Measured research sample target differs from the stored approval: " +
+            target.id
+        );
+      }
+    }
+
+    this.#samples.set(
+      sample.id,
+      structuredClone(sample)
+    );
+  }
+
+  public async getSample(
+    sampleId: string
+  ): Promise<
+    ProspectResearchSample |
+    undefined
+  > {
+    const sample =
+      this.#samples.get(
+        sampleId
+      );
+
+    return sample === undefined
+      ? undefined
+      : structuredClone(sample);
+  }
+
+  public async saveSampleOutcome(
+    input:
+      ProspectResearchSampleOutcome
+  ): Promise<void> {
+    const outcome =
+      ProspectResearchSampleOutcomeSchema
+        .parse(input);
+    const sample =
+      this.#samples.get(
+        outcome.sampleId
+      );
+    const attempt =
+      this.#attempts.get(
+        outcome.attemptId
+      );
+
+    if (sample === undefined) {
+      throw new Error(
+        "Measured research sample does not exist: " +
+          outcome.sampleId
+      );
+    }
+
+    if (attempt === undefined) {
+      throw new Error(
+        "Measured research outcome attempt does not exist: " +
+          outcome.attemptId
+      );
+    }
+
+    validateProspectResearchSampleOutcomeContext(
+      sample,
+      attempt,
+      outcome
+    );
+
+    if (
+      this.#sampleOutcomes.has(
+        outcome.id
+      )
+    ) {
+      throw new Error(
+        "Measured research outcome already exists: " +
+          outcome.id
+      );
+    }
+
+    const duplicate =
+      [
+        ...this.#sampleOutcomes
+          .values()
+      ].find(
+        (existing) =>
+          existing.sampleId ===
+            outcome.sampleId &&
+          (
+            existing.targetId ===
+              outcome.targetId ||
+            existing.attemptId ===
+              outcome.attemptId
+          )
+      );
+
+    if (duplicate !== undefined) {
+      throw new Error(
+        "Frozen research sample already has an outcome for this target or attempt."
+      );
+    }
+
+    this.#sampleOutcomes.set(
+      outcome.id,
+      structuredClone(outcome)
+    );
+  }
+
+  public async listSampleOutcomes(
+    sampleId: string
+  ): Promise<
+    ProspectResearchSampleOutcome[]
+  > {
+    return [
+      ...this.#sampleOutcomes
+        .values()
+    ]
+      .filter(
+        (outcome) =>
+          outcome.sampleId ===
+          sampleId
+      )
+      .map(
+        (outcome) =>
+          structuredClone(
+            outcome
+          )
+      )
+      .sort(
+        (left, right) =>
+          left.reviewedAt.localeCompare(
+            right.reviewedAt
           ) ||
           left.id.localeCompare(
             right.id
