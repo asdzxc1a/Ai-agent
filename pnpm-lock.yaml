@@ -97,6 +97,37 @@ importers:
 
   packages/contracts: {}
 
+  packages/prospect-postgres:
+    dependencies:
+      '@astra/prospect-research':
+        specifier: workspace:*
+        version: link:../prospect-research
+      '@astra/sales-domain':
+        specifier: workspace:*
+        version: link:../sales-domain
+      pg:
+        specifier: 8.23.0
+        version: 8.23.0
+    devDependencies:
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+
+  packages/prospect-research:
+    dependencies:
+      '@astra/artifact-store':
+        specifier: workspace:*
+        version: link:../artifact-store
+      '@astra/sales-domain':
+        specifier: workspace:*
+        version: link:../sales-domain
+      '@astra/sandbox-runtime':
+        specifier: workspace:*
+        version: link:../sandbox-runtime
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
   packages/research-bench:
     dependencies:
       zod:

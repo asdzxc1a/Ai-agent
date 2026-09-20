@@ -44,6 +44,8 @@ export interface SandboxDnsResolver {
 export interface SandboxNetworkPolicyOptions {
   allowedHostnames?:
     readonly string[];
+  allowedDomains?:
+    readonly string[];
   trustedHostnames?:
     readonly string[];
   allowedPorts?:
@@ -270,6 +272,18 @@ export function isBlockedNetworkAddress(
   return true;
 }
 
+function hostnameWithinDomain(
+  hostname: string,
+  domain: string
+): boolean {
+  return (
+    hostname === domain ||
+    hostname.endsWith(
+      "." + domain
+    )
+  );
+}
+
 function reservedHostname(
   hostname: string
 ): boolean {
@@ -294,6 +308,8 @@ export class DefaultSandboxNetworkPolicy
   implements BrowserNetworkPolicy {
   readonly #allowedHostnames:
     ReadonlySet<string>;
+  readonly #allowedDomains:
+    ReadonlySet<string>;
   readonly #trustedHostnames:
     ReadonlySet<string>;
   readonly #allowedPorts:
@@ -305,6 +321,7 @@ export class DefaultSandboxNetworkPolicy
 
   public constructor({
     allowedHostnames = [],
+    allowedDomains = [],
     trustedHostnames = [],
     allowedPorts = [80, 443],
     resolver =
@@ -313,6 +330,12 @@ export class DefaultSandboxNetworkPolicy
     this.#allowedHostnames =
       new Set(
         allowedHostnames.map(
+          normalizedHostname
+        )
+      );
+    this.#allowedDomains =
+      new Set(
+        allowedDomains.map(
           normalizedHostname
         )
       );
@@ -328,7 +351,14 @@ export class DefaultSandboxNetworkPolicy
 
     const explicitDomains = [
       ...this.#allowedHostnames,
-      ...this.#trustedHostnames
+      ...this.#trustedHostnames,
+      ...[...this.#allowedDomains]
+        .flatMap(
+          (domain) => [
+            domain,
+            "*." + domain
+          ]
+        )
     ];
 
     this.domainPolicy = {
@@ -383,10 +413,20 @@ export class DefaultSandboxNetworkPolicy
       this.#trustedHostnames.has(
         hostname
       );
+    const allowedByDomain =
+      [...this.#allowedDomains]
+        .some(
+          (domain) =>
+            hostnameWithinDomain(
+              hostname,
+              domain
+            )
+        );
     const allowed =
       this.#allowedHostnames.has(
         hostname
       ) ||
+      allowedByDomain ||
       trusted;
 
     if (!allowed) {

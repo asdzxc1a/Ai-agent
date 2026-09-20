@@ -44,6 +44,12 @@
       ],
       "@astra/sandbox-runtime": [
         "./packages/sandbox-runtime/src/index.ts"
+      ],
+      "@astra/prospect-research": [
+        "./packages/prospect-research/src/index.ts"
+      ],
+      "@astra/prospect-postgres": [
+        "./packages/prospect-postgres/src/index.ts"
       ]
     }
   },

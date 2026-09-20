@@ -289,6 +289,67 @@ describe(
       ).resolves.toBeUndefined();
     });
 
+    it("allows approved domains and subdomains without allowing lookalikes", async () => {
+      const policy =
+        new DefaultSandboxNetworkPolicy({
+          allowedDomains: [
+            "example.com"
+          ],
+          resolver: {
+            async resolve() {
+              return [
+                "93.184.216.34"
+              ];
+            }
+          }
+        });
+
+      expect(
+        policy.domainPolicy
+      ).toEqual({
+        allowedDomains: [
+          "example.com",
+          "*.example.com"
+        ]
+      });
+
+      await expect(
+        policy.assertAllowed({
+          url:
+            "https://example.com/"
+        })
+      ).resolves.toBeUndefined();
+
+      await expect(
+        policy.assertAllowed({
+          url:
+            "https://www.example.com/"
+        })
+      ).resolves.toBeUndefined();
+
+      await expect(
+        policy.assertAllowed({
+          url:
+            "https://deep.docs.example.com/"
+        })
+      ).resolves.toBeUndefined();
+
+      await expect(
+        policy.assertAllowed({
+          url:
+            "https://notexample.com/"
+        })
+      ).rejects.toSatisfy(
+        (error: unknown) => {
+          expectCode(
+            error,
+            "BLOCKED_HOSTNAME"
+          );
+          return true;
+        }
+      );
+    });
+
     it("allows ordinary public https destinations", async () => {
       const policy =
         new DefaultSandboxNetworkPolicy({
