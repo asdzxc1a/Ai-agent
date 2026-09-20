@@ -523,6 +523,10 @@ const AttemptBase = {
   id: IdentifierSchema,
   target:
     ApprovedResearchTargetSchema,
+  startedAt:
+    z.string().datetime({
+      offset: true
+    }),
   createdAt:
     z.string().datetime({
       offset: true
