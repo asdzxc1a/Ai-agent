@@ -105,7 +105,6 @@ CREATE INDEX prospect_research_approval_batch_time
 CREATE INDEX approved_research_target_batch
   ON approved_research_targets(approval_batch_id, id);
 `;
-
 async function applyMigration(
   client: PoolClient,
   version: number,
@@ -127,6 +126,7 @@ async function applyMigration(
     [version]
   );
 }
+
 export async function runProspectPostgresMigrations(
   pool: Pool
 ): Promise<void> {
@@ -165,89 +165,6 @@ export async function runProspectPostgresMigrations(
       client,
       4,
       MIGRATION_FOUR
-    );
-
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query(
-      "ROLLBACK"
-    ).catch(
-      () => undefined
-    );
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-)
-);
-
-ALTER TABLE approved_research_targets
-  ADD COLUMN approval_batch_id TEXT
-  REFERENCES prospect_research_approval_batches(id);
-
-CREATE INDEX prospect_research_approval_batch_time
-  ON prospect_research_approval_batches(approved_at, id);
-
-CREATE INDEX approved_research_target_batch
-  ON approved_research_targets(approval_batch_id, id);
-`;
-
-async function applyMigration(
-  client: PoolClient,
-  version: number,
-  sql: string
-): Promise<void> {
-  const applied =
-    await client.query(
-      "SELECT 1 FROM prospect_schema_migrations WHERE version = $1",
-      [version]
-    );
-
-  if (applied.rowCount !== 0) {
-    return;
-  }
-
-  await client.query(sql);
-  await client.query(
-    "INSERT INTO prospect_schema_migrations(version) VALUES ($1)",
-    [version]
-  );
-}
-
-export async function runProspectPostgresMigrations(
-  pool: Pool
-): Promise<void> {
-  const client =
-    await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-    await client.query(
-      "SELECT pg_advisory_xact_lock($1)",
-      [913_572_413]
-    );
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS prospect_schema_migrations (
-        version INTEGER PRIMARY KEY,
-        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-
-    await applyMigration(
-      client,
-      1,
-      MIGRATION_ONE
-    );
-    await applyMigration(
-      client,
-      2,
-      MIGRATION_TWO
-    );
-    await applyMigration(
-      client,
-      3,
-      MIGRATION_THREE
     );
 
     await client.query("COMMIT");
