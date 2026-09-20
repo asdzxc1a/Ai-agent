@@ -214,13 +214,7 @@ function frozenSample():
 
 function humanBaselineBrief() {
   return {
-    companyName: {
-      value:
-        "Example Systems",
-      evidenceIds: [
-        "human.pg.evidence"
-      ]
-    },
+    companyName: null,
     companySummary: [
       {
         id:
