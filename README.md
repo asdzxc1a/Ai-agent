@@ -73,13 +73,13 @@ The acceptance experiment must:
 
 - enrich and approve **all 43 frozen U.S. transportation universe members**, then freeze exactly that complete universe before browsing; no member may be dropped because it looks hard or inaccessible;
 - compare against the existing human researcher using their **normal tools**, not an artificially one-page-restricted baseline;
-- persist an actually measured human baseline as durable server-timestamped state for each acceptance target **before** Astra is allowed to start that target;
+- persist an actually measured human baseline as durable server-timestamped state for each acceptance target **before** Astra is allowed to start that target, including the human's structured brief and cited evidence;
 - freeze the cost ceiling and rationale before results;
 - record blind versus unblinded review;
 - run only frozen sample members through the bounded read-only research path;
 - manually audit every material observed fact against its source page/screenshot;
 - produce an accepted or corrected brief without contacting the prospect;
-- measure **total Astra-side human preparation time** (setup + evidence audit + corrections/finalization + failure triage + other operator work), coverage, duration, failures, and complete delivery cost against the existing human workflow.
+- measure **total Astra-side human preparation time** (setup + evidence audit + corrections/finalization + failure triage + other operator work), coverage, duration, failures, complete delivery cost, and paired human-vs-Astra brief quality against the existing human workflow.
 
 See [STATE.md](./docs/project/STATE.md) for the current verified truth. `pnpm check:memory` enforces that this README gate matches it.
 
