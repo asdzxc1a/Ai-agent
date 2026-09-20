@@ -747,7 +747,7 @@ export const ProspectResearchSampleSchema =
       z.literal("FROZEN"),
     protocolVersion:
       z.literal(
-        "gate13-measured-research-v5"
+        "gate13-measured-research-v6"
       ),
     purpose:
       z.enum(
@@ -1047,6 +1047,79 @@ export const ProspectResearchHumanBaselineSchema =
     })
     .strict();
 
+export const PROSPECT_RESEARCH_HUMAN_TIME_METHODS =
+  [
+    "STOPWATCH",
+    "SYSTEM_TIMED"
+  ] as const;
+
+export const ProspectResearchAstraHumanTimeSchema =
+  z.object({
+    targetSetupMinutes:
+      z.number()
+        .finite()
+        .nonnegative(),
+    evidenceMappingAndAuditMinutes:
+      z.number()
+        .finite()
+        .nonnegative(),
+    correctionAndFinalizationMinutes:
+      z.number()
+        .finite()
+        .nonnegative(),
+    failureTriageMinutes:
+      z.number()
+        .finite()
+        .nonnegative(),
+    otherMinutes:
+      z.number()
+        .finite()
+        .nonnegative(),
+    measurementMethod:
+      z.enum(
+        PROSPECT_RESEARCH_HUMAN_TIME_METHODS
+      ),
+    otherDescription:
+      z.string()
+        .trim()
+        .min(1)
+        .max(1000)
+        .nullable()
+  }).strict()
+    .superRefine(
+      (time, context) => {
+        if (
+          time.otherMinutes > 0 &&
+          time.otherDescription ===
+            null
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "otherDescription"
+            ],
+            message:
+              "otherDescription is required when otherMinutes is non-zero"
+          });
+        }
+
+        if (
+          time.otherMinutes === 0 &&
+          time.otherDescription !==
+            null
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "otherDescription"
+            ],
+            message:
+              "otherDescription must be null when otherMinutes is zero"
+          });
+        }
+      }
+    );
+
 export const ProspectResearchSampleOutcomeSchema =
   z.object({
     id: IdentifierSchema,
@@ -1116,10 +1189,8 @@ export const ProspectResearchSampleOutcomeSchema =
       z.number()
         .finite()
         .positive(),
-    astraHumanReviewMinutes:
-      z.number()
-        .finite()
-        .nonnegative(),
+    astraHumanTime:
+      ProspectResearchAstraHumanTimeSchema,
     endToEndDurationMs:
       z.number()
         .int()
@@ -1256,6 +1327,10 @@ export const ProspectResearchSampleOutcomeSchema =
       }
     );
 
+export type ProspectResearchAstraHumanTime =
+  z.infer<
+    typeof ProspectResearchAstraHumanTimeSchema
+  >;
 export type ProspectResearchHumanBaselineInput =
   z.infer<
     typeof ProspectResearchHumanBaselineInputSchema
