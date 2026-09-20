@@ -76,7 +76,7 @@ function sample() {
       id: sampleId,
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v3",
+        "gate13-measured-research-v4",
       purpose:
         "CALIBRATION",
       cohortDefinition:
@@ -101,9 +101,13 @@ function sample() {
           0.5,
         requireNoUnauthorizedActions:
           true,
-        maxDeliveryCostUsdPerBrief:
+        maxInfrastructureCostUsdPerAttempt:
+          5,
+        maxTotalDeliveryCostUsdPerUsableBrief:
           25
       },
+      reviewLaborRateUsdPerHour:
+        60,
       costCeilingRationale:
         "Fixture ceiling used only for workflow calibration.",
       humanBaselineDescription:
@@ -675,8 +679,10 @@ describe(
               8,
             endToEndDurationMs:
               4_000,
-            deliveryCostUsd:
-              5,
+            infrastructureCostUsd:
+              1,
+            otherDeliveryCostUsd:
+              0.25,
             unauthorizedActions:
               0,
             notes:
@@ -693,6 +699,7 @@ describe(
           metrics: {
             targetCount: 1,
             outcomeCount: 1,
+            usableBriefCount: 1,
             usableBriefRate: 1,
             unsupportedMaterialClaims:
               0,
@@ -702,8 +709,18 @@ describe(
               1,
             unauthorizedActions:
               0,
-            maxDeliveryCostUsdPerBrief:
-              5
+            totalInfrastructureCostUsd:
+              1,
+            maxInfrastructureCostUsdPerAttempt:
+              1,
+            totalHumanReviewLaborCostUsd:
+              8,
+            totalOtherDeliveryCostUsd:
+              0.25,
+            totalDeliveryCostUsd:
+              9.25,
+            totalDeliveryCostUsdPerUsableBrief:
+              9.25
           },
           failures: []
         });
