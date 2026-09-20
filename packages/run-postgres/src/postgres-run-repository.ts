@@ -16,6 +16,7 @@ import type {
   RunEventRecord,
   RunRepository,
   RunStepRecord,
+  RunTerminalUpdate,
   RunUpdate
 } from "@astra/run-engine";
 
@@ -176,6 +177,30 @@ function validateTerminal(snapshot: RunSnapshot): void {
   }
 }
 
+function isTerminalStatus(
+  status: RunStatus
+): boolean {
+  return (
+    status === "COMPLETED" ||
+    status === "FAILED" ||
+    status === "CANCELLED"
+  );
+}
+
+function terminalEventType(
+  status:
+    RunTerminalUpdate["status"]
+): string {
+  switch (status) {
+    case "COMPLETED":
+      return "RUN_COMPLETED";
+    case "FAILED":
+      return "RUN_FAILED";
+    case "CANCELLED":
+      return "RUN_CANCELLED";
+  }
+}
+
 export function createPostgresPool(
   config: PoolConfig
 ): Pool {
@@ -277,6 +302,16 @@ export class PostgresRunRepository implements RunRepository {
       updatedAt: new Date().toISOString()
     };
 
+    if (
+      isTerminalStatus(
+        next.status
+      )
+    ) {
+      throw new Error(
+        "Terminal runs must use finalizeRun()."
+      );
+    }
+
     validateTerminal(next);
 
     const resultJson =
@@ -318,6 +353,154 @@ export class PostgresRunRepository implements RunRepository {
     );
 
     return next;
+  }
+
+  public async finalizeRun(
+    runId: string,
+    update: RunTerminalUpdate,
+    eventPayload: unknown
+  ): Promise<RunSnapshot> {
+    const client =
+      await this.#pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const currentResult =
+        await client.query(
+          `
+            SELECT
+              id,
+              status,
+              goal_status,
+              request,
+              result,
+              error,
+              terminal_reason,
+              created_at,
+              updated_at
+            FROM runs
+            WHERE id = $1
+            FOR UPDATE
+          `,
+          [runId]
+        );
+      const row =
+        currentResult.rows[0] as
+          | RunRow
+          | undefined;
+
+      if (row === undefined) {
+        throw new Error(
+          `Run ${runId} does not exist.`
+        );
+      }
+
+      const current =
+        mapRun(row);
+
+      if (
+        isTerminalStatus(
+          current.status
+        )
+      ) {
+        throw new Error(
+          `Run ${runId} is already terminal.`
+        );
+      }
+
+      const next:
+        RunSnapshot = {
+          ...current,
+          ...update,
+          updatedAt:
+            new Date().toISOString()
+        };
+
+      validateTerminal(next);
+
+      const sequence =
+        await this.#nextSequence(
+          client,
+          runId,
+          "event_sequence"
+        );
+      const eventType =
+        terminalEventType(
+          update.status
+        );
+
+      await client.query(
+        `
+          INSERT INTO run_events (
+            run_id,
+            sequence_number,
+            event_type,
+            payload
+          )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            $4::jsonb
+          )
+        `,
+        [
+          runId,
+          sequence,
+          eventType,
+          JSON.stringify(
+            eventPayload
+          )
+        ]
+      );
+
+      await client.query(
+        `
+          UPDATE runs
+          SET
+            status = $2,
+            goal_status = $3,
+            result = $4::jsonb,
+            error = $5::jsonb,
+            terminal_reason =
+              $6::jsonb,
+            updated_at = $7
+          WHERE id = $1
+        `,
+        [
+          runId,
+          next.status,
+          next.goalStatus,
+          next.result ===
+            undefined
+            ? null
+            : JSON.stringify(
+                next.result
+              ),
+          next.error ===
+            undefined
+            ? null
+            : JSON.stringify(
+                next.error
+              ),
+          JSON.stringify(
+            next.terminalReason
+          ),
+          next.updatedAt
+        ]
+      );
+
+      await client.query("COMMIT");
+      return next;
+    } catch (error) {
+      await client
+        .query("ROLLBACK")
+        .catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async #nextSequence(
