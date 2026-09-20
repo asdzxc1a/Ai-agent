@@ -55,6 +55,9 @@ export interface RunRepository {
     runId: string
   ): Promise<CreateRunRequest | undefined>;
 
+  listActiveRuns():
+    Promise<RunSnapshot[]>;
+
   updateRun(
     runId: string,
     update: RunUpdate
