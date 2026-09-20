@@ -8,7 +8,9 @@ import {
   ApprovedResearchTargetSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
-  evaluateProspectResearchSample
+  evaluateProspectResearchSample,
+  validateProspectResearchSampleOutcomeContext,
+  type FailedProspectResearchAttempt
 } from "../src/index.js";
 
 const approvedAt =
@@ -399,6 +401,92 @@ describe(
         ).toContain(
           "usable brief rate is below the frozen threshold"
         );
+      }
+    );
+
+    it(
+      "requires a measured human baseline recorded before the server-owned Astra start for acceptance",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const attempt:
+          FailedProspectResearchAttempt = {
+            id:
+              "run.01",
+            target:
+              target(1),
+            startedAt:
+              "2026-09-20T12:00:00.000Z",
+            createdAt:
+              "2026-09-20T12:05:00.000Z",
+            status:
+              "FAILED",
+            runId:
+              "run.01",
+            failure: {
+              kind:
+                "LIVE_RESEARCH_FAILURE",
+              code:
+                "ACCESS_BLOCKED",
+              message:
+                "Fixture access block."
+            }
+          };
+        const fixedCap =
+          outcome({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            attemptStatus:
+              "FAILED",
+            briefDisposition:
+              "not_produced",
+            baselineSource:
+              "FIXED_CAP"
+          });
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            fixedCap
+          )
+        ).toThrow(
+          "require a measured human baseline"
+        );
+
+        const lateBaseline = {
+          ...fixedCap,
+          baselineSource:
+            "MEASURED_HUMAN" as const,
+          baselineMeasuredAt:
+            "2026-09-20T12:01:00.000Z"
+        };
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            lateBaseline
+          )
+        ).toThrow(
+          "must be measured before the Astra attempt starts"
+        );
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            {
+              ...lateBaseline,
+              baselineMeasuredAt:
+                "2026-09-20T11:59:00.000Z"
+            }
+          )
+        ).not.toThrow();
       }
     );
 
