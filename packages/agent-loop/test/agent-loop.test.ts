@@ -351,3 +351,39 @@ test("malformed decisions are rejected before acting", async () => {
     events.at(-1)?.type
   ).toBe("DECISION_REJECTED");
 });
+
+test("policy failure detail is excluded from progress", async () => {
+  const events:
+    AgentLoopProgressEvent[] = [];
+  const outcome =
+    await executeAgentLoop(
+      new LoopFixtureSession(),
+      {
+        goal: "Fail closed.",
+        policy: {
+          async decide() {
+            throw new Error(
+              "provider-secret-detail"
+            );
+          }
+        },
+        async onProgress(event) {
+          events.push(
+            structuredClone(event)
+          );
+        }
+      }
+    );
+
+  expect(outcome.type).toBe("FAIL");
+  expect(
+    JSON.stringify(events)
+  ).not.toContain(
+    "provider-secret-detail"
+  );
+  expect(events.at(-1)).toMatchObject({
+    type: "DECISION_REJECTED",
+    message:
+      "Agent-loop policy decision was rejected."
+  });
+});
