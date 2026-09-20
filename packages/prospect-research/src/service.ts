@@ -506,6 +506,8 @@ export class ProspectResearchService {
             artifact.metadata;
           const captureVersion =
             metadata?.captureVersion;
+          const semanticSettled =
+            metadata?.semanticSettled;
           const pageUrl =
             metadata?.pageUrl;
           const pageContentSha256 =
@@ -520,6 +522,8 @@ export class ProspectResearchService {
           if (
             captureVersion !==
               "page-evidence-v1" ||
+            semanticSettled !==
+              true ||
             typeof pageUrl !==
               "string" ||
             typeof pageContentSha256 !==
@@ -626,6 +630,7 @@ export class ProspectResearchService {
           captureReceipts.push({
             artifactId,
             captureVersion,
+            semanticSettled,
             pageUrl,
             capturedAt:
               artifact.createdAt,
