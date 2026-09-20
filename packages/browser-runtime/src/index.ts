@@ -6,6 +6,7 @@ export interface BrowserViewport {
 export interface BrowserSessionOptions {
   headless?: boolean;
   viewport?: BrowserViewport;
+  signal?: AbortSignal;
 }
 
 export interface BrowserScreenshotOptions {

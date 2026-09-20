@@ -219,6 +219,21 @@ class SteelBrowserSession implements BrowserSession {
   }
 }
 
+function throwIfAborted(
+  signal: AbortSignal | undefined
+): void {
+  if (signal?.aborted !== true) {
+    return;
+  }
+
+  const error =
+    new Error(
+      "Browser session creation aborted."
+    );
+  error.name = "AbortError";
+  throw error;
+}
+
 export class SteelBrowserRuntime
   implements BrowserRuntime {
   readonly #client: SteelClient;
@@ -239,6 +254,10 @@ export class SteelBrowserRuntime
   public async createSession(
     options: BrowserSessionOptions = {}
   ): Promise<BrowserSession> {
+    throwIfAborted(
+      options.signal
+    );
+
     const details =
       await this.#client.createSession({
         ...(options.headless === undefined

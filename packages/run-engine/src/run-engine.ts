@@ -924,7 +924,8 @@ export class RunEngine implements RunService {
       let startedAt = Date.now();
       browser =
         await this.#browserRuntime.createSession({
-          headless: true
+          headless: true,
+          signal
         });
       timings.browserCreateMs =
         Date.now() - startedAt;
@@ -945,7 +946,8 @@ export class RunEngine implements RunService {
       startedAt = Date.now();
       agent =
         await this.#agentRuntime.openSession({
-          browser
+          browser,
+          signal
         });
       timings.agentOpenMs =
         Date.now() - startedAt;

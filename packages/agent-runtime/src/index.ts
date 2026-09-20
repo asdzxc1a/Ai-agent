@@ -28,6 +28,7 @@ export interface AgentSession {
 
 export interface OpenAgentSessionOptions {
   browser: BrowserSession;
+  signal?: AbortSignal;
 }
 
 export interface AgentRuntime {

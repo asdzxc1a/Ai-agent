@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { SteelClient } from "../src/index.js";
+import { SteelBrowserRuntime, SteelClient } from "../src/index.js";
 
 describe("SteelClient", () => {
   afterEach(() => {
@@ -60,4 +60,36 @@ describe("SteelClient", () => {
       "Steel returned an invalid session response."
     );
   });
+
+  it("does not create a Steel session when startup is already aborted", async () => {
+    const fetchMock =
+      vi.fn<typeof fetch>();
+    vi.stubGlobal(
+      "fetch",
+      fetchMock
+    );
+
+    const runtime =
+      new SteelBrowserRuntime({
+        baseUrl:
+          "http://localhost:3000"
+      });
+    const controller =
+      new AbortController();
+    controller.abort();
+
+    await expect(
+      runtime.createSession({
+        signal:
+          controller.signal
+      })
+    ).rejects.toMatchObject({
+      name: "AbortError"
+    });
+
+    expect(
+      fetchMock
+    ).not.toHaveBeenCalled();
+  });
+
 });

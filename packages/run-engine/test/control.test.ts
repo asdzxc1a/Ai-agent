@@ -1105,3 +1105,235 @@ test(
     );
   }
 );
+
+class SignalGatedBrowserRuntime
+  implements BrowserRuntime {
+  public readonly session =
+    new ControlBrowserSession();
+  public signal:
+    AbortSignal | undefined;
+
+  public async createSession(
+    options?: {
+      signal?: AbortSignal;
+    }
+  ): Promise<BrowserSession> {
+    this.signal =
+      options?.signal;
+
+    if (this.signal === undefined) {
+      throw new Error(
+        "RunEngine did not propagate a browser startup signal."
+      );
+    }
+
+    if (
+      !this.signal.aborted
+    ) {
+      await new Promise<void>(
+        (resolve) => {
+          this.signal!.addEventListener(
+            "abort",
+            () => resolve(),
+            { once: true }
+          );
+        }
+      );
+    }
+
+    return this.session;
+  }
+}
+
+class SignalGatedAgentRuntime
+  implements AgentRuntime {
+  public readonly session =
+    new ControlAgentSession();
+  public signal:
+    AbortSignal | undefined;
+
+  public async openSession(
+    options:
+      OpenAgentSessionOptions
+  ): Promise<AgentSession> {
+    this.signal =
+      options.signal;
+
+    if (this.signal === undefined) {
+      throw new Error(
+        "RunEngine did not propagate an agent startup signal."
+      );
+    }
+
+    if (
+      !this.signal.aborted
+    ) {
+      await new Promise<void>(
+        (resolve) => {
+          this.signal!.addEventListener(
+            "abort",
+            () => resolve(),
+            { once: true }
+          );
+        }
+      );
+    }
+
+    return this.session;
+  }
+}
+
+test(
+  "cancellation propagates through browser startup and closes a session created after abort",
+  async () => {
+    const browserRuntime =
+      new SignalGatedBrowserRuntime();
+    const agentRuntime =
+      new ControlAgentRuntime();
+    const engine = new RunEngine({
+      repository:
+        new InMemoryRunRepository(),
+      browserRuntime,
+      agentRuntime,
+      completionVerifier: {
+        async verify() {
+          return {
+            verified: true
+          };
+        }
+      }
+    });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Cancel during browser startup."
+        }
+      });
+
+    for (
+      let attempt = 0;
+      attempt < 100;
+      attempt += 1
+    ) {
+      if (
+        browserRuntime.signal !==
+        undefined
+      ) {
+        break;
+      }
+
+      await new Promise(
+        (resolve) => {
+          setTimeout(
+            resolve,
+            1
+          );
+        }
+      );
+    }
+
+    const cancelled =
+      await engine.cancelRun(
+        started.id
+      );
+
+    expect(
+      browserRuntime.signal
+        ?.aborted
+    ).toBe(true);
+    expect(
+      cancelled?.kind
+    ).toBe("CANCELLED");
+    expect(
+      cancelled?.run.status
+    ).toBe("CANCELLED");
+    expect(
+      browserRuntime.session
+        .closeCalls
+    ).toBe(1);
+    expect(
+      agentRuntime.session
+        .closeCalls
+    ).toBe(0);
+  }
+);
+
+test(
+  "cancellation propagates through agent startup and closes both created resources",
+  async () => {
+    const browserRuntime =
+      new ControlBrowserRuntime();
+    const agentRuntime =
+      new SignalGatedAgentRuntime();
+    const engine = new RunEngine({
+      repository:
+        new InMemoryRunRepository(),
+      browserRuntime,
+      agentRuntime,
+      completionVerifier: {
+        async verify() {
+          return {
+            verified: true
+          };
+        }
+      }
+    });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Cancel during agent startup."
+        }
+      });
+
+    for (
+      let attempt = 0;
+      attempt < 100;
+      attempt += 1
+    ) {
+      if (
+        agentRuntime.signal !==
+        undefined
+      ) {
+        break;
+      }
+
+      await new Promise(
+        (resolve) => {
+          setTimeout(
+            resolve,
+            1
+          );
+        }
+      );
+    }
+
+    const cancelled =
+      await engine.cancelRun(
+        started.id
+      );
+
+    expect(
+      agentRuntime.signal
+        ?.aborted
+    ).toBe(true);
+    expect(
+      cancelled?.kind
+    ).toBe("CANCELLED");
+    expect(
+      browserRuntime.session
+        .closeCalls
+    ).toBe(1);
+    expect(
+      agentRuntime.session
+        .closeCalls
+    ).toBe(1);
+  }
+);

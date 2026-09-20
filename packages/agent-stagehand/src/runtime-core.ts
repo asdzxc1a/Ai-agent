@@ -17,6 +17,21 @@ import type {
 
 export type CreateStagehand = (cdpUrl: string) => Stagehand;
 
+function throwIfAborted(
+  signal: AbortSignal | undefined
+): void {
+  if (signal?.aborted !== true) {
+    return;
+  }
+
+  const error =
+    new Error(
+      "Agent session opening aborted."
+    );
+  error.name = "AbortError";
+  throw error;
+}
+
 function toAgentAction(action: {
   selector: string;
   description: string;
@@ -110,12 +125,20 @@ export class StagehandRuntimeCore implements AgentRuntime {
   }
 
   public async openSession({
-    browser
+    browser,
+    signal
   }: OpenAgentSessionOptions): Promise<AgentSession> {
-    const stagehand = this.#createStagehand(browser.cdpUrl);
+    throwIfAborted(signal);
+
+    const stagehand =
+      this.#createStagehand(
+        browser.cdpUrl
+      );
     await stagehand.init();
 
-    return new StagehandAgentSession(stagehand);
+    return new StagehandAgentSession(
+      stagehand
+    );
   }
 }
 
