@@ -4,12 +4,12 @@ import type {
 
 import {
   ApprovedResearchTargetSchema,
-  ProspectResearchAttemptSchema,
   type ApprovedResearchTarget,
   type ProspectResearchAttempt
 } from "./schema.js";
 import {
-  sameApprovedResearchTarget
+  sameApprovedResearchTarget,
+  validateProspectResearchAttemptForPersistence
 } from "./validation.js";
 
 export interface ProspectResearchRepository {
@@ -143,8 +143,9 @@ export class InMemoryProspectResearchRepository
       ProspectResearchAttempt
   ): Promise<void> {
     const parsed =
-      ProspectResearchAttemptSchema
-        .parse(attempt);
+      validateProspectResearchAttemptForPersistence(
+        attempt
+      );
 
     const approved =
       this.#targets.get(
