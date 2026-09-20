@@ -134,6 +134,7 @@ function injectedEvidenceScript(
 
   return [
     "<script>",
+    "(() => {",
     "const facts = " + facts + ";",
     "const unknowns = " + unknowns + ";",
     "const nextPath = " + nextJson + ";",
@@ -163,6 +164,7 @@ function injectedEvidenceScript(
     dynamic
       ? "trigger.addEventListener(\"click\", () => { trigger.remove(); const second = document.createElement(\"button\"); second.id = \"research-reveal\"; second.textContent = \"Reveal loaded research evidence\"; second.addEventListener(\"click\", appendEvidence); target.replaceChildren(second); });"
       : "trigger.addEventListener(\"click\", () => { trigger.remove(); appendEvidence(); });",
+    "})();",
     "</script>"
   ].join("\n");
 }
