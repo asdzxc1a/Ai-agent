@@ -227,6 +227,107 @@ const Sha256Schema =
       /^[a-f0-9]{64}$/
     );
 
+export const ResearchApprovalBatchSchema =
+  z.object({
+    id: IdentifierSchema,
+    sourceManifestId:
+      IdentifierSchema,
+    sourceManifestSha256:
+      Sha256Schema,
+    approvedBy:
+      TextSchema.max(240),
+    approvedAt:
+      z.string().datetime({
+        offset: true
+      }),
+    targets:
+      z.array(
+        ApprovedResearchTargetSchema
+      ).min(1).max(50)
+  }).strict()
+    .superRefine(
+      (batch, context) => {
+        const targetIds =
+          batch.targets.map(
+            (target) =>
+              target.id
+          );
+        const approvalIds =
+          batch.targets.map(
+            (target) =>
+              target.approval.id
+          );
+
+        if (
+          new Set(
+            targetIds
+          ).size !==
+            targetIds.length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["targets"],
+            message:
+              "approval batch target IDs must be unique"
+          });
+        }
+
+        if (
+          new Set(
+            approvalIds
+          ).size !==
+            approvalIds.length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["targets"],
+            message:
+              "approval batch approval IDs must be unique"
+          });
+        }
+
+        batch.targets.forEach(
+          (target, index) => {
+            if (
+              target.approval
+                .approvedBy !==
+                batch.approvedBy
+            ) {
+              context.addIssue({
+                code: "custom",
+                path: [
+                  "targets",
+                  index,
+                  "approval",
+                  "approvedBy"
+                ],
+                message:
+                  "target approvedBy must match approval batch"
+              });
+            }
+
+            if (
+              target.approval
+                .approvedAt !==
+                batch.approvedAt
+            ) {
+              context.addIssue({
+                code: "custom",
+                path: [
+                  "targets",
+                  index,
+                  "approval",
+                  "approvedAt"
+                ],
+                message:
+                  "target approvedAt must match approval batch"
+              });
+            }
+          }
+        );
+      }
+    );
+
 export const ProspectResearchCaptureReceiptSchema =
   z.object({
     artifactId:
@@ -1399,6 +1500,10 @@ export type ProspectResearchSample =
 export type ProspectResearchSampleOutcome =
   z.infer<
     typeof ProspectResearchSampleOutcomeSchema
+  >;
+export type ResearchApprovalBatch =
+  z.infer<
+    typeof ResearchApprovalBatchSchema
   >;
 export type ApprovedResearchTarget =
   z.infer<
