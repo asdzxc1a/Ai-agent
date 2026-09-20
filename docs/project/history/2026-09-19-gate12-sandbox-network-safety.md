@@ -101,7 +101,7 @@ Selected final-run timings:
 - replayable SSE: 975ms;
 - durable API restart: 3.13s.
 
-Local final validation used Node 24.21.0 / pnpm 10.34.5 and passed `pnpm check` with 84/84 tests across 19 files.
+Local final validation on regression head `a294e23c37edecc080f373f6fcf2d389dc4143a1` used Node 24.13.1 / pnpm 10.34.5, emitted the repository's Node-engine warning, and passed `pnpm check` with 84/84 tests across 19 files. GitHub Actions used the required Node 24.21.0 runtime.
 
 ## Acceptance interpretation
 
