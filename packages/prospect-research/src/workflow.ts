@@ -256,6 +256,15 @@ export class ProspectResearchWorkflow {
       .approveTarget(input);
   }
 
+  public approveTargetBatch(
+    input: unknown
+  ) {
+    return this.#research
+      .approveTargetBatch(
+        input
+      );
+  }
+
   public getApprovedTarget(
     targetId: string
   ) {
