@@ -1282,6 +1282,23 @@ class SettlingScreenshotAgent
     return schema.parse({});
   }
 
+  public async capturePageEvidence() {
+    return {
+      url:
+        this.state
+          .actionFinished
+          ? "https://fixture.test/destination"
+          : "https://fixture.test/start",
+      title:
+        "Settled fixture",
+      text:
+        this.state
+          .observedAfterAction
+          ? "Destination observed."
+          : "Start page."
+    };
+  }
+
   public async close():
     Promise<void> {}
 }
@@ -1381,16 +1398,32 @@ test("loop screenshots wait for the next stable observation after navigation", a
     state.observedAfterAction
   ).toBe(true);
 
+  const artifacts =
+    await engine.listArtifacts(
+      started.id
+    );
   const names =
-    (
-      await engine.listArtifacts(
-        started.id
-      )
-    ).map(
-      (artifact) => artifact.name
+    artifacts.map(
+      (artifact) =>
+        artifact.name
     );
 
   expect(names).toContain(
     "loop-01-after-action.jpg"
   );
+
+  expect(
+    artifacts.find(
+      (artifact) =>
+        artifact.name ===
+        "loop-01-after-action.jpg"
+    )?.metadata
+  ).toMatchObject({
+    captureVersion:
+      "page-evidence-v1",
+    semanticSettled:
+      true,
+    pageUrl:
+      "https://fixture.test/destination"
+  });
 });
