@@ -718,6 +718,8 @@ export function validateProspectResearchResult(
                   evidence.id,
                 captureVersion:
                   "page-evidence-v1",
+                semanticSettled:
+                  true,
                 pageUrl:
                   evidence.sourceUrl,
                 capturedAt:
