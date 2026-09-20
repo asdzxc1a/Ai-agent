@@ -71,7 +71,7 @@ function sample(
       status:
         "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v4",
+        "gate13-measured-research-v5",
       purpose,
       cohortDefinition:
         purpose ===
@@ -82,7 +82,44 @@ function sample(
         purpose ===
           "CALIBRATION"
           ? "Purposefully selected stress cases across two markets."
-          : "Predefined inclusion criteria and deterministic company selection within one commercial niche.",
+          : "Complete frozen public universe; no discretionary company sampling.",
+      selectionUniverse:
+        purpose ===
+          "CALIBRATION"
+          ? null
+          : {
+              id:
+                "universe.acceptance",
+              sourceName:
+                "Deterministic acceptance fixture universe",
+              sourceUrl:
+                "https://example.test/acceptance-universe.csv",
+              methodologyUrl:
+                "https://example.test/acceptance-methodology",
+              sourceAsOfDate:
+                "2026-09-19",
+              sourceDeclaredCount:
+                targetCount,
+              candidateTargetIds:
+                Array.from(
+                  {
+                    length:
+                      targetCount
+                  },
+                  (_value, index) =>
+                    "target." +
+                    String(
+                      index + 1
+                    ).padStart(
+                      2,
+                      "0"
+                    )
+                ),
+              selectionStrategy:
+                "COMPLETE_UNIVERSE",
+              selectionSeed:
+                null
+            },
       marketScope:
         purpose ===
           "CALIBRATION"
@@ -625,6 +662,53 @@ describe(
           )
         ).toThrow(
           "differs from durable baseline truth"
+        );
+      }
+    );
+
+    it(
+      "rejects complete-universe acceptance when frozen membership is altered",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              selectionUniverse: {
+                ...acceptance
+                  .selectionUniverse!,
+                sourceDeclaredCount:
+                  31,
+                candidateTargetIds: [
+                  ...acceptance
+                    .selectionUniverse!
+                    .candidateTargetIds,
+                  "target.31"
+                ]
+              }
+            })
+        ).toThrow(
+          "complete-universe selection requires the frozen sample to contain every candidate exactly once"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              selectionUniverse: {
+                ...acceptance
+                  .selectionUniverse!,
+                sourceAsOfDate:
+                  "2026-09-21"
+              }
+            })
+        ).toThrow(
+          "selection universe source date must not be after sample freeze"
         );
       }
     );

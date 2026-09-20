@@ -1,0 +1,231 @@
+{
+  "id": "g13-us-transportation-iyt-2026-09-17",
+  "purpose": "ACCEPTANCE_CANDIDATE_UNIVERSE",
+  "sourceName": "iShares U.S. Transportation ETF (IYT) latest holdings",
+  "sourceUrl": "https://www.ishares.com/us/products/239501/ishares-u-s-transportation-etf/latest-holdings.csv",
+  "sourceAsOfDate": "2026-09-17",
+  "sourceDeclaredEquityCount": 43,
+  "benchmarkName": "S&P Transportation Select Industry FMC Capped Index",
+  "benchmarkUrl": "https://www.spglobal.com/spdji/en/indices/equity/sp-transportation-select-industry-fmc-capped-index/",
+  "selectionStrategy": "COMPLETE_UNIVERSE",
+  "inclusionRule": "Include every row whose Asset Class is Equity from the Sep. 17, 2026 IYT holdings snapshot. Exclude cash, money-market, collateral, futures, and other non-company instruments.",
+  "market": "United States",
+  "niche": "Transportation operations",
+  "members": [
+    {
+      "ticker": "UNP",
+      "name": "UNION PACIFIC",
+      "targetId": "g13.us.transport.unp"
+    },
+    {
+      "ticker": "UBER",
+      "name": "UBER TECHNOLOGIES",
+      "targetId": "g13.us.transport.uber"
+    },
+    {
+      "ticker": "CSX",
+      "name": "CSX",
+      "targetId": "g13.us.transport.csx"
+    },
+    {
+      "ticker": "UPS",
+      "name": "UNITED PARCEL SERVICE INC CLASS B",
+      "targetId": "g13.us.transport.ups"
+    },
+    {
+      "ticker": "DAL",
+      "name": "DELTA AIR LINES",
+      "targetId": "g13.us.transport.dal"
+    },
+    {
+      "ticker": "NSC",
+      "name": "NORFOLK SOUTHERN CORP",
+      "targetId": "g13.us.transport.nsc"
+    },
+    {
+      "ticker": "UAL",
+      "name": "UNITED AIRLINES HOLDINGS",
+      "targetId": "g13.us.transport.ual"
+    },
+    {
+      "ticker": "FDX",
+      "name": "FEDEX CORP",
+      "targetId": "g13.us.transport.fdx"
+    },
+    {
+      "ticker": "ODFL",
+      "name": "OLD DOMINION FREIGHT LINE",
+      "targetId": "g13.us.transport.odfl"
+    },
+    {
+      "ticker": "EXPD",
+      "name": "EXPEDITORS INTERNATIONAL OF WASHIN",
+      "targetId": "g13.us.transport.expd"
+    },
+    {
+      "ticker": "XPO",
+      "name": "XPO",
+      "targetId": "g13.us.transport.xpo"
+    },
+    {
+      "ticker": "LUV",
+      "name": "SOUTHWEST AIRLINES",
+      "targetId": "g13.us.transport.luv"
+    },
+    {
+      "ticker": "CHRW",
+      "name": "CH ROBINSON WORLDWIDE",
+      "targetId": "g13.us.transport.chrw"
+    },
+    {
+      "ticker": "JBHT",
+      "name": "JB HUNT TRANSPORT SERVICES",
+      "targetId": "g13.us.transport.jbht"
+    },
+    {
+      "ticker": "FDXF",
+      "name": "FEDEX FREIGHT HOLDING COMPANY INC",
+      "targetId": "g13.us.transport.fdxf"
+    },
+    {
+      "ticker": "KNX",
+      "name": "KNIGHT-SWIFT TRANSPORTATION HOLDIN",
+      "targetId": "g13.us.transport.knx"
+    },
+    {
+      "ticker": "R",
+      "name": "RYDER SYSTEM",
+      "targetId": "g13.us.transport.r"
+    },
+    {
+      "ticker": "SAIA",
+      "name": "SAIA INC",
+      "targetId": "g13.us.transport.saia"
+    },
+    {
+      "ticker": "AAL",
+      "name": "AMERICAN AIRLINES GROUP",
+      "targetId": "g13.us.transport.aal"
+    },
+    {
+      "ticker": "KEX",
+      "name": "KIRBY CORP",
+      "targetId": "g13.us.transport.kex"
+    },
+    {
+      "ticker": "MATX",
+      "name": "MATSON INC",
+      "targetId": "g13.us.transport.matx"
+    },
+    {
+      "ticker": "LYFT",
+      "name": "LYFT CLASS A",
+      "targetId": "g13.us.transport.lyft"
+    },
+    {
+      "ticker": "LSTR",
+      "name": "LANDSTAR SYSTEM",
+      "targetId": "g13.us.transport.lstr"
+    },
+    {
+      "ticker": "UHAL B",
+      "name": "U HAUL NON VOTING SERIES N",
+      "targetId": "g13.us.transport.uhal-b"
+    },
+    {
+      "ticker": "GXO",
+      "name": "GXO LOGISTICS",
+      "targetId": "g13.us.transport.gxo"
+    },
+    {
+      "ticker": "ALK",
+      "name": "ALASKA AIR GROUP INC",
+      "targetId": "g13.us.transport.alk"
+    },
+    {
+      "ticker": "JOBY",
+      "name": "JOBY AVIATION CLASS A",
+      "targetId": "g13.us.transport.joby"
+    },
+    {
+      "ticker": "SKYW",
+      "name": "SKYWEST",
+      "targetId": "g13.us.transport.skyw"
+    },
+    {
+      "ticker": "RXO",
+      "name": "RXO INC",
+      "targetId": "g13.us.transport.rxo"
+    },
+    {
+      "ticker": "ARCB",
+      "name": "ARCBEST",
+      "targetId": "g13.us.transport.arcb"
+    },
+    {
+      "ticker": "WERN",
+      "name": "WERNER ENTERPRISES",
+      "targetId": "g13.us.transport.wern"
+    },
+    {
+      "ticker": "HUBG",
+      "name": "HUB GROUP CLASS A",
+      "targetId": "g13.us.transport.hubg"
+    },
+    {
+      "ticker": "CAR",
+      "name": "AVIS BUDGET GROUP INC",
+      "targetId": "g13.us.transport.car"
+    },
+    {
+      "ticker": "ALGT",
+      "name": "ALLEGIANT TRAVEL",
+      "targetId": "g13.us.transport.algt"
+    },
+    {
+      "ticker": "SNDR",
+      "name": "SCHNEIDER NATIONAL CLASS B",
+      "targetId": "g13.us.transport.sndr"
+    },
+    {
+      "ticker": "JBLU",
+      "name": "JETBLUE AIRWAYS",
+      "targetId": "g13.us.transport.jblu"
+    },
+    {
+      "ticker": "GNK",
+      "name": "GENCO SHIPPING AND TRADING",
+      "targetId": "g13.us.transport.gnk"
+    },
+    {
+      "ticker": "MRTN",
+      "name": "MARTEN TRANSPORT",
+      "targetId": "g13.us.transport.mrtn"
+    },
+    {
+      "ticker": "HTLD",
+      "name": "HEARTLAND EXPRESS INC",
+      "targetId": "g13.us.transport.htld"
+    },
+    {
+      "ticker": "CVLG",
+      "name": "COVENANT LOGISTICS GROUP INC CLASS",
+      "targetId": "g13.us.transport.cvlg"
+    },
+    {
+      "ticker": "ULCC",
+      "name": "FRONTIER GROUP HOLDINGS",
+      "targetId": "g13.us.transport.ulcc"
+    },
+    {
+      "ticker": "FIP",
+      "name": "FTAI INFRASTRUCTURE",
+      "targetId": "g13.us.transport.fip"
+    },
+    {
+      "ticker": "HTZ",
+      "name": "HERTZ GLOBAL HLDGS INC",
+      "targetId": "g13.us.transport.htz"
+    }
+  ]
+}
