@@ -15,6 +15,9 @@ import type {
   OpenAgentSessionOptions,
   RuntimeSchema
 } from "@astra/agent-runtime";
+import type {
+  BrowserNetworkPolicy
+} from "@astra/browser-runtime";
 
 export type CreateStagehand = (cdpUrl: string) => Stagehand;
 
@@ -73,6 +76,42 @@ async function abortable<T>(
   });
 }
 
+async function installNetworkPolicy(
+  stagehand: Stagehand,
+  policy: BrowserNetworkPolicy
+): Promise<void> {
+  if (
+    policy.domainPolicy ===
+    undefined
+  ) {
+    return;
+  }
+
+  await stagehand.context
+    .setDomainPolicy({
+      ...(policy.domainPolicy
+        .allowedDomains ===
+        undefined
+        ? {}
+        : {
+            allowedDomains: [
+              ...policy.domainPolicy
+                .allowedDomains
+            ]
+          }),
+      ...(policy.domainPolicy
+        .blockedDomains ===
+        undefined
+        ? {}
+        : {
+            blockedDomains: [
+              ...policy.domainPolicy
+                .blockedDomains
+            ]
+          })
+    });
+}
+
 function toAgentAction(action: {
   selector: string;
   description: string;
@@ -91,10 +130,23 @@ function toAgentAction(action: {
 
 class StagehandAgentSession implements AgentSession {
   readonly #stagehand: Stagehand;
+  readonly #networkPolicy?:
+    BrowserNetworkPolicy;
   #closePromise?: Promise<void>;
 
-  public constructor(stagehand: Stagehand) {
+  public constructor(
+    stagehand: Stagehand,
+    networkPolicy?:
+      BrowserNetworkPolicy
+  ) {
     this.#stagehand = stagehand;
+
+    if (
+      networkPolicy !== undefined
+    ) {
+      this.#networkPolicy =
+        networkPolicy;
+    }
   }
 
   public async navigate(
@@ -108,7 +160,14 @@ class StagehandAgentSession implements AgentSession {
     }
 
     await abortable(
-      () => page.goto(url).then(() => undefined),
+      async () => {
+        await this.#networkPolicy
+          ?.assertAllowed({
+            url,
+            isNavigation: true
+          });
+        await page.goto(url);
+      },
       options.signal
     );
   }
@@ -216,6 +275,20 @@ export class StagehandRuntimeCore implements AgentRuntime {
         () => stagehand.init(),
         signal
       );
+
+      if (
+        browser.networkPolicy !==
+        undefined
+      ) {
+        await abortable(
+          () =>
+            installNetworkPolicy(
+              stagehand,
+              browser.networkPolicy!
+            ),
+          signal
+        );
+      }
     } catch (error) {
       await stagehand.close().catch(
         () => undefined
@@ -223,7 +296,10 @@ export class StagehandRuntimeCore implements AgentRuntime {
       throw error;
     }
 
-    return new StagehandAgentSession(stagehand);
+    return new StagehandAgentSession(
+      stagehand,
+      browser.networkPolicy
+    );
   }
 }
 

@@ -37,6 +37,10 @@ import {
   InMemoryRunRepository,
   RunEngine
 } from "@astra/run-engine";
+import {
+  LocalSandboxRuntime,
+  SandboxedBrowserRuntime
+} from "@astra/sandbox-runtime";
 
 import {
   createStagehandAgentRuntimeForTesting
@@ -726,10 +730,22 @@ test(
     const stagehand = createStagehandAgentRuntimeForTesting(
       () => new ResearchBenchFixtureLLMClient()
     );
-    const steel = new SteelBrowserRuntime({
-      baseUrl: steelBaseUrl,
-      skipFingerprintInjection: true
-    });
+    const steel =
+      new SandboxedBrowserRuntime({
+        sandboxRuntime:
+          new LocalSandboxRuntime({
+            trustedHostnames: [
+              "host.docker.internal"
+            ]
+          }),
+        browserRuntime:
+          new SteelBrowserRuntime({
+            baseUrl:
+              steelBaseUrl,
+            skipFingerprintInjection:
+              true
+          })
+      });
     const steelClient = new SteelClient(steelBaseUrl);
     const terminalByScenario = new Map<string, string>();
     const releasedByScenario = new Map<string, boolean>();

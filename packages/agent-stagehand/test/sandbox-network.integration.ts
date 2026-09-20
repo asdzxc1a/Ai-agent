@@ -1,0 +1,530 @@
+import {
+  createServer,
+  type Server
+} from "node:http";
+import type {
+  AddressInfo
+} from "node:net";
+
+import { z } from "zod";
+import {
+  expect,
+  test
+} from "vitest";
+
+import type {
+  AgentRuntime,
+  AgentSession
+} from "@astra/agent-runtime";
+import type {
+  BrowserSession
+} from "@astra/browser-runtime";
+import {
+  SteelBrowserRuntime,
+  SteelClient
+} from "@astra/browser-steel";
+import {
+  LocalSandboxRuntime,
+  SandboxedBrowserRuntime,
+  SandboxNetworkPolicyError
+} from "@astra/sandbox-runtime";
+
+import {
+  createStagehandAgentRuntimeForTesting
+} from "../src/testing.js";
+import {
+  SandboxFixtureLLMClient
+} from "./sandbox-fixture-llm.js";
+
+const steelBaseUrl =
+  process.env.STEEL_BASE_URL ??
+  "http://127.0.0.1:3000";
+
+const stateSchema =
+  z.object({
+    cookie:
+      z.enum([
+        "set",
+        "missing"
+      ]),
+    storage:
+      z.enum([
+        "set",
+        "missing"
+      ])
+  });
+
+function stateHtml(
+  shouldSet: boolean
+): string {
+  const setScript =
+    shouldSet
+      ? [
+          'document.cookie = "sandbox_cookie=set; path=/";',
+          'localStorage.setItem("sandbox_storage", "set");'
+        ].join("\n")
+      : "";
+
+  return [
+    "<!doctype html>",
+    '<html lang="en">',
+    "<head>",
+    '<meta charset="utf-8" />',
+    "<title>Sandbox isolation fixture</title>",
+    "</head>",
+    "<body>",
+    '<p id="sandbox-state">SANDBOX_STATE cookie=missing storage=missing</p>',
+    "<script>",
+    setScript,
+    'const cookieState = document.cookie.includes("sandbox_cookie=set") ? "set" : "missing";',
+    'const storageState = localStorage.getItem("sandbox_storage") === "set" ? "set" : "missing";',
+    'document.getElementById("sandbox-state").textContent = "SANDBOX_STATE cookie=" + cookieState + " storage=" + storageState;',
+    "</script>",
+    "</body>",
+    "</html>"
+  ].join("\n");
+}
+
+async function startFixture():
+  Promise<{
+    server: Server;
+    browserBaseUrl: string;
+  }> {
+  const server =
+    createServer(
+      (request, response) => {
+        const url =
+          new URL(
+            request.url ?? "/",
+            "http://fixture.local"
+          );
+
+        if (
+          url.pathname ===
+          "/state"
+        ) {
+          response.writeHead(
+            200,
+            {
+              "content-type":
+                "text/html; charset=utf-8",
+              "cache-control":
+                "no-store"
+            }
+          );
+          response.end(
+            stateHtml(
+              url.searchParams
+                .get("set") ===
+                "1"
+            )
+          );
+          return;
+        }
+
+        if (
+          url.pathname ===
+          "/redirect-private"
+        ) {
+          response.writeHead(
+            302,
+            {
+              location:
+                "http://169.254.169.254/latest/meta-data/"
+            }
+          );
+          response.end();
+          return;
+        }
+
+        response.writeHead(
+          404,
+          {
+            "content-type":
+              "text/plain; charset=utf-8"
+          }
+        );
+        response.end(
+          "Not found"
+        );
+      }
+    );
+
+  await new Promise<void>(
+    (resolve, reject) => {
+      server.once(
+        "error",
+        reject
+      );
+      server.listen(
+        0,
+        "0.0.0.0",
+        resolve
+      );
+    }
+  );
+
+  const address =
+    server.address();
+
+  if (
+    address === null ||
+    typeof address === "string"
+  ) {
+    throw new Error(
+      "Sandbox fixture did not bind a TCP port."
+    );
+  }
+
+  return {
+    server,
+    browserBaseUrl:
+      "http://host.docker.internal:" +
+      String(
+        (
+          address as
+            AddressInfo
+        ).port
+      )
+  };
+}
+
+async function closeServer(
+  server: Server
+): Promise<void> {
+  await new Promise<void>(
+    (resolve) => {
+      server.close(
+        () => resolve()
+      );
+    }
+  );
+}
+
+function browserRuntime() {
+  return new SandboxedBrowserRuntime({
+    sandboxRuntime:
+      new LocalSandboxRuntime({
+        trustedHostnames: [
+          "host.docker.internal"
+        ]
+      }),
+    browserRuntime:
+      new SteelBrowserRuntime({
+        baseUrl:
+          steelBaseUrl,
+        skipFingerprintInjection:
+          true
+      })
+  });
+}
+
+function agentRuntime():
+  AgentRuntime {
+  return createStagehandAgentRuntimeForTesting(
+    () =>
+      new SandboxFixtureLLMClient()
+  );
+}
+
+async function extractState(
+  agent: AgentSession
+) {
+  return agent.extract(
+    "Extract the visible SANDBOX_STATE cookie and storage values.",
+    stateSchema
+  );
+}
+
+async function closePair(
+  agent:
+    AgentSession | undefined,
+  browser:
+    BrowserSession | undefined
+): Promise<void> {
+  if (agent !== undefined) {
+    await agent.close().catch(
+      () => undefined
+    );
+  }
+
+  if (browser !== undefined) {
+    await browser.close().catch(
+      () => undefined
+    );
+  }
+}
+
+test(
+  "sandboxed Stagehand allows a trusted fixture and blocks private/network escape targets",
+  async () => {
+    const {
+      server,
+      browserBaseUrl
+    } = await startFixture();
+    const runtime =
+      browserRuntime();
+    const agentRuntimeInstance =
+      agentRuntime();
+    const steelClient =
+      new SteelClient(
+        steelBaseUrl
+      );
+
+    let browser:
+      BrowserSession | undefined;
+    let agent:
+      AgentSession | undefined;
+
+    try {
+      browser =
+        await runtime.createSession({
+          headless: true
+        });
+      expect(
+        browser.isolationId
+      ).toBeTypeOf(
+        "string"
+      );
+
+      agent =
+        await agentRuntimeInstance
+          .openSession({
+            browser
+          });
+
+      await agent.navigate(
+        browserBaseUrl +
+          "/state?set=1"
+      );
+
+      await expect(
+        extractState(agent)
+      ).resolves.toEqual({
+        cookie: "set",
+        storage: "set"
+      });
+
+      await expect(
+        agent.navigate(
+          "file:///proc/self/environ"
+        )
+      ).rejects.toBeInstanceOf(
+        SandboxNetworkPolicyError
+      );
+
+      await expect(
+        agent.navigate(
+          "http://127.0.0.1:4173/"
+        )
+      ).rejects.toBeInstanceOf(
+        SandboxNetworkPolicyError
+      );
+
+      await expect(
+        agent.navigate(
+          "http://169.254.169.254/latest/meta-data/"
+        )
+      ).rejects.toBeInstanceOf(
+        SandboxNetworkPolicyError
+      );
+
+      await expect(
+        agent.navigate(
+          browserBaseUrl +
+            "/redirect-private"
+        )
+      ).rejects.toThrow();
+
+      const browserId =
+        browser.id;
+
+      await agent.close();
+      agent = undefined;
+      await browser.close();
+      browser = undefined;
+
+      const details =
+        await steelClient
+          .getSession(
+            browserId
+          );
+      expect(
+        details.status
+      ).toBe("released");
+    } finally {
+      await closePair(
+        agent,
+        browser
+      );
+      await closeServer(
+        server
+      );
+    }
+  },
+  300_000
+);
+
+test(
+  "sandboxed Steel sessions do not retain cookies or localStorage across isolation boundaries",
+  async () => {
+    const {
+      server,
+      browserBaseUrl
+    } = await startFixture();
+    const runtime =
+      browserRuntime();
+    const agentRuntimeInstance =
+      agentRuntime();
+    const steelClient =
+      new SteelClient(
+        steelBaseUrl
+      );
+
+    let firstBrowser:
+      BrowserSession | undefined;
+    let firstAgent:
+      AgentSession | undefined;
+    let secondBrowser:
+      BrowserSession | undefined;
+    let secondAgent:
+      AgentSession | undefined;
+
+    try {
+      firstBrowser =
+        await runtime.createSession({
+          headless: true
+        });
+      firstAgent =
+        await agentRuntimeInstance
+          .openSession({
+            browser:
+              firstBrowser
+          });
+
+      await firstAgent.navigate(
+        browserBaseUrl +
+          "/state?set=1"
+      );
+      expect(
+        await extractState(
+          firstAgent
+        )
+      ).toEqual({
+        cookie: "set",
+        storage: "set"
+      });
+
+      const firstBrowserId =
+        firstBrowser.id;
+      const firstIsolationId =
+        firstBrowser.isolationId;
+
+      secondBrowser =
+        await runtime.createSession({
+          headless: true
+        });
+      expect(
+        secondBrowser.id
+      ).not.toBe(
+        firstBrowserId
+      );
+      expect(
+        secondBrowser
+          .isolationId
+      ).not.toBe(
+        firstIsolationId
+      );
+
+      secondAgent =
+        await agentRuntimeInstance
+          .openSession({
+            browser:
+              secondBrowser
+          });
+
+      await secondAgent.navigate(
+        browserBaseUrl +
+          "/state"
+      );
+      expect(
+        await extractState(
+          secondAgent
+        )
+      ).toEqual({
+        cookie: "missing",
+        storage: "missing"
+      });
+
+      const secondBrowserId =
+        secondBrowser.id;
+
+      expect(
+        (
+          await steelClient
+            .getSession(
+              firstBrowserId
+            )
+        ).status
+      ).not.toBe("released");
+      expect(
+        (
+          await steelClient
+            .getSession(
+              secondBrowserId
+            )
+        ).status
+      ).not.toBe("released");
+
+      await firstAgent.close();
+      firstAgent = undefined;
+      await firstBrowser.close();
+      firstBrowser = undefined;
+
+      expect(
+        (
+          await steelClient
+            .getSession(
+              firstBrowserId
+            )
+        ).status
+      ).toBe("released");
+      expect(
+        (
+          await steelClient
+            .getSession(
+              secondBrowserId
+            )
+        ).status
+      ).not.toBe("released");
+
+      await secondAgent.close();
+      secondAgent = undefined;
+      await secondBrowser.close();
+      secondBrowser =
+        undefined;
+
+      expect(
+        (
+          await steelClient
+            .getSession(
+              secondBrowserId
+            )
+        ).status
+      ).toBe("released");
+    } finally {
+      await closePair(
+        firstAgent,
+        firstBrowser
+      );
+      await closePair(
+        secondAgent,
+        secondBrowser
+      );
+      await closeServer(
+        server
+      );
+    }
+  },
+  300_000
+);
