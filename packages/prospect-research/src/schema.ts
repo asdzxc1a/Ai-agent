@@ -649,9 +649,13 @@ export const ProspectResearchSampleSchema =
             .entries()
         ) {
           if (
-            target.approval
-              .approvedAt >
-            sample.frozenAt
+            Date.parse(
+              target.approval
+                .approvedAt
+            ) >
+            Date.parse(
+              sample.frozenAt
+            )
           ) {
             context.addIssue({
               code: "custom",
