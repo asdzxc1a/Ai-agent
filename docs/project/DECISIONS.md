@@ -1001,3 +1001,43 @@ IYT is designed around U.S. transportation equities and tracked 43 holdings on 2
 
 After Gate 13, a later protocol may use another independently defined universe or a deterministic subset with a frozen seed. Existing v5 acceptance evidence is never reinterpreted under a different universe.
 
+---
+
+## D-034 — Gate 13 time savings uses total Astra-side human labor
+
+**Date:** 2026-09-20
+**Status:** Accepted
+
+**Decision**
+
+Gate 13 acceptance no longer measures Astra value with a single `astraHumanReviewMinutes` field.
+
+Protocol v6 records the complete human-preparation workload attributable to the Astra path for each target:
+
+- target setup / domain-start-page enrichment;
+- evidence mapping and material source audit;
+- corrections and brief finalization;
+- failure triage;
+- other measured operator work with an explicit description.
+
+Each outcome also records whether the human time was measured by stopwatch or system timing. The acceptance evaluator sums all components and compares that total against the measured human baseline.
+
+**Why**
+
+The September audit's proposed threshold is a reduction in **median total human preparation time including review**. Counting only final review time can materially overstate product value by hiding operator setup, source verification, corrections, and failure handling.
+
+The research workflow deliberately requires human evidence review, so that labor must be part of the value equation rather than treated as free.
+
+**Consequences**
+
+- protocol advances to `gate13-measured-research-v6`;
+- `astraHumanReviewMinutes` is removed from v6 outcomes;
+- the evaluator exposes median total Astra human preparation minutes;
+- the 50% reduction threshold is calculated from total Astra human labor;
+- failed attempts may still consume human triage time and therefore remain part of labor/cost evidence;
+- calibration and acceptance results from earlier protocol versions are not silently reinterpreted.
+
+**Revisit when**
+
+If later UI/system instrumentation can capture operator labor directly, it may replace stopwatch input with system-timed components while preserving the same total-labor definition.
+
