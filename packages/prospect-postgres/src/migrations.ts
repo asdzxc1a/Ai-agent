@@ -84,6 +84,18 @@ CREATE INDEX prospect_research_human_baseline_order
   ON prospect_research_human_baselines(sample_id, recorded_at, id);
 `;
 
+const MIGRATION_FOUR = `
+CREATE TABLE prospect_research_target_enrichment_proposals (
+  id TEXT PRIMARY KEY,
+  target_id TEXT NOT NULL,
+  proposal JSONB NOT NULL,
+  proposed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX prospect_research_target_enrichment_proposal_order
+  ON prospect_research_target_enrichment_proposals(target_id, proposed_at, id);
+`;
+
 async function applyMigration(
   client: PoolClient,
   version: number,
@@ -139,6 +151,11 @@ export async function runProspectPostgresMigrations(
       client,
       3,
       MIGRATION_THREE
+    );
+    await applyMigration(
+      client,
+      4,
+      MIGRATION_FOUR
     );
 
     await client.query("COMMIT");
