@@ -1124,6 +1124,36 @@ describe(
           screenshotRecord
             ?.createdAt
         );
+        expect(
+          evidence.captureReceipts
+        ).toHaveLength(1);
+        expect(
+          evidence.captureReceipts[0]
+        ).toMatchObject({
+          artifactId:
+            evidence.artifactIds[0],
+          captureVersion:
+            "page-evidence-v1",
+          pageUrl:
+            evidence.sourceUrl,
+          capturedAt:
+            screenshotRecord
+              ?.createdAt,
+          pageContentSha256,
+          screenshotSha256:
+            createHash(
+              "sha256"
+            )
+              .update(
+                new Uint8Array([
+                  0xff,
+                  0xd8,
+                  0xff,
+                  0xd9
+                ])
+              )
+              .digest("hex")
+        });
       }
     });
 
