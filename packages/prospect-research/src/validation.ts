@@ -968,7 +968,21 @@ export function toSalesEvidence(
         sourceUrl:
           item.sourceUrl,
         capturedAt:
-          item.capturedAt
+          item.capturedAt,
+        uncertainty:
+          item.uncertainty,
+        uncertaintyNote:
+          item.uncertaintyNote,
+        artifactIds: [
+          ...item.artifactIds
+        ],
+        captureReceipts:
+          item.captureReceipts
+            .map(
+              (receipt) => ({
+                ...receipt
+              })
+            )
       })
     );
 
@@ -998,7 +1012,9 @@ export function toSalesEvidence(
           ...claim.evidenceIds
         ],
         confidence:
-          claim.confidence
+          claim.confidence,
+        uncertainty:
+          claim.uncertainty
       }
     );
   }
