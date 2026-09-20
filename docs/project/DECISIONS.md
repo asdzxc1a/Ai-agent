@@ -960,3 +960,44 @@ An operator-supplied timestamp stored only with the post-run outcome can be back
 
 Only if a later experiment replaces the human baseline with another independently persisted comparator protocol. Existing v4 acceptance evidence is never reconstructed from post-hoc timestamps.
 
+---
+
+## D-033 — First acceptance uses a complete public U.S. transportation universe
+
+**Date:** 2026-09-20
+**Status:** Accepted
+
+**Decision**
+
+The first Gate 13 commercial acceptance cohort is the complete equity universe in the iShares U.S. Transportation ETF (IYT) holdings snapshot dated 2026-09-17.
+
+The source snapshot contains 43 equity holdings and additional non-company cash/derivative rows. Gate 13 includes all 43 equity holdings and excludes only rows whose asset class is not equity. The benchmark/methodology reference is the S&P Transportation Select Industry FMC Capped Index.
+
+The experiment niche is therefore **U.S. transportation operations**, not the broader and more subjective "industrial/logistics" label.
+
+Protocol v5 freezes candidate-universe provenance with source name/URL/date, methodology URL, declared count, exact candidate target IDs, and selection strategy. The first acceptance uses `COMPLETE_UNIVERSE`: every frozen universe member must appear exactly once in the sample. No sampling seed or discretionary company exclusions are allowed.
+
+The project snapshot is stored at:
+
+`docs/project/data/gate13-us-transportation-universe-2026-09-17.json`
+
+**Why**
+
+A free-text selection method still permits subtle cherry-picking. A complete public universe is stronger evidence because the eligible companies are defined independently of Astra's expected performance.
+
+IYT is designed around U.S. transportation equities and tracked 43 holdings on 2026-09-17. Its benchmark covers transportation sub-industries including air freight/logistics, cargo ground transportation, rail, marine, passenger airlines, and passenger ground transportation. This is operationally coherent enough for the first commercial experiment while remaining broad enough to expose company-size and operating-model variation.
+
+**Consequences**
+
+- all 43 equity members are candidate targets; cash, collateral, futures, and other non-company rows are not targets;
+- target IDs are frozen from the public universe before target approval/start-page enrichment;
+- later domain/start-URL approval may enrich a member but may not silently remove it from the complete universe;
+- a blocked/inaccessible company becomes explicit failure evidence rather than an exclusion after results are known;
+- first Gate 13 acceptance uses `COMPLETE_UNIVERSE`, not `DETERMINISTIC_SUBSET`;
+- the sample cannot freeze unless its target IDs exactly equal the frozen 43-member universe;
+- China remains a separate calibration track until a qualified local multi-source policy exists.
+
+**Revisit when**
+
+After Gate 13, a later protocol may use another independently defined universe or a deterministic subset with a frozen seed. Existing v5 acceptance evidence is never reinterpreted under a different universe.
+
