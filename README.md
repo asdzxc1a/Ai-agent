@@ -63,12 +63,15 @@ A separate draft sales/voice branch, [PR #2](https://github.com/asdzxc1a/Ai-agen
 
 **Gate 13 — Evidence-backed live prospect research**
 
-Gate 13 now has an approved-target/evidence foundation, but it remains in progress. Before measured live research, Astra must close the audit-confirmed trust gaps that would invalidate the experiment, then run one complete human-supervised workflow:
+The audit-confirmed pre-sample trust hardening is now merged: request-path policy, SSE backlog replay, atomic terminal persistence/recovery, page/screenshot capture receipts, research uncertainty/provenance handoff, buyer-visible prohibited-prose checks, and bounded diagnostics/cleanup all have regressions on `main`.
 
-- operator-approved target → bounded research → evidence review → accepted/corrected brief;
-- no contact or other irreversible external action;
-- full material-claim source review and explicit uncertainty;
-- measured review time, corrections, coverage, duration, and cost against the existing human workflow.
+Gate 13 is still **IN_PROGRESS** because no operator-approved real-company/domain cohort has been supplied or researched. The next measured step is:
+
+- freeze the operator-approved target/domain cohort before any real browsing;
+- run only those targets through the bounded research path;
+- manually audit every material observed fact against its source page/screenshot;
+- produce an accepted or corrected brief without contacting the prospect;
+- measure review time, corrections, coverage, duration, failures, and complete delivery cost against the existing human workflow.
 
 See [STATE.md](./docs/project/STATE.md) for the current verified truth. `pnpm check:memory` enforces that this README gate matches it.
 
