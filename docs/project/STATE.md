@@ -1,6 +1,6 @@
 # Current Project State
 
-**Last updated:** 2026-09-19  
+**Last updated:** 2026-09-20  
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Sandbox/network isolation → controlled live prospect research
 **Current gate:** Gate 13 — Evidence-backed live prospect research
@@ -93,7 +93,7 @@ Provider isolation is measured rather than inferred. The first pinned Steel prov
 
 Authorization comes from stored server state rather than model/result prose. The model-facing research result excludes approval state, run/prospect identity, fit/disqualifiers, and capture timestamps. Durable identities are derived from the stored target and run; Gate 13 Prospect fit remains `unknown` with no disqualifiers so Gate 14 qualification/scoring does not leak backward into research.
 
-Material evidence must reference a real `SCREENSHOT` artifact from the same run. Durable evidence capture times are taken from the referenced screenshot artifact records. Observed facts must exactly match referenced observed evidence; hypotheses remain explicitly inferred; unknowns remain explicit. Both in-memory and PostgreSQL repositories independently revalidate the stored approval before accepting attempts.
+Material evidence must reference a real `SCREENSHOT` artifact from the same run. Durable evidence capture times are taken from the referenced screenshot artifact records. Observed facts must exactly match referenced observed evidence; hypotheses remain explicitly inferred; unknowns remain explicit. Both in-memory and PostgreSQL repositories independently revalidate the stored approval and canonical protected research state before accepting attempts.
 
 Screenshot artifacts are run-scoped and server-timestamped but do not currently record the page URL they depict. Gate 13 therefore still requires the planned manual spot-check of every material observed fact against its claimed public source and screenshot; the implementation does not pretend that source↔screenshot correspondence is automatically proven.
 
