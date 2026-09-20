@@ -76,7 +76,7 @@ function sample() {
       id: sampleId,
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v5",
+        "gate13-measured-research-v6",
       purpose:
         "CALIBRATION",
       cohortDefinition:
@@ -151,7 +151,7 @@ function acceptanceSample() {
         "sample.acceptance.workflow",
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v5",
+        "gate13-measured-research-v6",
       purpose:
         "ACCEPTANCE",
       cohortDefinition:
@@ -809,8 +809,22 @@ describe(
             baselineHumanPreparationMinutes:
               humanBaseline
                 .humanPreparationMinutes,
-            astraHumanReviewMinutes:
-              8,
+            astraHumanTime: {
+              targetSetupMinutes:
+                1,
+              evidenceMappingAndAuditMinutes:
+                4,
+              correctionAndFinalizationMinutes:
+                3,
+              failureTriageMinutes:
+                0,
+              otherMinutes:
+                0,
+              measurementMethod:
+                "STOPWATCH",
+              otherDescription:
+                null
+            },
             endToEndDurationMs:
               4_000,
             deliveryCostUsd:
@@ -836,6 +850,8 @@ describe(
               0,
             medianHumanTimeReductionFraction:
               0.6,
+            medianAstraHumanPreparationMinutes:
+              8,
             requestedFieldCoverageRate:
               1,
             unauthorizedActions:
