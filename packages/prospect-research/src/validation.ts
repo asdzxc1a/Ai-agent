@@ -601,7 +601,11 @@ export function validateProspectResearchResult(
           (evidence) => ({
             ...evidence,
             capturedAt:
-              researchedAt
+              researchedAt,
+            artifactIds: [
+              "validation." +
+                evidence.id
+            ]
           })
         )
     };
@@ -675,6 +679,11 @@ export interface BuildCompletedProspectResearchAttemptInput {
   researchedAt: string;
   capturedAtByEvidenceId:
     ReadonlyMap<string, string>;
+  artifactIdsByEvidenceId:
+    ReadonlyMap<
+      string,
+      readonly string[]
+    >;
   result: unknown;
 }
 
@@ -683,6 +692,7 @@ export function buildCompletedProspectResearchAttempt({
   runId,
   researchedAt,
   capturedAtByEvidenceId,
+  artifactIdsByEvidenceId,
   result: input
 }: BuildCompletedProspectResearchAttemptInput):
   CompletedProspectResearchAttempt {
@@ -702,6 +712,17 @@ export function buildCompletedProspectResearchAttempt({
     ) {
       throw new Error(
         "Missing server-owned capture time for research evidence: " +
+          evidence.id
+      );
+    }
+
+    if (
+      !artifactIdsByEvidenceId.has(
+        evidence.id
+      )
+    ) {
+      throw new Error(
+        "Missing server-owned artifact IDs for research evidence: " +
           evidence.id
       );
     }
@@ -759,7 +780,13 @@ export function buildCompletedProspectResearchAttempt({
                   capturedAtByEvidenceId
                     .get(
                       evidence.id
+                    )!,
+                artifactIds: [
+                  ...artifactIdsByEvidenceId
+                    .get(
+                      evidence.id
                     )!
+                ]
               })
             )
         }
