@@ -9,6 +9,7 @@ import {
 import type {
   CompletedProspectResearchAttempt,
   FailedProspectResearchAttempt,
+  ProspectResearchHumanBaseline,
   ProspectResearchSample,
   ProspectResearchSampleOutcome
 } from "@astra/prospect-research";
@@ -47,7 +48,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query(
-    "TRUNCATE prospect_research_sample_outcomes, prospect_research_samples, prospect_research_attempts, prospects, approved_research_targets RESTART IDENTITY CASCADE"
+    "TRUNCATE prospect_research_sample_outcomes, prospect_research_human_baselines, prospect_research_samples, prospect_research_attempts, prospects, approved_research_targets RESTART IDENTITY CASCADE"
   );
 });
 
@@ -167,7 +168,7 @@ function frozenSample():
     id: "sample.pg",
     status: "FROZEN",
     protocolVersion:
-      "gate13-measured-research-v3",
+      "gate13-measured-research-v4",
     purpose:
       "CALIBRATION",
     cohortDefinition:
@@ -209,13 +210,38 @@ function frozenSample():
   };
 }
 
-function measuredOutcome():
+function humanBaselineInput() {
+  return {
+    id:
+      "baseline.pg",
+    sampleId:
+      "sample.pg",
+    targetId:
+      "target.pg",
+    source:
+      "FIXED_CAP" as const,
+    preparedBy:
+      "operator",
+    humanPreparationMinutes:
+      20,
+    toolingDescription:
+      "Scope-matched persistence fixture tools.",
+    notes: null
+  };
+}
+
+function measuredOutcome(
+  baseline:
+    ProspectResearchHumanBaseline
+):
   ProspectResearchSampleOutcome {
   return {
     id: "outcome.pg",
     sampleId: "sample.pg",
     targetId: "target.pg",
     attemptId: "run_pg",
+    baselineId:
+      baseline.id,
     attemptStatus:
       "COMPLETED",
     briefDisposition:
@@ -227,9 +253,9 @@ function measuredOutcome():
     reviewMode:
       "UNBLINDED",
     baselineSource:
-      "FIXED_CAP",
+      baseline.source,
     baselineMeasuredAt:
-      "2026-09-19T11:55:00Z",
+      baseline.recordedAt,
     materialClaimsReviewed:
       1,
     unsupportedMaterialClaims:
@@ -242,7 +268,8 @@ function measuredOutcome():
     requestedFieldsTotal: 3,
     requestedFieldsCovered: 3,
     baselineHumanPreparationMinutes:
-      20,
+      baseline
+        .humanPreparationMinutes,
     astraHumanReviewMinutes:
       8,
     endToEndDurationMs:
@@ -313,6 +340,11 @@ test(
     await first.saveSample(
       frozenSample()
     );
+    const baseline =
+      await first
+        .saveHumanBaseline(
+          humanBaselineInput()
+        );
     expect(
       await first.getTarget(
         "target.pg"
@@ -331,7 +363,9 @@ test(
     );
     await first.saveAttempt(failed);
     await first.saveSampleOutcome(
-      measuredOutcome()
+      measuredOutcome(
+        baseline
+      )
     );
 
     const second =
@@ -372,11 +406,28 @@ test(
       frozenSample()
     );
     expect(
+      await second.getHumanBaseline(
+        baseline.id
+      )
+    ).toEqual(
+      baseline
+    );
+    expect(
+      await second.getHumanBaselineForTarget(
+        "sample.pg",
+        "target.pg"
+      )
+    ).toEqual(
+      baseline
+    );
+    expect(
       await second.listSampleOutcomes(
         "sample.pg"
       )
     ).toEqual([
-      measuredOutcome()
+      measuredOutcome(
+        baseline
+      )
     ]);
   }
 );
@@ -501,20 +552,83 @@ test(
     await repository.saveSample(
       frozenSample()
     );
+    const baseline =
+      await repository
+        .saveHumanBaseline(
+          humanBaselineInput()
+        );
     await repository.saveAttempt(
       completed
     );
     await repository.saveSampleOutcome(
-      measuredOutcome()
+      measuredOutcome(
+        baseline
+      )
     );
 
     await expect(
       repository.saveSampleOutcome({
-        ...measuredOutcome(),
+        ...measuredOutcome(
+          baseline
+        ),
         id:
           "outcome.pg.duplicate"
       })
     ).rejects.toThrow();
+  }
+);
+
+test(
+  "PostgresProspectResearchRepository owns baseline time and rejects outcome baseline forgery",
+  async () => {
+    const repository =
+      new PostgresProspectResearchRepository(
+        pool
+      );
+    const completed =
+      completedAttempt();
+
+    await repository.saveTarget(
+      completed.target
+    );
+    await repository.saveSample(
+      frozenSample()
+    );
+    const baseline =
+      await repository
+        .saveHumanBaseline(
+          humanBaselineInput()
+        );
+
+    expect(
+      Date.parse(
+        baseline.recordedAt
+      )
+    ).not.toBeNaN();
+
+    await expect(
+      repository.saveHumanBaseline({
+        ...humanBaselineInput(),
+        id:
+          "baseline.pg.duplicate"
+      })
+    ).rejects.toThrow();
+
+    await repository.saveAttempt(
+      completed
+    );
+
+    await expect(
+      repository.saveSampleOutcome({
+        ...measuredOutcome(
+          baseline
+        ),
+        baselineHumanPreparationMinutes:
+          99
+      })
+    ).rejects.toThrow(
+      "differs from durable baseline truth"
+    );
   }
 );
 
