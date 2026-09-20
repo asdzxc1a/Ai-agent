@@ -167,6 +167,10 @@ function frozenSample():
     status: "FROZEN",
     protocolVersion:
       "gate13-measured-research-v1",
+    purpose:
+      "CALIBRATION",
+    cohortDefinition:
+      "PostgreSQL persistence calibration fixture; not a Gate 13 acceptance cohort.",
     targets: [
       completedAttempt()
         .target
@@ -183,6 +187,8 @@ function frozenSample():
       maxDeliveryCostUsdPerBrief:
         20
     },
+    costCeilingRationale:
+      "Persistence fixture ceiling.",
     humanBaselineDescription:
       "Operator researches and drafts the same brief manually.",
     comparisonBaselineDescription:
@@ -209,6 +215,12 @@ function measuredOutcome():
       "operator",
     reviewedAt:
       "2026-09-19T12:10:00Z",
+    reviewMode:
+      "UNBLINDED",
+    baselineSource:
+      "FIXED_CAP",
+    baselineMeasuredAt:
+      "2026-09-19T11:55:00Z",
     materialClaimsReviewed:
       1,
     unsupportedMaterialClaims:
