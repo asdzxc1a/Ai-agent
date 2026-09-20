@@ -323,6 +323,79 @@ test(
 );
 
 test(
+  "page evidence capture returns the active final URL and visible text",
+  async () => {
+    const page = {
+      url() {
+        return "https://example.com/final";
+      },
+      async title() {
+        return "Example final page";
+      },
+      async evaluate() {
+        return "Visible public evidence";
+      }
+    };
+    const stagehand = {
+      init:
+        vi.fn(
+          async () => undefined
+        ),
+      close:
+        vi.fn(
+          async () => undefined
+        ),
+      context: {
+        pages() {
+          return [page];
+        },
+        activePage() {
+          return page;
+        }
+      },
+      observe:
+        vi.fn(
+          async () => []
+        ),
+      act: vi.fn(),
+      extract: vi.fn()
+    } as unknown as Stagehand;
+    const runtime =
+      new StagehandRuntimeCore(
+        () =>
+          stagehand as
+            StagehandType
+      );
+    const browser:
+      BrowserSession = {
+        id:
+          "page-evidence-browser",
+        cdpUrl:
+          "ws://fixture/page-evidence",
+        async close() {}
+      };
+    const session =
+      await runtime.openSession({
+        browser
+      });
+
+    await expect(
+      session
+        .capturePageEvidence?.()
+    ).resolves.toEqual({
+      url:
+        "https://example.com/final",
+      title:
+        "Example final page",
+      text:
+        "Visible public evidence"
+    });
+
+    await session.close();
+  }
+);
+
+test(
   "network policy installation fails closed when the pinned Stagehand request hook is unavailable",
   async () => {
     const close =
