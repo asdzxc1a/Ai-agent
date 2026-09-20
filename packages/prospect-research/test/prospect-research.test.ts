@@ -60,6 +60,8 @@ function captureReceipt(
     artifactId,
     captureVersion:
       "page-evidence-v1" as const,
+    semanticSettled:
+      true as const,
     pageUrl,
     capturedAt:
       timestamp,
