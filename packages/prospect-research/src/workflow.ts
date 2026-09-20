@@ -120,6 +120,28 @@ function researchGoal(
   );
 }
 
+function samePageUrl(
+  left: string,
+  right: string
+): boolean {
+  try {
+    const leftUrl =
+      new URL(left);
+    const rightUrl =
+      new URL(right);
+
+    leftUrl.hash = "";
+    rightUrl.hash = "";
+
+    return (
+      leftUrl.href ===
+      rightUrl.href
+    );
+  } catch {
+    return false;
+  }
+}
+
 function isTerminal(
   status: string
 ): boolean {
@@ -288,7 +310,7 @@ export class ProspectResearchWorkflow {
         );
     const [
       networkPolicy,
-      completionVerifier
+      baseCompletionVerifier
     ] =
       await Promise.all([
         this.#research
@@ -300,6 +322,49 @@ export class ProspectResearchWorkflow {
             target.id
           )
       ]);
+    const completionVerifier = {
+      async verify(
+        input: Parameters<
+          typeof baseCompletionVerifier[
+            "verify"
+          ]
+        >[0]
+      ) {
+        const base =
+          await baseCompletionVerifier
+            .verify(input);
+
+        if (!base.verified) {
+          return base;
+        }
+
+        const parsed =
+          ProspectResearchResultSchema
+            .safeParse(
+              input.result
+            );
+
+        if (
+          !parsed.success ||
+          !parsed.data.evidence
+            .every(
+              (evidence) =>
+                samePageUrl(
+                  evidence.sourceUrl,
+                  target.startUrl
+                )
+            )
+        ) {
+          return {
+            verified: false,
+            message:
+              "Read-only Gate 13 research evidence must cite the approved start page that was actually observed."
+          };
+        }
+
+        return base;
+      }
+    };
     const sandboxRuntime =
       this.#sandboxRuntimeFactory(
         networkPolicy
