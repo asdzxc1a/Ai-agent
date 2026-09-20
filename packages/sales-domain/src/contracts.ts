@@ -36,6 +36,8 @@ export const EvidenceCaptureReceiptSchema =
       z.literal(
         "page-evidence-v1"
       ),
+    semanticSettled:
+      z.literal(true),
     pageUrl:
       z.string().url(),
     capturedAt:
