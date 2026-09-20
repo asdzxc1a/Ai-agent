@@ -27,8 +27,11 @@ describe("SteelClient", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const client = new SteelClient("http://localhost:3000/");
+    const controller =
+      new AbortController();
     const session = await client.createSession({
-      headless: true
+      headless: true,
+      signal: controller.signal
     });
 
     expect(session.status).toBe("live");
@@ -36,7 +39,9 @@ describe("SteelClient", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:3000/v1/sessions",
       expect.objectContaining({
-        method: "POST"
+        method: "POST",
+        signal:
+          controller.signal
       })
     );
   });

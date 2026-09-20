@@ -138,6 +138,89 @@ class FakeAgentRuntime implements AgentRuntime {
   }
 }
 
+class CancellationAgentSession
+  implements AgentSession {
+  public closeCalls = 0;
+  public navigateStarted = false;
+
+  public async navigate(
+    url: string,
+    options: {
+      signal?: AbortSignal;
+    } = {}
+  ): Promise<void> {
+    void url;
+    this.navigateStarted = true;
+
+    const signal = options.signal;
+
+    if (signal === undefined) {
+      throw new Error(
+        "Cancellation fixture requires a signal."
+      );
+    }
+
+    await new Promise<void>(
+      (_resolve, reject) => {
+        if (signal.aborted) {
+          reject(signal.reason);
+          return;
+        }
+
+        signal.addEventListener(
+          "abort",
+          () => {
+            reject(signal.reason);
+          },
+          {
+            once: true
+          }
+        );
+      }
+    );
+  }
+
+  public async observe():
+    Promise<AgentAction[]> {
+    return [];
+  }
+
+  public async act(
+    action: AgentAction
+  ): Promise<AgentActionResult> {
+    return {
+      success: true,
+      message: "unused",
+      actions: [action]
+    };
+  }
+
+  public async extract<T>(
+    instruction: string,
+    schema: RuntimeSchema<T>
+  ): Promise<T> {
+    void instruction;
+    return schema.parse({});
+  }
+
+  public async close(): Promise<void> {
+    this.closeCalls += 1;
+  }
+}
+
+class CancellationAgentRuntime
+  implements AgentRuntime {
+  public readonly session =
+    new CancellationAgentSession();
+
+  public async openSession(
+    options: OpenAgentSessionOptions
+  ): Promise<AgentSession> {
+    void options;
+    return this.session;
+  }
+}
+
 const servers: Server[] = [];
 
 async function startServer(
@@ -188,7 +271,8 @@ async function waitForTerminal(
 
     if (
       run.status === "COMPLETED" ||
-      run.status === "FAILED"
+      run.status === "FAILED" ||
+      run.status === "CANCELLED"
     ) {
       return run;
     }
@@ -306,6 +390,86 @@ describe("first product API", () => {
     expect(terminal.error?.code).toBe("ACTION_FAILED");
     expect(browserRuntime.session.closeCalls).toBe(1);
     expect(agentRuntime.sessions[0]?.closeCalls).toBe(1);
+  });
+
+  it("cancels an active run through the API", async () => {
+    const browserRuntime =
+      new FakeBrowserRuntime();
+    const agentRuntime =
+      new CancellationAgentRuntime();
+    const baseUrl =
+      await startServer(
+        browserRuntime,
+        agentRuntime
+      );
+
+    const acceptedResponse =
+      await fetch(
+        `${baseUrl}/v1/runs`,
+        {
+          method: "POST",
+          headers: {
+            "content-type":
+              "application/json"
+          },
+          body: JSON.stringify({
+            url:
+              "http://fixture.test/",
+            goal:
+              "Wait until cancelled."
+          })
+        }
+      );
+
+    const accepted =
+      await acceptedResponse.json() as {
+        runId: string;
+      };
+
+    for (
+      let attempt = 0;
+      attempt < 100 &&
+      !agentRuntime.session
+        .navigateStarted;
+      attempt += 1
+    ) {
+      await new Promise(
+        (resolve) => {
+          setTimeout(resolve, 2);
+        }
+      );
+    }
+
+    const cancelResponse =
+      await fetch(
+        `${baseUrl}/v1/runs/${accepted.runId}/cancel`,
+        {
+          method: "POST"
+        }
+      );
+
+    expect(
+      cancelResponse.status
+    ).toBe(202);
+
+    const terminal =
+      await waitForTerminal(
+        baseUrl,
+        accepted.runId
+      );
+
+    expect(terminal.status).toBe(
+      "CANCELLED"
+    );
+    expect(
+      terminal.terminalReason?.code
+    ).toBe("RUN_CANCELLED");
+    expect(
+      agentRuntime.session.closeCalls
+    ).toBe(1);
+    expect(
+      browserRuntime.session.closeCalls
+    ).toBe(1);
   });
 
   it("lists and downloads artifacts with typed missing-artifact errors", async () => {

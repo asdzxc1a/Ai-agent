@@ -6,9 +6,11 @@ import {
 
 import type {
   CreateRunRequest,
+  GoalStatus,
   RunFailure,
   RunSnapshot,
-  RunStatus
+  RunStatus,
+  RunTerminalReason
 } from "@astra/contracts";
 import type {
   RunEventRecord,
@@ -20,9 +22,12 @@ import type {
 interface RunRow {
   id: string;
   status: RunStatus;
+  goal_status: GoalStatus;
   request: CreateRunRequest;
   result: unknown | null;
   error: RunFailure | null;
+  terminal_reason:
+    RunTerminalReason | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -53,6 +58,7 @@ function mapRun(row: RunRow): RunSnapshot {
   return {
     id: row.id,
     status: row.status,
+    goalStatus: row.goal_status,
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
     ...(row.result === null
@@ -64,6 +70,12 @@ function mapRun(row: RunRow): RunSnapshot {
       ? {}
       : {
           error: row.error
+        }),
+    ...(row.terminal_reason === null
+      ? {}
+      : {
+          terminalReason:
+            row.terminal_reason
         })
   };
 }
@@ -89,21 +101,77 @@ function mapEvent(row: EventRow): RunEventRecord {
 }
 
 function validateTerminal(snapshot: RunSnapshot): void {
+  const terminal =
+    snapshot.status === "COMPLETED" ||
+    snapshot.status === "FAILED" ||
+    snapshot.status === "CANCELLED";
+
+  if (!terminal) {
+    if (
+      snapshot.goalStatus !==
+        "IN_PROGRESS" ||
+      snapshot.terminalReason !==
+        undefined
+    ) {
+      throw new Error(
+        "Non-terminal runs must remain IN_PROGRESS without a terminal reason."
+      );
+    }
+
+    return;
+  }
+
   if (
-    snapshot.status === "COMPLETED" &&
-    snapshot.result === undefined
+    snapshot.terminalReason ===
+      undefined
   ) {
     throw new Error(
-      "COMPLETED runs must contain a validated result."
+      "Terminal runs must contain a typed terminal reason."
     );
   }
 
   if (
-    snapshot.status === "FAILED" &&
-    snapshot.error === undefined
+    snapshot.status === "COMPLETED"
+  ) {
+    if (
+      snapshot.goalStatus !==
+        "COMPLETED" ||
+      snapshot.result === undefined
+    ) {
+      throw new Error(
+        "COMPLETED runs must contain a validated result and COMPLETED goal state."
+      );
+    }
+
+    return;
+  }
+
+  if (
+    snapshot.status === "CANCELLED"
+  ) {
+    if (
+      snapshot.goalStatus !==
+      "FAILED"
+    ) {
+      throw new Error(
+        "CANCELLED runs must use FAILED goal state."
+      );
+    }
+
+    return;
+  }
+
+  if (
+    snapshot.error === undefined ||
+    (
+      snapshot.goalStatus !==
+        "FAILED" &&
+      snapshot.goalStatus !==
+        "BLOCKED"
+    )
   ) {
     throw new Error(
-      "FAILED runs must contain a typed error."
+      "FAILED runs must contain a typed error and FAILED or BLOCKED goal state."
     );
   }
 }
@@ -130,17 +198,20 @@ export class PostgresRunRepository implements RunRepository {
         INSERT INTO runs (
           id,
           status,
+          goal_status,
           request,
           result,
           error,
+          terminal_reason,
           created_at,
           updated_at
         )
-        VALUES ($1, $2, $3::jsonb, NULL, NULL, $4, $5)
+        VALUES ($1, $2, $3, $4::jsonb, NULL, NULL, NULL, $5, $6)
       `,
       [
         snapshot.id,
         snapshot.status,
+        snapshot.goalStatus,
         JSON.stringify(request),
         snapshot.createdAt,
         snapshot.updatedAt
@@ -156,9 +227,11 @@ export class PostgresRunRepository implements RunRepository {
         SELECT
           id,
           status,
+          goal_status,
           request,
           result,
           error,
+          terminal_reason,
           created_at,
           updated_at
         FROM runs
@@ -214,22 +287,32 @@ export class PostgresRunRepository implements RunRepository {
       next.error === undefined
         ? null
         : JSON.stringify(next.error);
+    const terminalReasonJson =
+      next.terminalReason === undefined
+        ? null
+        : JSON.stringify(
+            next.terminalReason
+          );
 
     await this.#pool.query(
       `
         UPDATE runs
         SET
           status = $2,
-          result = $3::jsonb,
-          error = $4::jsonb,
-          updated_at = $5
+          goal_status = $3,
+          result = $4::jsonb,
+          error = $5::jsonb,
+          terminal_reason = $6::jsonb,
+          updated_at = $7
         WHERE id = $1
       `,
       [
         runId,
         next.status,
+        next.goalStatus,
         resultJson,
         errorJson,
+        terminalReasonJson,
         next.updatedAt
       ]
     );

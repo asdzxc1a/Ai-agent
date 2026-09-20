@@ -1,4 +1,7 @@
-import type { Pool } from "pg";
+import type {
+  Pool,
+  PoolClient
+} from "pg";
 
 const MIGRATION_ONE = `
 CREATE TABLE runs (
@@ -39,6 +42,75 @@ CREATE TABLE run_events (
 );
 `;
 
+const MIGRATION_TWO = `
+ALTER TABLE runs
+  ADD COLUMN goal_status TEXT;
+
+UPDATE runs
+SET goal_status = CASE
+  WHEN status = 'COMPLETED' THEN 'COMPLETED'
+  WHEN status IN ('FAILED', 'CANCELLED') THEN 'FAILED'
+  ELSE 'IN_PROGRESS'
+END;
+
+ALTER TABLE runs
+  ALTER COLUMN goal_status SET NOT NULL,
+  ADD CONSTRAINT runs_goal_status
+    CHECK (goal_status IN ('IN_PROGRESS', 'COMPLETED', 'FAILED', 'BLOCKED')),
+  ADD CONSTRAINT runs_status_goal_status
+    CHECK (
+      (status IN ('PENDING', 'RUNNING') AND goal_status = 'IN_PROGRESS')
+      OR
+      (status = 'COMPLETED' AND goal_status = 'COMPLETED')
+      OR
+      (status = 'FAILED' AND goal_status IN ('FAILED', 'BLOCKED'))
+      OR
+      (status = 'CANCELLED' AND goal_status = 'FAILED')
+    );
+
+ALTER TABLE runs
+  ADD COLUMN terminal_reason JSONB;
+
+UPDATE runs
+SET terminal_reason = CASE
+  WHEN status = 'COMPLETED' THEN
+    jsonb_build_object('code', 'GOAL_COMPLETED', 'message', 'Goal completed before terminal-reason migration.')
+  WHEN status = 'FAILED' THEN error
+  WHEN status = 'CANCELLED' THEN
+    jsonb_build_object('code', 'RUN_CANCELLED', 'message', 'Run cancelled before terminal-reason migration.')
+  ELSE NULL
+END;
+
+ALTER TABLE runs
+  ADD CONSTRAINT runs_terminal_reason
+    CHECK (
+      (status IN ('COMPLETED', 'FAILED', 'CANCELLED') AND terminal_reason IS NOT NULL)
+      OR
+      (status IN ('PENDING', 'RUNNING') AND terminal_reason IS NULL)
+    );
+`;
+
+async function applyMigration(
+  client: PoolClient,
+  version: number,
+  sql: string
+): Promise<void> {
+  const applied = await client.query(
+    "SELECT 1 FROM schema_migrations WHERE version = $1",
+    [version]
+  );
+
+  if (applied.rowCount !== 0) {
+    return;
+  }
+
+  await client.query(sql);
+  await client.query(
+    "INSERT INTO schema_migrations(version) VALUES ($1)",
+    [version]
+  );
+}
+
 export async function runPostgresMigrations(
   pool: Pool
 ): Promise<void> {
@@ -58,18 +130,16 @@ export async function runPostgresMigrations(
       )
     `);
 
-    const applied = await client.query(
-      "SELECT 1 FROM schema_migrations WHERE version = $1",
-      [1]
+    await applyMigration(
+      client,
+      1,
+      MIGRATION_ONE
     );
-
-    if (applied.rowCount === 0) {
-      await client.query(MIGRATION_ONE);
-      await client.query(
-        "INSERT INTO schema_migrations(version) VALUES ($1)",
-        [1]
-      );
-    }
+    await applyMigration(
+      client,
+      2,
+      MIGRATION_TWO
+    );
 
     await client.query("COMMIT");
   } catch (error) {

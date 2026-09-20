@@ -44,6 +44,7 @@ function pendingRun(id: string): RunSnapshot {
   return {
     id,
     status: "PENDING",
+    goalStatus: "IN_PROGRESS",
     createdAt: now,
     updatedAt: now
   };
@@ -103,19 +104,25 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
 
   await expect(
     repository.updateRun(runId, {
-      status: "COMPLETED"
+      status: "COMPLETED",
+      goalStatus: "COMPLETED"
     })
   ).rejects.toThrow(
-    "COMPLETED runs must contain a validated result."
+    "Terminal runs must contain a typed terminal reason."
   );
 
   const completed = await repository.updateRun(
     runId,
     {
       status: "COMPLETED",
+      goalStatus: "COMPLETED",
       result: {
         count: 1,
         status: "clicked"
+      },
+      terminalReason: {
+        code: "GOAL_COMPLETED",
+        message: "fixture verified"
       }
     }
   );
@@ -159,7 +166,12 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
     failedId,
     {
       status: "FAILED",
+      goalStatus: "FAILED",
       error: {
+        code: "EXECUTION_FAILED",
+        message: "fixture failure"
+      },
+      terminalReason: {
         code: "EXECUTION_FAILED",
         message: "fixture failure"
       }
@@ -171,7 +183,58 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
     message: "fixture failure"
   });
 
-  expect((await repository.getRun(failedId))?.error).toEqual(
-    failed.error
+  const persistedFailed =
+    await repository.getRun(
+      failedId
+    );
+
+  expect(
+    persistedFailed?.error
+  ).toEqual(failed.error);
+  expect(
+    persistedFailed?.goalStatus
+  ).toBe("FAILED");
+  expect(
+    persistedFailed?.terminalReason
+  ).toEqual({
+    code: "EXECUTION_FAILED",
+    message: "fixture failure"
+  });
+
+  const cancelledId = randomUUID();
+  await repository.createRun(
+    pendingRun(cancelledId),
+    request
   );
+
+  const cancelled =
+    await repository.updateRun(
+      cancelledId,
+      {
+        status: "CANCELLED",
+        goalStatus: "FAILED",
+        terminalReason: {
+          code: "RUN_CANCELLED",
+          message:
+            "fixture cancellation"
+        }
+      }
+    );
+
+  expect(cancelled.status).toBe(
+    "CANCELLED"
+  );
+  expect(cancelled.goalStatus).toBe(
+    "FAILED"
+  );
+  expect(
+    (
+      await repository.getRun(
+        cancelledId
+      )
+    )?.terminalReason
+  ).toEqual({
+    code: "RUN_CANCELLED",
+    message: "fixture cancellation"
+  });
 });

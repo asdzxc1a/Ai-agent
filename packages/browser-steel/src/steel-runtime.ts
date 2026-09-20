@@ -255,7 +255,12 @@ export class SteelBrowserRuntime
           ? {
               skipFingerprintInjection: true
             }
-          : {})
+          : {}),
+        ...(options.signal === undefined
+          ? {}
+          : {
+              signal: options.signal
+            })
       });
 
     return new SteelBrowserSession(

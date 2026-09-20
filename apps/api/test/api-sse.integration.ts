@@ -396,9 +396,15 @@ test("PostgreSQL SSE resumes after disconnect without duplicate events", async (
     expect(
       terminalEvent?.data.payload
     ).toEqual({
+      goalStatus: "COMPLETED",
       result: {
         count: 1,
         status: "clicked"
+      },
+      terminalReason: {
+        code: "GOAL_COMPLETED",
+        message:
+          "Completion verifier accepted the run result."
       }
     });
   } finally {

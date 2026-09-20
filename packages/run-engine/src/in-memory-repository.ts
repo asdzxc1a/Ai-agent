@@ -15,21 +15,77 @@ function clone<T>(value: T): T {
 }
 
 function validateTerminal(snapshot: RunSnapshot): void {
+  const terminal =
+    snapshot.status === "COMPLETED" ||
+    snapshot.status === "FAILED" ||
+    snapshot.status === "CANCELLED";
+
+  if (!terminal) {
+    if (
+      snapshot.goalStatus !==
+        "IN_PROGRESS" ||
+      snapshot.terminalReason !==
+        undefined
+    ) {
+      throw new Error(
+        "Non-terminal runs must remain IN_PROGRESS without a terminal reason."
+      );
+    }
+
+    return;
+  }
+
   if (
-    snapshot.status === "COMPLETED" &&
-    snapshot.result === undefined
+    snapshot.terminalReason ===
+      undefined
   ) {
     throw new Error(
-      "COMPLETED runs must contain a validated result."
+      "Terminal runs must contain a typed terminal reason."
     );
   }
 
   if (
-    snapshot.status === "FAILED" &&
-    snapshot.error === undefined
+    snapshot.status === "COMPLETED"
+  ) {
+    if (
+      snapshot.goalStatus !==
+        "COMPLETED" ||
+      snapshot.result === undefined
+    ) {
+      throw new Error(
+        "COMPLETED runs must contain a validated result and COMPLETED goal state."
+      );
+    }
+
+    return;
+  }
+
+  if (
+    snapshot.status === "CANCELLED"
+  ) {
+    if (
+      snapshot.goalStatus !==
+      "FAILED"
+    ) {
+      throw new Error(
+        "CANCELLED runs must use FAILED goal state."
+      );
+    }
+
+    return;
+  }
+
+  if (
+    snapshot.error === undefined ||
+    (
+      snapshot.goalStatus !==
+        "FAILED" &&
+      snapshot.goalStatus !==
+        "BLOCKED"
+    )
   ) {
     throw new Error(
-      "FAILED runs must contain a typed error."
+      "FAILED runs must contain a typed error and FAILED or BLOCKED goal state."
     );
   }
 }

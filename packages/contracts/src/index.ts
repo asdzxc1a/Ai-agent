@@ -12,9 +12,12 @@ export type {
   ApiErrorResponse,
   CreateRunAccepted,
   CreateRunRequest,
+  GoalStatus,
   ObjectOutputSchema,
   OutputPropertySchema,
   RunFailure,
   RunFailureCode,
-  RunSnapshot
+  RunSnapshot,
+  RunTerminalReason,
+  RunTerminalReasonCode
 } from "./run-api.js";

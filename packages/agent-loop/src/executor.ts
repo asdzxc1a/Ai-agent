@@ -8,11 +8,23 @@ import type {
   AgentLoopActionSummary,
   AgentLoopDecision,
   AgentLoopExecutorOptions,
+  AgentLoopFailureReason,
+  AgentLoopLimitReason,
   AgentLoopOptions,
   AgentLoopOutcome,
   AgentLoopTrajectoryEntry,
   ExecuteAgentLoopInput
 } from "./types.js";
+
+import {
+  abortable,
+  actionSignature,
+  consecutiveActionCount,
+  normalizeActionEffect,
+  normalizeAgentLoopLimits,
+  throwIfAborted,
+  usageLimitFailure
+} from "./control.js";
 
 const DEFAULT_ITERATION_CEILING = 20;
 const MAX_ITERATION_CEILING = 100;
@@ -85,7 +97,8 @@ function parseDecision(
           "type",
           "actionIndex",
           "rationale",
-          "onFailure"
+          "onFailure",
+          "effectRisk"
         ]
       );
 
@@ -113,12 +126,22 @@ function parseDecision(
         );
       }
 
+      if (
+        input.effectRisk !== "REVERSIBLE" &&
+        input.effectRisk !== "IRREVERSIBLE"
+      ) {
+        throw new TypeError(
+          "ACTION decisions require effectRisk REVERSIBLE or IRREVERSIBLE."
+        );
+      }
+
       return {
         type: "ACTION",
         actionIndex:
           input.actionIndex as number,
         rationale: input.rationale,
-        onFailure: input.onFailure
+        onFailure: input.onFailure,
+        effectRisk: input.effectRisk
       };
     }
 
@@ -241,7 +264,8 @@ function actionFailure(
         : "Agent action failed.",
     actionDescription:
       action.description,
-    actions: [action]
+    actions: [action],
+    effect: "unknown"
   };
 }
 
@@ -257,6 +281,45 @@ function validateCeiling(
       "Agent-loop iteration ceiling must be an integer from 1 to 100."
     );
   }
+}
+
+function failOutcome(
+  reason: AgentLoopFailureReason,
+  message: string,
+  iteration: number,
+  trajectory: AgentLoopTrajectoryEntry[]
+): AgentLoopOutcome {
+  return {
+    type: "FAIL",
+    goalState: "FAILED",
+    reason,
+    message,
+    iterations: iteration,
+    trajectory:
+      structuredClone(trajectory)
+  };
+}
+
+async function limitOutcome(
+  options: AgentLoopOptions,
+  iteration: number,
+  reason: AgentLoopLimitReason,
+  message: string,
+  trajectory: AgentLoopTrajectoryEntry[]
+): Promise<AgentLoopOutcome> {
+  await options.onProgress?.({
+    type: "LIMIT_REACHED",
+    iteration,
+    reason,
+    message
+  });
+
+  return failOutcome(
+    reason,
+    message,
+    iteration,
+    trajectory
+  );
 }
 
 async function rejectDecision(
@@ -280,13 +343,12 @@ async function rejectDecision(
       Date.now() - startedAt
   });
 
-  return {
-    type: "FAIL",
+  return failOutcome(
+    "POLICY_REJECTED",
     message,
-    iterations: iteration,
-    trajectory:
-      structuredClone(trajectory)
-  };
+    iteration,
+    trajectory
+  );
 }
 
 export async function executeAgentLoop(
@@ -298,19 +360,42 @@ export async function executeAgentLoop(
     DEFAULT_ITERATION_CEILING;
   validateCeiling(iterationCeiling);
 
+  const limits =
+    normalizeAgentLoopLimits(
+      options.limits
+    );
   const trajectory:
     AgentLoopTrajectoryEntry[] = [];
+  let actionsExecuted = 0;
 
   for (
     let iteration = 1;
     iteration <= iterationCeiling;
     iteration += 1
   ) {
+    throwIfAborted(
+      options.signal
+    );
+
     let startedAt = Date.now();
     const observed =
-      await session.observe(
-        options.goal
+      await abortable(
+        () =>
+          session.observe(
+            options.goal,
+            options.signal === undefined
+              ? {}
+              : {
+                  signal: options.signal
+                }
+          ),
+        options.signal
       );
+
+    throwIfAborted(
+      options.signal
+    );
+
     const summaries =
       summarizeActions(observed);
 
@@ -323,20 +408,61 @@ export async function executeAgentLoop(
         Date.now() - startedAt
     });
 
+    const observeLimit =
+      await usageLimitFailure(
+        options.usageMeter,
+        limits
+      );
+
+    if (observeLimit !== undefined) {
+      return limitOutcome(
+        options,
+        iteration,
+        observeLimit.reason,
+        observeLimit.message,
+        trajectory
+      );
+    }
+
     startedAt = Date.now();
 
-    let decision: AgentLoopDecision;
-    try {
-      const rawDecision =
-        await options.policy.decide({
-          goal: options.goal,
-          iteration,
-          observedActions:
-            structuredClone(summaries),
-          trajectory:
-            structuredClone(trajectory)
-        });
+    let rawDecision: unknown;
 
+    try {
+      rawDecision =
+        await abortable(
+          () =>
+            options.policy.decide({
+              goal: options.goal,
+              iteration,
+              observedActions:
+                structuredClone(summaries),
+              trajectory:
+                structuredClone(trajectory)
+            }),
+          options.signal
+        );
+
+      throwIfAborted(
+        options.signal
+      );
+    } catch (error) {
+      throwIfAborted(
+        options.signal
+      );
+
+      return rejectDecision(
+        options,
+        iteration,
+        startedAt,
+        error,
+        trajectory
+      );
+    }
+
+    let decision: AgentLoopDecision;
+
+    try {
       decision =
         parseDecision(rawDecision);
     } catch (error) {
@@ -358,6 +484,22 @@ export async function executeAgentLoop(
         Date.now() - startedAt
     });
 
+    const decisionLimit =
+      await usageLimitFailure(
+        options.usageMeter,
+        limits
+      );
+
+    if (decisionLimit !== undefined) {
+      return limitOutcome(
+        options,
+        iteration,
+        decisionLimit.reason,
+        decisionLimit.message,
+        trajectory
+      );
+    }
+
     if (
       decision.type === "COMPLETE"
     ) {
@@ -373,6 +515,7 @@ export async function executeAgentLoop(
 
       return {
         type: "COMPLETE",
+        goalState: "COMPLETED",
         result:
           decision.result ?? {
             completed: true,
@@ -395,13 +538,12 @@ export async function executeAgentLoop(
           cloneDecision(decision)
       });
 
-      return {
-        type: "FAIL",
-        message: decision.message,
-        iterations: iteration,
-        trajectory:
-          structuredClone(trajectory)
-      };
+      return failOutcome(
+        "POLICY_FAILED",
+        decision.message,
+        iteration,
+        trajectory
+      );
     }
 
     if (
@@ -419,6 +561,8 @@ export async function executeAgentLoop(
 
       return {
         type: "BLOCKED",
+        goalState: "BLOCKED",
+        reason: "POLICY_BLOCKED",
         message: decision.message,
         iterations: iteration,
         trajectory:
@@ -451,13 +595,57 @@ export async function executeAgentLoop(
           cloneDecision(decision)
       });
 
-      return {
-        type: "FAIL",
+      return failOutcome(
+        "INVALID_ACTION_SELECTION",
         message,
-        iterations: iteration,
-        trajectory:
-          structuredClone(trajectory)
-      };
+        iteration,
+        trajectory
+      );
+    }
+
+    if (
+      actionsExecuted >=
+      limits.maxActions
+    ) {
+      return limitOutcome(
+        options,
+        iteration,
+        "STEP_LIMIT_EXCEEDED",
+        "Agent loop reached the action limit of " +
+          String(limits.maxActions) +
+          ".",
+        trajectory
+      );
+    }
+
+    const actionSummary =
+      summarizeAgentAction(
+        action
+      );
+    const signature =
+      actionSignature(
+        decision,
+        actionSummary
+      );
+
+    if (
+      consecutiveActionCount(
+        trajectory,
+        signature
+      ) >=
+        limits.repeatedActionLimit
+    ) {
+      return limitOutcome(
+        options,
+        iteration,
+        "LOOP_DETECTED",
+        "Agent loop selected the same action more than " +
+          String(
+            limits.repeatedActionLimit
+          ) +
+          " consecutive times.",
+        trajectory
+      );
     }
 
     startedAt = Date.now();
@@ -467,8 +655,28 @@ export async function executeAgentLoop(
 
     try {
       actionResult =
-        await session.act(action);
+        await abortable(
+          () =>
+            session.act(
+              action,
+              options.signal === undefined
+                ? {}
+                : {
+                    signal:
+                      options.signal
+                  }
+            ),
+          options.signal
+        );
+
+      throwIfAborted(
+        options.signal
+      );
     } catch (error) {
+      throwIfAborted(
+        options.signal
+      );
+
       actionResult =
         actionFailure(
           action,
@@ -476,13 +684,30 @@ export async function executeAgentLoop(
         );
     }
 
+    actionsExecuted += 1;
+
+    const effect =
+      normalizeActionEffect(
+        actionResult
+      );
+    const unsafeIrreversibleFailure =
+      !actionResult.success &&
+      decision.effectRisk ===
+        "IRREVERSIBLE" &&
+      effect !== "none";
     const outcome = {
       action:
-        summarizeAgentAction(action),
+        actionSummary,
       success:
         actionResult.success,
       recoverable:
-        decision.onFailure === "CONTINUE"
+        !actionResult.success &&
+        decision.onFailure ===
+          "CONTINUE" &&
+        !unsafeIrreversibleFailure,
+      effect,
+      effectRisk:
+        decision.effectRisk
     };
 
     await options.onProgress?.({
@@ -505,28 +730,77 @@ export async function executeAgentLoop(
     });
 
     if (
-      !actionResult.success &&
-      decision.onFailure === "FAIL"
+      decision.effectRisk ===
+        "IRREVERSIBLE" &&
+      effect === "unknown"
     ) {
       return {
-        type: "FAIL",
+        type: "BLOCKED",
+        goalState: "BLOCKED",
+        reason:
+          "IRREVERSIBLE_EFFECT_UNKNOWN",
         message:
-          actionResult.message,
+          "Irreversible action effect is unknown; automatic retry is blocked.",
         iterations: iteration,
         trajectory:
           structuredClone(trajectory)
       };
     }
+
+    if (
+      !actionResult.success &&
+      decision.effectRisk ===
+        "IRREVERSIBLE" &&
+      effect === "committed"
+    ) {
+      return {
+        type: "BLOCKED",
+        goalState: "BLOCKED",
+        reason:
+          "IRREVERSIBLE_EFFECT_COMMITTED",
+        message:
+          "Irreversible action committed despite reporting failure; automatic retry is blocked.",
+        iterations: iteration,
+        trajectory:
+          structuredClone(trajectory)
+      };
+    }
+
+    const actionLimit =
+      await usageLimitFailure(
+        options.usageMeter,
+        limits
+      );
+
+    if (actionLimit !== undefined) {
+      return limitOutcome(
+        options,
+        iteration,
+        actionLimit.reason,
+        actionLimit.message,
+        trajectory
+      );
+    }
+
+    if (
+      !actionResult.success &&
+      decision.onFailure === "FAIL"
+    ) {
+      return failOutcome(
+        "ACTION_FAILED",
+        actionResult.message,
+        iteration,
+        trajectory
+      );
+    }
   }
 
-  return {
-    type: "FAIL",
-    message:
-      "Agent loop reached its internal iteration ceiling without an explicit COMPLETE decision.",
-    iterations: iterationCeiling,
-    trajectory:
-      structuredClone(trajectory)
-  };
+  return failOutcome(
+    "ITERATION_LIMIT_EXCEEDED",
+    "Agent loop reached its internal iteration ceiling without an explicit COMPLETE decision.",
+    iterationCeiling,
+    trajectory
+  );
 }
 
 export class AgentLoopExecutor {
@@ -564,6 +838,27 @@ export class AgentLoopExecutor {
           : {
               iterationCeiling:
                 this.#iterationCeiling
+            }),
+        ...(input.limits ===
+          undefined
+          ? {}
+          : {
+              limits:
+                input.limits
+            }),
+        ...(input.usageMeter ===
+          undefined
+          ? {}
+          : {
+              usageMeter:
+                input.usageMeter
+            }),
+        ...(input.signal ===
+          undefined
+          ? {}
+          : {
+              signal:
+                input.signal
             }),
         ...(input.onProgress ===
           undefined
