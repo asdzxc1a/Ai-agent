@@ -141,3 +141,66 @@ test(
     ).toHaveBeenCalledTimes(1);
   }
 );
+
+
+test(
+  "late Stagehand initialization after abort is closed again",
+  async () => {
+    let resolveInit:
+      (() => void) | undefined;
+
+    const stagehand = {
+      init: vi.fn(
+        () =>
+          new Promise<void>(
+            (resolve) => {
+              resolveInit = resolve;
+            }
+          )
+      ),
+      close: vi
+        .fn()
+        .mockResolvedValue(
+          undefined
+        )
+    } as unknown as Stagehand;
+
+    const runtime =
+      new StagehandRuntimeCore(
+        () => stagehand
+      );
+    const controller =
+      new AbortController();
+
+    const opening =
+      runtime.openSession({
+        browser: browser(),
+        signal:
+          controller.signal
+      });
+
+    controller.abort();
+
+    await expect(
+      opening
+    ).rejects.toMatchObject({
+      name: "AbortError"
+    });
+
+    expect(
+      stagehand.close
+    ).toHaveBeenCalledTimes(1);
+
+    resolveInit?.();
+
+    await new Promise<void>(
+      (resolve) => {
+        setTimeout(resolve, 0);
+      }
+    );
+
+    expect(
+      stagehand.close
+    ).toHaveBeenCalledTimes(2);
+  }
+);

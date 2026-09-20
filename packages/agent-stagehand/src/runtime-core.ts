@@ -40,6 +40,7 @@ async function initializeStagehand(
 ): Promise<void> {
   let closePromise:
     Promise<void> | undefined;
+  let aborted = false;
 
   const closePartial = () => {
     closePromise ??=
@@ -61,13 +62,33 @@ async function initializeStagehand(
 
   throwIfAborted(signal);
 
+  const initPromise =
+    stagehand.init();
+
+  // If cancellation wins the race but init later succeeds,
+  // close again. The first close may have run while the
+  // provider was still initializing and therefore cannot
+  // be treated as proof that a late-created session stayed closed.
+  void initPromise.then(
+    () => {
+      if (aborted) {
+        void stagehand
+          .close()
+          .catch(() => undefined);
+      }
+    },
+    () => undefined
+  );
+
   let onAbort:
     (() => void) | undefined;
 
-  const aborted =
+  const abortedPromise =
     new Promise<never>(
       (_, reject) => {
         onAbort = () => {
+          aborted = true;
+
           void closePartial().finally(
             () => {
               reject(
@@ -93,11 +114,13 @@ async function initializeStagehand(
 
   try {
     await Promise.race([
-      stagehand.init(),
-      aborted
+      initPromise,
+      abortedPromise
     ]);
   } catch (error) {
-    await closePartial();
+    if (!aborted) {
+      await closePartial();
+    }
     throw error;
   } finally {
     if (onAbort !== undefined) {
