@@ -76,6 +76,7 @@ The acceptance experiment must:
 - persist an actually measured human baseline as durable server-timestamped state for each acceptance target **before** Astra is allowed to start that target;
 - freeze the cost ceiling and rationale before results;
 - record blind versus unblinded review;
+- use the frozen `gate13-brief-review-v1` rubric so accepted/minor/major/rejected outcomes are derived from correction severity rather than reviewer discretion;
 - run only frozen sample members through the bounded read-only research path;
 - manually audit every material observed fact against its source page/screenshot;
 - produce an accepted or corrected brief without contacting the prospect;
