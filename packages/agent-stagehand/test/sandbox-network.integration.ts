@@ -685,10 +685,55 @@ test(
       steelPrimaryContainer,
       "node",
       "-e",
-      "process.title=" +
-        JSON.stringify(processMarker) +
-        ";setInterval(()=>{},1000)"
+      "setInterval(()=>{},1000)",
+      processMarker
     );
+
+    const processProbe = [
+      "const fs=require('fs');",
+      "const marker=" +
+        JSON.stringify(processMarker) +
+        ";",
+      "const found=fs.readdirSync('/proc')",
+      ".filter(x=>/^\\d+$/.test(x))",
+      ".some(x=>{try{return fs.readFileSync('/proc/'+x+'/cmdline','utf8').includes(marker)}catch{return false}});",
+      "process.exit(found?0:7);"
+    ].join("");
+    let primaryProcessVisible =
+      false;
+
+    for (
+      let attempt = 0;
+      attempt < 40;
+      attempt += 1
+    ) {
+      if (
+        await dockerSucceeds(
+          "exec",
+          steelPrimaryContainer,
+          "node",
+          "-e",
+          processProbe
+        )
+      ) {
+        primaryProcessVisible =
+          true;
+        break;
+      }
+
+      await new Promise(
+        (resolve) => {
+          setTimeout(
+            resolve,
+            50
+          );
+        }
+      );
+    }
+
+    expect(
+      primaryProcessVisible
+    ).toBe(true);
 
     await expect(
       dockerSucceeds(
@@ -696,16 +741,10 @@ test(
         steelSecondaryContainer,
         "node",
         "-e",
-        [
-          "const fs=require('fs');",
-          "const marker=" +
-            JSON.stringify(processMarker) +
-            ";",
-          "const found=fs.readdirSync('/proc')",
-          ".filter(x=>/^\\d+$/.test(x))",
-          ".some(x=>{try{return fs.readFileSync('/proc/'+x+'/comm','utf8').trim()===marker}catch{return false}});",
+        processProbe.replace(
+          "process.exit(found?0:7);",
           "process.exit(found?7:0);"
-        ].join("")
+        )
       )
     ).resolves.toBe(true);
 
