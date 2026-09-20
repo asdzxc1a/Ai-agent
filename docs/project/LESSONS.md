@@ -567,3 +567,26 @@ Defer a navigation action's screenshot until the next successful observe has pro
 **Prevention**
 
 Use semantic settle/observation conditions for evidence capture around navigation. Do not hide deterministic evidence races with arbitrary sleeps or blind screenshot retries.
+
+
+---
+
+## L-023 — Preserve frozen benchmark failures; fix the harness, not the scorecard
+
+**Date:** 2026-09-19
+
+**Symptom / context**
+
+The first frozen ResearchBench browser measurement passed 28/30, with both dynamic tasks false-completing. A later harness revision regressed to 27/30 when a duplicate `trigger` declaration prevented modal/dynamic fixture scripts from installing handlers.
+
+**Cause**
+
+Qualification harness defects can look like agent-capability failures. The dynamic trigger remained mounted after use in the first measurement, so the deterministic observer selected the consumed action again. A later script-scope cleanup accidentally declared the same binding twice.
+
+**Fix**
+
+Keep the frozen task definitions and evaluator expectations unchanged. Correct only the fixture/runner defect, classify and preserve each measured failure, rerun the same frozen suite, and add structural tests that validate task/page/expected-state consistency.
+
+**Prevention**
+
+Never improve a benchmark score by rewriting a failing measured task or expected answer. Separate benchmark ground truth, candidate code, and qualification harness so a defect can be localized and corrected without moving the goalposts.

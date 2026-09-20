@@ -755,3 +755,34 @@ False completion and duplicate irreversible effects are higher-severity failures
 **Revisit when**
 
 Only if later durable action receipts/idempotency contracts provide stronger provider-independent proof that changes how `unknown` effects or completion verification should be represented.
+
+
+---
+
+## D-027 — Qualification ground truth is frozen outside candidate inputs
+
+**Date:** 2026-09-19
+**Status:** Accepted
+
+**Decision**
+
+ResearchBench qualification tasks and evaluator expectations are frozen before measuring a candidate. Candidate inputs contain only the public research task: scenario ID/tier/category, company, goal, requested fields, and start page. Fixture page internals and expected answers remain evaluator-only ground truth.
+
+Core and hard tasks are reported separately. The release criterion applies to the frozen core suite (>=95% first-attempt success) together with zero false completions and zero unsupported claims; hard-task success remains challenge evidence and is not retroactively converted into a release threshold after results are known.
+
+**Why**
+
+A benchmark that exposes expected answers to the candidate, edits failing tasks after measurement, or silently changes the release population cannot distinguish capability from score-gaming. Research qualification also needs stronger failure semantics than pass rate alone because a plausible but unsupported completed report is worse than an explicit failure.
+
+**Consequences**
+
+- `@astra/research-bench` owns versioned tasks, evaluator ground truth, scoring, and core/hard reporting;
+- browser/model candidates receive no expected-answer oracle;
+- every material finding must reference evidence actually observed from the fixture source;
+- unknown information must remain unknown rather than being promoted to a fact;
+- first-attempt failures and harness defects are preserved as evidence even when later corrected;
+- Gate 11 qualification does not claim paid hosted-model generalization; it qualifies the owned deterministic research path.
+
+**Revisit when**
+
+When a new benchmark version is intentionally created with a documented task-distribution change, or when a hosted-model qualification lane is added without changing ResearchBench v1 history.

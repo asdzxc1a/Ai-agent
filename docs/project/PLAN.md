@@ -289,7 +289,7 @@ Acceptance:
 
 ## Gate 11 — Deterministic prospect-research qualification
 
-**Status:** IN_PROGRESS
+**Status:** PASSED
 
 Purpose:
 
@@ -334,7 +334,7 @@ Acceptance for the core suite:
 
 ## Gate 12 — Sandbox + network safety for external research
 
-**Status:** NOT_STARTED
+**Status:** IN_PROGRESS
 
 Purpose:
 
