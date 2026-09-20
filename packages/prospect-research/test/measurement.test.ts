@@ -537,8 +537,36 @@ describe(
           ProspectResearchSampleSchema
             .parse({
               ...acceptance,
+              marketScope:
+                "CROSS_MARKET"
+            })
+        ).toThrow(
+          "acceptance must use one market"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              humanBaselineMode:
+                "SCOPE_MATCHED"
+            })
+        ).toThrow(
+          "must compare against the human workflow using its normal tools"
+        );
+
+        const acceptanceForThresholds =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptanceForThresholds,
               criteria: {
-                ...acceptance
+                ...acceptanceForThresholds
                   .criteria,
                 minUsableBriefRate:
                   0.89
@@ -549,9 +577,9 @@ describe(
         expect(() =>
           ProspectResearchSampleSchema
             .parse({
-              ...acceptance,
+              ...acceptanceForThresholds,
               criteria: {
-                ...acceptance
+                ...acceptanceForThresholds
                   .criteria,
                 minMedianHumanTimeReductionFraction:
                   0.49
