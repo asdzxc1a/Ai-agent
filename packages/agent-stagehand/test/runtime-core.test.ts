@@ -89,6 +89,11 @@ test(
           vi.fn(
             async () =>
               undefined
+          ),
+        handleDomainPolicyRequestPaused:
+          vi.fn(
+            async () =>
+              undefined
           )
       },
       observe:
@@ -141,3 +146,213 @@ test(
     ).toHaveBeenCalledTimes(1);
   }
 );
+
+test(
+  "full network policy owns the Stagehand Fetch decision for allowed and blocked requests",
+  async () => {
+    const continueOrFail =
+      vi.fn(
+        async () => undefined
+      );
+    const originalHandler =
+      vi.fn(
+        async () => undefined
+      );
+    const setDomainPolicy =
+      vi.fn(
+        async () => undefined
+      );
+    const context = {
+      setDomainPolicy,
+      handleDomainPolicyRequestPaused:
+        originalHandler
+    };
+    const close =
+      vi.fn(
+        async () => undefined
+      );
+    const stagehand = {
+      init:
+        vi.fn(
+          async () => undefined
+        ),
+      close,
+      context,
+      observe:
+        vi.fn(
+          async () => []
+        ),
+      act: vi.fn(),
+      extract: vi.fn()
+    } as unknown as Stagehand;
+    const assertAllowed =
+      vi.fn(
+        async (
+          request: {
+            url: string;
+          }
+        ) => {
+          if (
+            request.url.includes(
+              ":8443/"
+            )
+          ) {
+            throw new Error(
+              "blocked port"
+            );
+          }
+        }
+      );
+    const browser:
+      BrowserSession = {
+        id: "policy-browser",
+        cdpUrl:
+          "ws://fixture/policy",
+        networkPolicy: {
+          domainPolicy: {
+            allowedDomains: [
+              "example.com"
+            ]
+          },
+          assertAllowed
+        },
+        async close() {}
+      };
+
+    const runtime =
+      new StagehandRuntimeCore(
+        () =>
+          stagehand as
+            StagehandType
+      );
+    const session =
+      await runtime.openSession({
+        browser
+      });
+
+    expect(
+      setDomainPolicy
+    ).toHaveBeenCalledWith({
+      allowedDomains: [
+        "example.com"
+      ]
+    });
+    expect(
+      context
+        .handleDomainPolicyRequestPaused
+    ).not.toBe(
+      originalHandler
+    );
+
+    await context
+      .handleDomainPolicyRequestPaused(
+        {
+          send:
+            continueOrFail
+        },
+        {
+          requestId:
+            "request.allowed",
+          request: {
+            url:
+              "https://example.com/path"
+          },
+          resourceType:
+            "Document"
+        }
+      );
+
+    expect(
+      continueOrFail
+    ).toHaveBeenCalledWith(
+      "Fetch.continueRequest",
+      {
+        requestId:
+          "request.allowed"
+      }
+    );
+
+    continueOrFail.mockClear();
+
+    await context
+      .handleDomainPolicyRequestPaused(
+        {
+          send:
+            continueOrFail
+        },
+        {
+          requestId:
+            "request.blocked",
+          request: {
+            url:
+              "https://example.com:8443/private"
+          },
+          resourceType:
+            "Document"
+        }
+      );
+
+    expect(
+      continueOrFail
+    ).toHaveBeenCalledWith(
+      "Fetch.failRequest",
+      {
+        requestId:
+          "request.blocked",
+        errorReason:
+          "BlockedByClient"
+      }
+    );
+    expect(
+      originalHandler
+    ).not.toHaveBeenCalled();
+    expect(
+      assertAllowed
+    ).toHaveBeenCalledTimes(2);
+
+    await session.close();
+    expect(close)
+      .toHaveBeenCalledTimes(1);
+  }
+);
+
+test(
+  "network policy installation fails closed when the pinned Stagehand request hook is unavailable",
+  async () => {
+    const close =
+      vi.fn(
+        async () => undefined
+      );
+    const stagehand = {
+      init:
+        vi.fn(
+          async () => undefined
+        ),
+      close,
+      context: {
+        setDomainPolicy:
+          vi.fn(
+            async () => undefined
+          )
+      }
+    } as unknown as Stagehand;
+    const runtime =
+      new StagehandRuntimeCore(
+        () =>
+          stagehand as
+            StagehandType
+      );
+
+    await expect(
+      runtime.openSession({
+        browser:
+          isolatedBrowser()
+      })
+    ).rejects.toThrow(
+      "Pinned Stagehand request-policy interception hook is unavailable."
+    );
+    expect(close)
+      .toHaveBeenCalledTimes(1);
+  }
+);
+
