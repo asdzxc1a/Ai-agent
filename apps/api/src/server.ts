@@ -375,6 +375,51 @@ async function handleRequest(
     return;
   }
 
+  const cancellationMatch =
+    requestUrl.pathname.match(
+      /^\/v1\/runs\/([^/]+)\/cancel$/
+    );
+
+  if (
+    request.method === "POST" &&
+    cancellationMatch?.[1]
+  ) {
+    const runId =
+      decodeURIComponent(
+        cancellationMatch[1]
+      );
+    const cancelled =
+      await runService.cancelRun(
+        runId
+      );
+
+    if (cancelled === undefined) {
+      throw new RequestError(
+        404,
+        "RUN_NOT_FOUND",
+        "Run not found."
+      );
+    }
+
+    if (
+      cancelled.kind ===
+      "NOT_ACTIVE"
+    ) {
+      throw new RequestError(
+        409,
+        "CANCELLATION_UNAVAILABLE",
+        "Run is not active in this process, so cancellation cannot be propagated safely."
+      );
+    }
+
+    sendJson(
+      response,
+      200,
+      cancelled.run
+    );
+    return;
+  }
+
   const artifactDownloadMatch =
     requestUrl.pathname.match(
       /^\/v1\/runs\/([^/]+)\/artifacts\/([^/]+)$/
@@ -494,6 +539,7 @@ async function handleRequest(
   if (
     requestUrl.pathname === "/v1/runs" ||
     runMatch !== null ||
+    cancellationMatch !== null ||
     eventMatch !== null ||
     artifactListMatch !== null ||
     artifactDownloadMatch !== null

@@ -6,9 +6,12 @@ export {
 
 export type {
   AgentLoopActionDecision,
+  AgentLoopActionEffectInput,
+  AgentLoopActionEffectPolicy,
   AgentLoopActionOutcome,
   AgentLoopActionSummary,
   AgentLoopBlockedDecision,
+  AgentLoopBudget,
   AgentLoopCompleteDecision,
   AgentLoopDecision,
   AgentLoopExecutorOptions,
@@ -19,5 +22,7 @@ export type {
   AgentLoopPolicyInput,
   AgentLoopProgressEvent,
   AgentLoopTrajectoryEntry,
+  AgentLoopUsageMeter,
+  AgentLoopUsageSnapshot,
   ExecuteAgentLoopInput
 } from "./types.js";

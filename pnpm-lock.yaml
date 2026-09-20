@@ -53,6 +53,9 @@ importers:
       '@astra/agent-runtime':
         specifier: workspace:*
         version: link:../agent-runtime
+      '@astra/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/agent-runtime:
     dependencies:

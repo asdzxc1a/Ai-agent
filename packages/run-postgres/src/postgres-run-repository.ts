@@ -6,10 +6,16 @@ import {
 
 import type {
   CreateRunRequest,
+  GoalState,
   RunFailure,
   RunSnapshot,
-  RunStatus
+  RunStatus,
+  RunTerminalReason
 } from "@astra/contracts";
+import {
+  applyRunUpdate,
+  validateRunSnapshot
+} from "@astra/run-engine";
 import type {
   RunEventRecord,
   RunRepository,
@@ -20,6 +26,9 @@ import type {
 interface RunRow {
   id: string;
   status: RunStatus;
+  goal_state: GoalState;
+  terminal_reason:
+    RunTerminalReason | null;
   request: CreateRunRequest;
   result: unknown | null;
   error: RunFailure | null;
@@ -53,8 +62,15 @@ function mapRun(row: RunRow): RunSnapshot {
   return {
     id: row.id,
     status: row.status,
+    goalState: row.goal_state,
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
+    ...(row.terminal_reason === null
+      ? {}
+      : {
+          terminalReason:
+            row.terminal_reason
+        }),
     ...(row.result === null
       ? {}
       : {
@@ -88,26 +104,6 @@ function mapEvent(row: EventRow): RunEventRecord {
   };
 }
 
-function validateTerminal(snapshot: RunSnapshot): void {
-  if (
-    snapshot.status === "COMPLETED" &&
-    snapshot.result === undefined
-  ) {
-    throw new Error(
-      "COMPLETED runs must contain a validated result."
-    );
-  }
-
-  if (
-    snapshot.status === "FAILED" &&
-    snapshot.error === undefined
-  ) {
-    throw new Error(
-      "FAILED runs must contain a typed error."
-    );
-  }
-}
-
 export function createPostgresPool(
   config: PoolConfig
 ): Pool {
@@ -125,22 +121,39 @@ export class PostgresRunRepository implements RunRepository {
     snapshot: RunSnapshot,
     request: CreateRunRequest
   ): Promise<void> {
+    validateRunSnapshot(
+      snapshot
+    );
+
     await this.#pool.query(
       `
         INSERT INTO runs (
           id,
           status,
+          goal_state,
+          terminal_reason,
           request,
           result,
           error,
           created_at,
           updated_at
         )
-        VALUES ($1, $2, $3::jsonb, NULL, NULL, $4, $5)
+        VALUES (
+          $1,
+          $2,
+          $3,
+          NULL,
+          $4::jsonb,
+          NULL,
+          NULL,
+          $5,
+          $6
+        )
       `,
       [
         snapshot.id,
         snapshot.status,
+        snapshot.goalState,
         JSON.stringify(request),
         snapshot.createdAt,
         snapshot.updatedAt
@@ -156,6 +169,8 @@ export class PostgresRunRepository implements RunRepository {
         SELECT
           id,
           status,
+          goal_state,
+          terminal_reason,
           request,
           result,
           error,
@@ -198,13 +213,11 @@ export class PostgresRunRepository implements RunRepository {
       throw new Error(`Run ${runId} does not exist.`);
     }
 
-    const next: RunSnapshot = {
-      ...current,
-      ...update,
-      updatedAt: new Date().toISOString()
-    };
-
-    validateTerminal(next);
+    const next =
+      applyRunUpdate(
+        current,
+        update
+      );
 
     const resultJson =
       next.result === undefined
@@ -214,20 +227,32 @@ export class PostgresRunRepository implements RunRepository {
       next.error === undefined
         ? null
         : JSON.stringify(next.error);
+    const terminalReasonJson =
+      next.terminalReason ===
+      undefined
+        ? null
+        : JSON.stringify(
+            next.terminalReason
+          );
 
     await this.#pool.query(
       `
         UPDATE runs
         SET
           status = $2,
-          result = $3::jsonb,
-          error = $4::jsonb,
-          updated_at = $5
+          goal_state = $3,
+          terminal_reason =
+            $4::jsonb,
+          result = $5::jsonb,
+          error = $6::jsonb,
+          updated_at = $7
         WHERE id = $1
       `,
       [
         runId,
         next.status,
+        next.goalState,
+        terminalReasonJson,
         resultJson,
         errorJson,
         next.updatedAt

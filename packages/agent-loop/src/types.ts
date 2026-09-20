@@ -1,6 +1,10 @@
 import type {
   AgentSession
 } from "@astra/agent-runtime";
+import type {
+  ActionEffectState,
+  RunTerminalReason
+} from "@astra/contracts";
 
 export interface AgentLoopActionSummary {
   selector: string;
@@ -12,6 +16,7 @@ export interface AgentLoopActionOutcome {
   action: AgentLoopActionSummary;
   success: boolean;
   recoverable: boolean;
+  effect: ActionEffectState;
 }
 
 export interface AgentLoopActionDecision {
@@ -20,6 +25,7 @@ export interface AgentLoopActionDecision {
   rationale: string;
   onFailure: "CONTINUE" | "FAIL";
 }
+
 export interface AgentLoopCompleteDecision {
   type: "COMPLETE";
   rationale: string;
@@ -43,12 +49,14 @@ export type AgentLoopDecision =
   | AgentLoopCompleteDecision
   | AgentLoopFailDecision
   | AgentLoopBlockedDecision;
+
 export interface AgentLoopTrajectoryEntry {
   iteration: number;
   observedActions:
     readonly AgentLoopActionSummary[];
   decision: AgentLoopDecision;
-  actionOutcome?: AgentLoopActionOutcome;
+  actionOutcome?:
+    AgentLoopActionOutcome;
 }
 
 export interface AgentLoopPolicyInput {
@@ -65,6 +73,39 @@ export interface AgentLoopPolicy {
     input: AgentLoopPolicyInput
   ): Promise<unknown>;
 }
+
+export interface AgentLoopUsageSnapshot {
+  modelTokens: number;
+  estimatedCostUsd: number;
+}
+
+export interface AgentLoopUsageMeter {
+  getUsage():
+    | AgentLoopUsageSnapshot
+    | Promise<AgentLoopUsageSnapshot>;
+}
+
+export interface AgentLoopBudget {
+  maxSteps?: number;
+  maxModelTokens?: number;
+  maxEstimatedCostUsd?: number;
+  maxRepeatedActionSelections?: number;
+}
+
+export interface AgentLoopActionEffectInput {
+  action: AgentLoopActionSummary;
+  success: boolean;
+  threw: boolean;
+}
+
+export interface AgentLoopActionEffectPolicy {
+  classify(
+    input: AgentLoopActionEffectInput
+  ):
+    | ActionEffectState
+    | Promise<ActionEffectState>;
+}
+
 export type AgentLoopProgressEvent =
   | {
       type: "OBSERVED";
@@ -82,7 +123,8 @@ export type AgentLoopProgressEvent =
   | {
       type: "ACTED";
       iteration: number;
-      outcome: AgentLoopActionOutcome;
+      outcome:
+        AgentLoopActionOutcome;
       durationMs: number;
     }
   | {
@@ -91,6 +133,7 @@ export type AgentLoopProgressEvent =
       message: string;
       durationMs: number;
     };
+
 interface AgentLoopTerminalBase {
   iterations: number;
   trajectory:
@@ -105,16 +148,23 @@ export type AgentLoopOutcome =
   | (AgentLoopTerminalBase & {
       type: "FAIL";
       message: string;
+      reason: RunTerminalReason;
     })
   | (AgentLoopTerminalBase & {
       type: "BLOCKED";
       message: string;
+      reason: RunTerminalReason;
     });
 
 export interface AgentLoopOptions {
   goal: string;
   policy: AgentLoopPolicy;
   iterationCeiling?: number;
+  budget?: AgentLoopBudget;
+  usageMeter?: AgentLoopUsageMeter;
+  effectPolicy?:
+    AgentLoopActionEffectPolicy;
+  signal?: AbortSignal;
   onProgress?(
     event: AgentLoopProgressEvent
   ): Promise<void>;
@@ -123,11 +173,16 @@ export interface AgentLoopOptions {
 export interface AgentLoopExecutorOptions {
   policy: AgentLoopPolicy;
   iterationCeiling?: number;
+  budget?: AgentLoopBudget;
+  usageMeter?: AgentLoopUsageMeter;
+  effectPolicy?:
+    AgentLoopActionEffectPolicy;
 }
 
 export interface ExecuteAgentLoopInput {
   session: AgentSession;
   goal: string;
+  signal?: AbortSignal;
   onProgress?(
     event: AgentLoopProgressEvent
   ): Promise<void>;

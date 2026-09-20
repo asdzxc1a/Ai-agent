@@ -8,7 +8,9 @@ import type {
 } from "@astra/agent-runtime";
 import type {
   AgentLoopExecutor,
-  AgentLoopProgressEvent
+  AgentLoopOutcome,
+  AgentLoopProgressEvent,
+  AgentLoopTrajectoryEntry
 } from "@astra/agent-loop";
 import type {
   ArtifactContent,
@@ -22,11 +24,16 @@ import type {
 } from "@astra/browser-runtime";
 import type {
   CreateRunRequest,
+  GoalState,
   RunFailure,
   RunFailureCode,
-  RunSnapshot
+  RunSnapshot,
+  RunTerminalReason
 } from "@astra/contracts";
 
+import type {
+  CompletionVerifier
+} from "./completion.js";
 import type {
   RunEventRecord,
   RunRepository
@@ -37,9 +44,24 @@ export interface StartRunInput {
   outputSchema?: RuntimeSchema<Record<string, unknown>>;
 }
 
+export type CancelRunResult =
+  | {
+      kind: "CANCELLED";
+      run: RunSnapshot;
+    }
+  | {
+      kind: "TERMINAL";
+      run: RunSnapshot;
+    }
+  | {
+      kind: "NOT_ACTIVE";
+      run: RunSnapshot;
+    };
+
 export interface RunService {
   createRun(input: StartRunInput): Promise<RunSnapshot>;
   getRun(runId: string): Promise<RunSnapshot | undefined>;
+  cancelRun(runId: string): Promise<CancelRunResult | undefined>;
 
   listEventsAfter(
     runId: string,
@@ -57,36 +79,193 @@ export interface RunService {
   ): Promise<ArtifactContent | undefined>;
 }
 
+type FailedGoalState =
+  Extract<
+    GoalState,
+    "FAILED" | "BLOCKED"
+  >;
+
+interface RunFailureState {
+  error: RunFailure;
+  goalState: FailedGoalState;
+}
+
+interface AbortReason {
+  code:
+    | "CANCELLED"
+    | "EXECUTION_TIMEOUT";
+  message: string;
+}
+
+interface ActiveExecution {
+  controller: AbortController;
+  done: Promise<void>;
+}
+
+type RunTerminalState =
+  | {
+      status: "COMPLETED";
+      goalState: "COMPLETED";
+      reason: RunTerminalReason;
+    }
+  | {
+      status: "FAILED";
+      goalState: FailedGoalState;
+      reason: RunTerminalReason;
+      error: RunFailure;
+    }
+  | {
+      status: "CANCELLED";
+      goalState: "BLOCKED";
+      reason: RunTerminalReason;
+      error: RunFailure;
+    };
+
 class RunExecutionError extends Error {
   public readonly code: RunFailureCode;
+  public readonly goalState:
+    FailedGoalState;
 
   public constructor(
     code: RunFailureCode,
-    message: string
+    message: string,
+    goalState: FailedGoalState =
+      "FAILED"
   ) {
     super(message);
     this.name = "RunExecutionError";
     this.code = code;
+    this.goalState = goalState;
   }
 }
 
 function failureFrom(
   error: unknown
-): RunFailure {
+): RunFailureState {
   if (error instanceof RunExecutionError) {
     return {
-      code: error.code,
-      message: error.message
+      error: {
+        code: error.code,
+        message: error.message
+      },
+      goalState:
+        error.goalState
     };
   }
 
   return {
-    code: "EXECUTION_FAILED",
-    message:
-      error instanceof Error
-        ? error.message
-        : "Run execution failed."
+    error: {
+      code: "EXECUTION_FAILED",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Run execution failed."
+    },
+    goalState: "FAILED"
   };
+}
+
+function isRecord(
+  value: unknown
+): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
+
+function abortReasonFrom(
+  signal: AbortSignal
+): AbortReason {
+  const reason = signal.reason;
+
+  if (
+    isRecord(reason) &&
+    reason.code ===
+      "EXECUTION_TIMEOUT"
+  ) {
+    return {
+      code: "EXECUTION_TIMEOUT",
+      message:
+        typeof reason.message ===
+          "string"
+          ? reason.message
+          : "Run exceeded its wall-clock timeout."
+    };
+  }
+
+  return {
+    code: "CANCELLED",
+    message:
+      isRecord(reason) &&
+      typeof reason.message ===
+        "string"
+        ? reason.message
+        : "Run cancelled."
+  };
+}
+
+function abortError(): Error {
+  const error =
+    new Error("Run aborted.");
+  error.name = "AbortError";
+  return error;
+}
+
+function throwIfAborted(
+  signal: AbortSignal
+): void {
+  if (signal.aborted) {
+    throw abortError();
+  }
+}
+
+async function abortable<T>(
+  promise: Promise<T>,
+  signal: AbortSignal
+): Promise<T> {
+  throwIfAborted(signal);
+
+  return new Promise<T>(
+    (resolve, reject) => {
+      const onAbort = () => {
+        reject(abortError());
+      };
+
+      signal.addEventListener(
+        "abort",
+        onAbort,
+        { once: true }
+      );
+
+      promise.then(
+        (value) => {
+          signal.removeEventListener(
+            "abort",
+            onAbort
+          );
+          resolve(value);
+        },
+        (nested: unknown) => {
+          signal.removeEventListener(
+            "abort",
+            onAbort
+          );
+          reject(nested);
+        }
+      );
+    }
+  );
+}
+
+function failureCodeFromReason(
+  reason: RunTerminalReason
+): RunFailureCode {
+  return reason.code ===
+    "GOAL_VERIFIED"
+    ? "AGENT_LOOP_FAILED"
+    : reason.code;
 }
 
 function errorMessage(
@@ -127,6 +306,9 @@ export interface RunEngineOptions {
   agentRuntime: AgentRuntime;
   artifactStore?: ArtifactStore;
   agentLoop?: AgentLoopExecutor;
+  completionVerifier?:
+    CompletionVerifier;
+  executionTimeoutMs?: number;
 }
 
 export class RunEngine implements RunService {
@@ -135,13 +317,21 @@ export class RunEngine implements RunService {
   readonly #agentRuntime: AgentRuntime;
   readonly #artifactStore?: ArtifactStore;
   readonly #agentLoop?: AgentLoopExecutor;
+  readonly #completionVerifier?:
+    CompletionVerifier;
+  readonly #executionTimeoutMs?:
+    number;
+  readonly #activeExecutions =
+    new Map<string, ActiveExecution>();
 
   public constructor({
     repository,
     browserRuntime,
     agentRuntime,
     artifactStore,
-    agentLoop
+    agentLoop,
+    completionVerifier,
+    executionTimeoutMs
   }: RunEngineOptions) {
     this.#repository = repository;
     this.#browserRuntime = browserRuntime;
@@ -154,6 +344,33 @@ export class RunEngine implements RunService {
     if (agentLoop !== undefined) {
       this.#agentLoop = agentLoop;
     }
+
+    if (
+      completionVerifier !==
+      undefined
+    ) {
+      this.#completionVerifier =
+        completionVerifier;
+    }
+
+    if (
+      executionTimeoutMs !==
+      undefined
+    ) {
+      if (
+        !Number.isFinite(
+          executionTimeoutMs
+        ) ||
+        executionTimeoutMs <= 0
+      ) {
+        throw new RangeError(
+          "executionTimeoutMs must be a positive finite number."
+        );
+      }
+
+      this.#executionTimeoutMs =
+        executionTimeoutMs;
+    }
   }
 
   public async createRun(
@@ -163,6 +380,7 @@ export class RunEngine implements RunService {
     const snapshot: RunSnapshot = {
       id: randomUUID(),
       status: "PENDING",
+      goalState: "IN_PROGRESS",
       createdAt: now,
       updatedAt: now
     };
@@ -180,14 +398,114 @@ export class RunEngine implements RunService {
       }
     );
 
+    const controller =
+      new AbortController();
+    let resolveDone:
+      (() => void) | undefined;
+    const done =
+      new Promise<void>((resolve) => {
+        resolveDone = resolve;
+      });
+
+    this.#activeExecutions.set(
+      snapshot.id,
+      {
+        controller,
+        done
+      }
+    );
+
     queueMicrotask(() => {
       void this.#execute(
         snapshot.id,
-        input
-      );
+        input,
+        controller
+      )
+        .catch(() => undefined)
+        .finally(() => {
+          this.#activeExecutions.delete(
+            snapshot.id
+          );
+          resolveDone?.();
+        });
     });
 
     return snapshot;
+  }
+
+  public async cancelRun(
+    runId: string
+  ): Promise<CancelRunResult | undefined> {
+    const current =
+      await this.#repository.getRun(
+        runId
+      );
+
+    if (current === undefined) {
+      return undefined;
+    }
+
+    if (
+      current.status ===
+        "COMPLETED" ||
+      current.status === "FAILED" ||
+      current.status ===
+        "CANCELLED"
+    ) {
+      return {
+        kind: "TERMINAL",
+        run: current
+      };
+    }
+
+    const active =
+      this.#activeExecutions.get(
+        runId
+      );
+
+    if (active === undefined) {
+      return {
+        kind: "NOT_ACTIVE",
+        run: current
+      };
+    }
+
+    if (
+      !active.controller.signal
+        .aborted
+    ) {
+      active.controller.abort({
+        code: "CANCELLED",
+        message:
+          "Run cancelled by request."
+      });
+    }
+
+    await active.done;
+
+    const cancelled =
+      await this.#repository.getRun(
+        runId
+      );
+
+    if (cancelled === undefined) {
+      return undefined;
+    }
+
+    if (
+      cancelled.status ===
+      "CANCELLED"
+    ) {
+      return {
+        kind: "CANCELLED",
+        run: cancelled
+      };
+    }
+
+    return {
+      kind: "TERMINAL",
+      run: cancelled
+    };
   }
 
   public getRun(
@@ -317,7 +635,7 @@ export class RunEngine implements RunService {
   async #writeSummary(
     runId: string,
     input: StartRunInput,
-    failure: RunFailure | undefined,
+    terminal: RunTerminalState,
     selectedAction: AgentAction | undefined,
     timings: Record<string, number>,
     diagnosticCount: number,
@@ -335,23 +653,76 @@ export class RunEngine implements RunService {
         value: {
           runId,
           url: input.request.url,
-          status:
-            failure === undefined
-              ? "COMPLETED"
-              : "FAILED",
-          action: actionSummary(selectedAction),
+          status: terminal.status,
+          goalState:
+            terminal.goalState,
+          terminalReason:
+            terminal.reason,
+          action:
+            actionSummary(
+              selectedAction
+            ),
           timings,
           diagnosticCount,
-          ...(failure === undefined
-            ? {}
-            : {
-                failure
-              }),
+          ...(
+            "error" in terminal
+              ? {
+                  failure:
+                    terminal.error
+                }
+              : {}
+          ),
           artifactErrors
         }
       });
     } catch {
       // Artifact capture is intentionally best-effort.
+    }
+  }
+
+  async #verifyCompletion(
+    input: StartRunInput,
+    candidateResult: unknown,
+    trajectory:
+      readonly AgentLoopTrajectoryEntry[],
+    signal: AbortSignal
+  ): Promise<void> {
+    if (
+      this.#completionVerifier ===
+      undefined
+    ) {
+      throw new RunExecutionError(
+        "COMPLETION_REJECTED",
+        "No owned completion verifier accepted the run result."
+      );
+    }
+
+    const verification =
+      await abortable(
+        this.#completionVerifier.verify({
+          url: input.request.url,
+          goal: input.request.goal,
+          candidateResult,
+          source:
+            this.#agentLoop ===
+            undefined
+              ? "ONE_STEP"
+              : "AGENT_LOOP",
+          trajectory:
+            structuredClone(
+              trajectory
+            ),
+          signal
+        }),
+        signal
+      );
+
+    if (!verification.verified) {
+      throw new RunExecutionError(
+        "COMPLETION_REJECTED",
+        verification.message,
+        verification.goalState
+      );
     }
   }
 
@@ -434,6 +805,7 @@ export class RunEngine implements RunService {
       action: progress.outcome.action,
       success: progress.outcome.success,
       recoverable: progress.outcome.recoverable,
+      effect: progress.outcome.effect,
       durationMs: progress.durationMs
     };
 
@@ -460,32 +832,78 @@ export class RunEngine implements RunService {
 
   async #execute(
     runId: string,
-    input: StartRunInput
+    input: StartRunInput,
+    controller: AbortController
   ): Promise<void> {
-    const totalStartedAt = Date.now();
-    const timings: Record<string, number> = {};
-    const artifactErrors: string[] = [];
+    const signal =
+      controller.signal;
+    const totalStartedAt =
+      Date.now();
+    const timings:
+      Record<string, number> = {};
+    const artifactErrors:
+      string[] = [];
 
-    await this.#repository.updateRun(runId, {
-      status: "RUNNING"
-    });
+    let timeoutHandle:
+      ReturnType<
+        typeof setTimeout
+      > | undefined;
 
-    await this.#repository.appendEvent(
+    if (
+      this.#executionTimeoutMs !==
+      undefined
+    ) {
+      timeoutHandle = setTimeout(
+        () => {
+          if (!signal.aborted) {
+            controller.abort({
+              code:
+                "EXECUTION_TIMEOUT",
+              message:
+                "Run exceeded its wall-clock timeout."
+            });
+          }
+        },
+        this.#executionTimeoutMs
+      );
+    }
+
+    await this.#repository.updateRun(
       runId,
-      "RUN_STARTED",
       {
         status: "RUNNING"
       }
     );
 
-    let browser: BrowserSession | undefined;
-    let agent: AgentSession | undefined;
+    await this.#repository.appendEvent(
+      runId,
+      "RUN_STARTED",
+      {
+        status: "RUNNING",
+        goalState:
+          "IN_PROGRESS"
+      }
+    );
+
+    let browser:
+      BrowserSession | undefined;
+    let agent:
+      AgentSession | undefined;
     let result: unknown;
-    let failure: RunFailure | undefined;
-    let selectedAction: AgentAction | undefined;
+    let failure:
+      RunFailureState | undefined;
+    let abortReason:
+      AbortReason | undefined;
+    let selectedAction:
+      AgentAction | undefined;
     let diagnosticCount: number;
+    let trajectory:
+      readonly AgentLoopTrajectoryEntry[] =
+      [];
 
     try {
+      throwIfAborted(signal);
+
       let startedAt = Date.now();
       browser =
         await this.#browserRuntime.createSession({
@@ -494,13 +912,16 @@ export class RunEngine implements RunService {
       timings.browserCreateMs =
         Date.now() - startedAt;
 
+      throwIfAborted(signal);
+
       await this.#repository.appendStep(
         runId,
         "BROWSER_CREATED",
         {
           browserId: browser.id,
           viewerAvailable:
-            browser.viewerUrl !== undefined
+            browser.viewerUrl !==
+            undefined
         }
       );
 
@@ -512,6 +933,8 @@ export class RunEngine implements RunService {
       timings.agentOpenMs =
         Date.now() - startedAt;
 
+      throwIfAborted(signal);
+
       await this.#repository.appendStep(
         runId,
         "AGENT_OPENED",
@@ -519,7 +942,12 @@ export class RunEngine implements RunService {
       );
 
       startedAt = Date.now();
-      await agent.navigate(input.request.url);
+      await abortable(
+        agent.navigate(
+          input.request.url
+        ),
+        signal
+      );
       timings.navigateMs =
         Date.now() - startedAt;
 
@@ -538,17 +966,29 @@ export class RunEngine implements RunService {
         artifactErrors
       );
 
-      if (this.#agentLoop !== undefined) {
+      if (
+        this.#agentLoop !==
+        undefined
+      ) {
         startedAt = Date.now();
 
-        const loopResult =
+        const loopResult:
+          AgentLoopOutcome =
           await this.#agentLoop.execute({
             session: agent,
-            goal: input.request.goal,
-            onProgress: async (progress) => {
-              if (progress.type === "ACTED") {
+            goal:
+              input.request.goal,
+            signal,
+            onProgress: async (
+              progress
+            ) => {
+              if (
+                progress.type ===
+                "ACTED"
+              ) {
                 selectedAction = {
-                  ...progress.outcome.action
+                  ...progress
+                    .outcome.action
                 };
               }
 
@@ -563,110 +1003,170 @@ export class RunEngine implements RunService {
 
         timings.loopMs =
           Date.now() - startedAt;
+        trajectory =
+          loopResult.trajectory;
 
         await this.#repository.appendStep(
           runId,
           "AGENT_LOOP_RESULT",
           {
-            kind: loopResult.type,
-            iterations: loopResult.iterations
+            kind:
+              loopResult.type,
+            iterations:
+              loopResult.iterations,
+            ...(loopResult.type ===
+            "COMPLETE"
+              ? {}
+              : {
+                  reason:
+                    loopResult.reason
+                })
           }
         );
 
-        if (loopResult.type === "BLOCKED") {
+        if (
+          loopResult.type ===
+          "BLOCKED"
+        ) {
           throw new RunExecutionError(
-            "AGENT_BLOCKED",
+            failureCodeFromReason(
+              loopResult.reason
+            ),
+            loopResult.message,
+            "BLOCKED"
+          );
+        }
+
+        if (
+          loopResult.type ===
+          "FAIL"
+        ) {
+          throw new RunExecutionError(
+            failureCodeFromReason(
+              loopResult.reason
+            ),
             loopResult.message
           );
         }
 
-        if (loopResult.type === "FAIL") {
-          throw new RunExecutionError(
-            "AGENT_LOOP_FAILED",
-            loopResult.message
-          );
-        }
-
-        result = loopResult.result;
+        result =
+          loopResult.result;
       } else {
-      startedAt = Date.now();
-      const observed = await agent.observe(
-        input.request.goal
-      );
-      timings.observeMs =
-        Date.now() - startedAt;
-
-      await this.#repository.appendStep(
-        runId,
-        "OBSERVE",
-        {
-          actionCount: observed.length,
-          actions: observed
-        }
-      );
-
-      selectedAction = observed.find(
-        (candidate) =>
-          candidate.method !== undefined &&
-          candidate.method !== "not-supported"
-      );
-
-      if (selectedAction !== undefined) {
         startedAt = Date.now();
-        const actionResult =
-          await agent.act(selectedAction);
-        timings.actMs =
-          Date.now() - startedAt;
+        const observed =
+          await abortable(
+            agent.observe(
+              input.request.goal
+            ),
+            signal
+          );
+        timings.observeMs =
+          Date.now() -
+          startedAt;
 
         await this.#repository.appendStep(
           runId,
-          "ACT",
+          "OBSERVE",
           {
-            action: selectedAction,
-            result: actionResult
+            actionCount:
+              observed.length,
+            actions: observed
           }
         );
 
-        if (!actionResult.success) {
+        selectedAction =
+          observed.find(
+            (candidate) =>
+              candidate.method !==
+                undefined &&
+              candidate.method !==
+                "not-supported"
+          );
+
+        if (
+          selectedAction !==
+          undefined
+        ) {
+          startedAt = Date.now();
+          const actionResult =
+            await abortable(
+              agent.act(
+                selectedAction
+              ),
+              signal
+            );
+          timings.actMs =
+            Date.now() -
+            startedAt;
+
+          await this.#repository.appendStep(
+            runId,
+            "ACT",
+            {
+              action:
+                selectedAction,
+              result:
+                actionResult
+            }
+          );
+
+          if (
+            !actionResult.success
+          ) {
+            throw new RunExecutionError(
+              "ACTION_FAILED",
+              actionResult.message
+            );
+          }
+
+          await this.#captureScreenshot(
+            runId,
+            browser,
+            "after-action.jpg",
+            artifactErrors
+          );
+
+          if (
+            input.outputSchema ===
+            undefined
+          ) {
+            result = {
+              acted: true,
+              action:
+                actionSummary(
+                  selectedAction
+                ),
+              message:
+                actionResult.message
+            };
+          }
+        } else if (
+          input.outputSchema ===
+          undefined
+        ) {
           throw new RunExecutionError(
-            "ACTION_FAILED",
-            actionResult.message
+            "NO_ACTION_FOUND",
+            "The agent found no actionable element for the goal."
           );
         }
+      }
 
-        await this.#captureScreenshot(
-          runId,
-          browser,
-          "after-action.jpg",
-          artifactErrors
-        );
-
-        if (input.outputSchema === undefined) {
-          result = {
-            acted: true,
-            action: selectedAction,
-            message: actionResult.message
-          };
-        }
-      } else if (
-        input.outputSchema === undefined
+      if (
+        input.outputSchema !==
+        undefined
       ) {
-        throw new RunExecutionError(
-          "NO_ACTION_FOUND",
-          "The agent found no actionable element for the goal."
-        );
-      }
-
-      }
-
-      if (input.outputSchema !== undefined) {
         startedAt = Date.now();
-        result = await agent.extract(
-          input.request.goal,
-          input.outputSchema
-        );
+        result =
+          await abortable(
+            agent.extract(
+              input.request.goal,
+              input.outputSchema
+            ),
+            signal
+          );
         timings.extractMs =
-          Date.now() - startedAt;
+          Date.now() -
+          startedAt;
 
         await this.#repository.appendStep(
           runId,
@@ -676,8 +1176,49 @@ export class RunEngine implements RunService {
           }
         );
       }
+
+      if (result === undefined) {
+        throw new RunExecutionError(
+          "COMPLETION_REJECTED",
+          "Run produced no candidate result for completion verification."
+        );
+      }
+
+      startedAt = Date.now();
+      await this.#verifyCompletion(
+        input,
+        result,
+        trajectory,
+        signal
+      );
+      timings.verifyMs =
+        Date.now() - startedAt;
+
+      await this.#repository.appendStep(
+        runId,
+        "GOAL_VERIFIED",
+        {
+          verified: true
+        }
+      );
     } catch (error) {
-      failure = failureFrom(error);
+      if (
+        error instanceof
+        RunExecutionError
+      ) {
+        failure =
+          failureFrom(error);
+      } else if (
+        signal.aborted
+      ) {
+        abortReason =
+          abortReasonFrom(
+            signal
+          );
+      } else {
+        failure =
+          failureFrom(error);
+      }
 
       await this.#captureScreenshot(
         runId,
@@ -686,7 +1227,17 @@ export class RunEngine implements RunService {
         artifactErrors
       );
     } finally {
-      const cleanupErrors: string[] = [];
+      if (
+        timeoutHandle !==
+        undefined
+      ) {
+        clearTimeout(
+          timeoutHandle
+        );
+      }
+
+      const cleanupErrors:
+        string[] = [];
       let agentClosed = false;
       let browserClosed = false;
 
@@ -696,9 +1247,11 @@ export class RunEngine implements RunService {
           browser,
           artifactErrors
         );
-      diagnosticCount = diagnostics.length;
+      diagnosticCount =
+        diagnostics.length;
 
-      const cleanupStartedAt = Date.now();
+      const cleanupStartedAt =
+        Date.now();
 
       if (agent !== undefined) {
         try {
@@ -723,7 +1276,8 @@ export class RunEngine implements RunService {
       }
 
       timings.cleanupMs =
-        Date.now() - cleanupStartedAt;
+        Date.now() -
+        cleanupStartedAt;
 
       try {
         await this.#repository.appendStep(
@@ -736,50 +1290,163 @@ export class RunEngine implements RunService {
           }
         );
       } catch (error) {
-        if (failure === undefined) {
-          cleanupErrors.push(
-            errorMessage(error)
-          );
-        }
+        cleanupErrors.push(
+          errorMessage(error)
+        );
       }
 
       if (
-        failure === undefined &&
         cleanupErrors.length > 0
       ) {
         failure = {
-          code: "CLEANUP_FAILED",
-          message: cleanupErrors.join("; ")
+          error: {
+            code:
+              "CLEANUP_FAILED",
+            message:
+              cleanupErrors.join(
+                "; "
+              )
+          },
+          goalState: "FAILED"
         };
+        abortReason = undefined;
       }
     }
 
     timings.totalMs =
-      Date.now() - totalStartedAt;
+      Date.now() -
+      totalStartedAt;
+
+    let terminal:
+      RunTerminalState;
+
+    if (failure !== undefined) {
+      terminal = {
+        status: "FAILED",
+        goalState:
+          failure.goalState,
+        reason: {
+          code:
+            failure.error.code,
+          message:
+            failure.error.message
+        },
+        error: failure.error
+      };
+    } else if (
+      abortReason !== undefined
+    ) {
+      const error:
+        RunFailure = {
+          code:
+            abortReason.code,
+          message:
+            abortReason.message
+        };
+
+      terminal =
+        abortReason.code ===
+        "CANCELLED"
+          ? {
+              status:
+                "CANCELLED",
+              goalState:
+                "BLOCKED",
+              reason:
+                abortReason,
+              error
+            }
+          : {
+              status: "FAILED",
+              goalState:
+                "BLOCKED",
+              reason:
+                abortReason,
+              error
+            };
+    } else {
+      terminal = {
+        status: "COMPLETED",
+        goalState:
+          "COMPLETED",
+        reason: {
+          code:
+            "GOAL_VERIFIED",
+          message:
+            "Owned completion verifier accepted the run result."
+        }
+      };
+    }
 
     await this.#writeSummary(
       runId,
       input,
-      failure,
+      terminal,
       selectedAction,
       timings,
       diagnosticCount,
       artifactErrors
     );
 
-    if (failure !== undefined) {
+    if (
+      terminal.status ===
+      "CANCELLED"
+    ) {
+      await this.#repository.appendEvent(
+        runId,
+        "RUN_CANCELLED",
+        {
+          goalState:
+            terminal.goalState,
+          reason:
+            terminal.reason
+        }
+      );
+
+      await this.#repository.updateRun(
+        runId,
+        {
+          status: "CANCELLED",
+          goalState:
+            terminal.goalState,
+          terminalReason:
+            terminal.reason,
+          error:
+            terminal.error
+        }
+      );
+      return;
+    }
+
+    if (
+      terminal.status ===
+      "FAILED"
+    ) {
       await this.#repository.appendEvent(
         runId,
         "RUN_FAILED",
         {
-          error: failure
+          goalState:
+            terminal.goalState,
+          reason:
+            terminal.reason,
+          error:
+            terminal.error
         }
       );
 
-      await this.#repository.updateRun(runId, {
-        status: "FAILED",
-        error: failure
-      });
+      await this.#repository.updateRun(
+        runId,
+        {
+          status: "FAILED",
+          goalState:
+            terminal.goalState,
+          terminalReason:
+            terminal.reason,
+          error:
+            terminal.error
+        }
+      );
       return;
     }
 
@@ -787,13 +1454,25 @@ export class RunEngine implements RunService {
       runId,
       "RUN_COMPLETED",
       {
+        goalState:
+          terminal.goalState,
+        reason:
+          terminal.reason,
         result
       }
     );
 
-    await this.#repository.updateRun(runId, {
-      status: "COMPLETED",
-      result
-    });
+    await this.#repository.updateRun(
+      runId,
+      {
+        status: "COMPLETED",
+        goalState:
+          "COMPLETED",
+        terminalReason:
+          terminal.reason,
+        result
+      }
+    );
   }
+
 }

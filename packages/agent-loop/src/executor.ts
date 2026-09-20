@@ -3,14 +3,26 @@ import type {
   AgentActionResult,
   AgentSession
 } from "@astra/agent-runtime";
+import {
+  isActionEffectState
+} from "@astra/contracts";
+import type {
+  ActionEffectState,
+  RunTerminalReason,
+  RunTerminalReasonCode
+} from "@astra/contracts";
 
 import type {
+  AgentLoopActionEffectPolicy,
   AgentLoopActionSummary,
+  AgentLoopBudget,
   AgentLoopDecision,
   AgentLoopExecutorOptions,
   AgentLoopOptions,
   AgentLoopOutcome,
   AgentLoopTrajectoryEntry,
+  AgentLoopUsageMeter,
+  AgentLoopUsageSnapshot,
   ExecuteAgentLoopInput
 } from "./types.js";
 
@@ -26,6 +38,7 @@ function isRecord(
     !Array.isArray(value)
   );
 }
+
 function nonEmptyString(
   value: unknown
 ): value is string {
@@ -45,7 +58,9 @@ function assertKnownKeys(
 
   if (unexpected !== undefined) {
     throw new TypeError(
-      `Agent-loop decision contains unsupported field "${unexpected}".`
+      'Agent-loop decision contains unsupported field "' +
+        unexpected +
+        '".'
     );
   }
 }
@@ -223,6 +238,7 @@ function summarizeActions(
     summarizeAgentAction
   );
 }
+
 function cloneDecision(
   decision: AgentLoopDecision
 ): AgentLoopDecision {
@@ -245,6 +261,58 @@ function actionFailure(
   };
 }
 
+function terminalReason(
+  code: RunTerminalReasonCode,
+  message: string
+): RunTerminalReason {
+  return {
+    code,
+    message
+  };
+}
+
+function fail(
+  code: RunTerminalReasonCode,
+  message: string,
+  iteration: number,
+  trajectory:
+    AgentLoopTrajectoryEntry[]
+): AgentLoopOutcome {
+  return {
+    type: "FAIL",
+    message,
+    reason:
+      terminalReason(
+        code,
+        message
+      ),
+    iterations: iteration,
+    trajectory:
+      structuredClone(trajectory)
+  };
+}
+
+function block(
+  code: RunTerminalReasonCode,
+  message: string,
+  iteration: number,
+  trajectory:
+    AgentLoopTrajectoryEntry[]
+): AgentLoopOutcome {
+  return {
+    type: "BLOCKED",
+    message,
+    reason:
+      terminalReason(
+        code,
+        message
+      ),
+    iterations: iteration,
+    trajectory:
+      structuredClone(trajectory)
+  };
+}
+
 function validateCeiling(
   value: number
 ): void {
@@ -259,12 +327,373 @@ function validateCeiling(
   }
 }
 
+function validatePositiveInteger(
+  value: number | undefined,
+  label: string
+): void {
+  if (value === undefined) {
+    return;
+  }
+
+  if (
+    !Number.isInteger(value) ||
+    value < 1
+  ) {
+    throw new RangeError(
+      label +
+        " must be a positive integer."
+    );
+  }
+}
+
+function validateNonNegativeNumber(
+  value: number | undefined,
+  label: string,
+  integer = false
+): void {
+  if (value === undefined) {
+    return;
+  }
+
+  if (
+    !Number.isFinite(value) ||
+    value < 0 ||
+    (integer &&
+      !Number.isInteger(value))
+  ) {
+    throw new RangeError(
+      label +
+        " must be a non-negative " +
+        (integer
+          ? "integer."
+          : "finite number.")
+    );
+  }
+}
+
+function validateBudget(
+  budget: AgentLoopBudget | undefined,
+  usageMeter:
+    AgentLoopUsageMeter | undefined
+): void {
+  if (budget === undefined) {
+    return;
+  }
+
+  validatePositiveInteger(
+    budget.maxSteps,
+    "maxSteps"
+  );
+  validatePositiveInteger(
+    budget.maxRepeatedActionSelections,
+    "maxRepeatedActionSelections"
+  );
+  validateNonNegativeNumber(
+    budget.maxModelTokens,
+    "maxModelTokens",
+    true
+  );
+  validateNonNegativeNumber(
+    budget.maxEstimatedCostUsd,
+    "maxEstimatedCostUsd"
+  );
+
+  if (
+    (
+      budget.maxModelTokens !==
+        undefined ||
+      budget.maxEstimatedCostUsd !==
+        undefined
+    ) &&
+    usageMeter === undefined
+  ) {
+    throw new TypeError(
+      "Model token/cost budgets require an AgentLoopUsageMeter."
+    );
+  }
+}
+
+function validateUsage(
+  usage: AgentLoopUsageSnapshot
+): void {
+  validateNonNegativeNumber(
+    usage.modelTokens,
+    "modelTokens",
+    true
+  );
+  validateNonNegativeNumber(
+    usage.estimatedCostUsd,
+    "estimatedCostUsd"
+  );
+}
+
+async function usageViolation(
+  options: AgentLoopOptions
+): Promise<RunTerminalReason | undefined> {
+  if (
+    options.budget === undefined ||
+    options.usageMeter === undefined
+  ) {
+    return undefined;
+  }
+
+  const usage =
+    await options.usageMeter.getUsage();
+  validateUsage(usage);
+
+  if (
+    options.budget.maxModelTokens !==
+      undefined &&
+    usage.modelTokens >
+      options.budget.maxModelTokens
+  ) {
+    return terminalReason(
+      "MODEL_TOKEN_BUDGET_EXCEEDED",
+      "Agent loop exceeded its model-token budget."
+    );
+  }
+
+  if (
+    options.budget
+      .maxEstimatedCostUsd !==
+      undefined &&
+    usage.estimatedCostUsd >
+      options.budget
+        .maxEstimatedCostUsd
+  ) {
+    return terminalReason(
+      "MODEL_COST_BUDGET_EXCEEDED",
+      "Agent loop exceeded its model-cost budget."
+    );
+  }
+
+  return undefined;
+}
+
+function abortError(): Error {
+  const error =
+    new Error(
+      "Agent loop aborted."
+    );
+  error.name = "AbortError";
+  return error;
+}
+
+function throwIfAborted(
+  signal: AbortSignal | undefined
+): void {
+  if (signal?.aborted === true) {
+    throw abortError();
+  }
+}
+
+async function abortable<T>(
+  promise: Promise<T>,
+  signal: AbortSignal | undefined
+): Promise<T> {
+  if (signal === undefined) {
+    return promise;
+  }
+
+  throwIfAborted(signal);
+
+  return new Promise<T>(
+    (resolve, reject) => {
+      const onAbort = () => {
+        reject(abortError());
+      };
+
+      signal.addEventListener(
+        "abort",
+        onAbort,
+        {
+          once: true
+        }
+      );
+
+      promise.then(
+        (value) => {
+          signal.removeEventListener(
+            "abort",
+            onAbort
+          );
+          resolve(value);
+        },
+        (error: unknown) => {
+          signal.removeEventListener(
+            "abort",
+            onAbort
+          );
+          reject(error);
+        }
+      );
+    }
+  );
+}
+
+type ActionExecution =
+  | {
+      kind: "RESULT";
+      result:
+        AgentActionResult;
+      threw: boolean;
+    }
+  | {
+      kind: "ABORTED";
+    };
+
+async function executeAction(
+  session: AgentSession,
+  action: AgentAction,
+  signal:
+    AbortSignal | undefined
+): Promise<ActionExecution> {
+  throwIfAborted(signal);
+
+  const actionPromise =
+    session.act(action).then(
+      (result) => ({
+        kind:
+          "RESULT" as const,
+        result,
+        threw: false
+      }),
+      (error: unknown) => ({
+        kind:
+          "RESULT" as const,
+        result:
+          actionFailure(
+            action,
+            error
+          ),
+        threw: true
+      })
+    );
+
+  if (signal === undefined) {
+    return actionPromise;
+  }
+
+  return new Promise<
+    ActionExecution
+  >((resolve) => {
+    const onAbort = () => {
+      resolve({
+        kind: "ABORTED"
+      });
+    };
+
+    signal.addEventListener(
+      "abort",
+      onAbort,
+      { once: true }
+    );
+
+    void actionPromise.then(
+      (execution) => {
+        signal.removeEventListener(
+          "abort",
+          onAbort
+        );
+        resolve(execution);
+      }
+    );
+  });
+}
+
+function actionSignature(
+  action: AgentLoopActionSummary
+): string {
+  return [
+    action.method ?? "",
+    action.selector,
+    action.description
+  ].join("\u0000");
+}
+
+function repeatedActionCount(
+  trajectory:
+    readonly AgentLoopTrajectoryEntry[],
+  action: AgentLoopActionSummary
+): number {
+  const signature =
+    actionSignature(action);
+  let count = 0;
+
+  for (
+    let index =
+      trajectory.length - 1;
+    index >= 0;
+    index -= 1
+  ) {
+    const previous =
+      trajectory[index]
+        ?.actionOutcome?.action;
+
+    if (
+      previous === undefined ||
+      actionSignature(previous) !==
+        signature
+    ) {
+      break;
+    }
+
+    count += 1;
+  }
+
+  return count;
+}
+
+const DEFAULT_EFFECT_POLICY:
+  AgentLoopActionEffectPolicy = {
+    classify(input) {
+      return input.success
+        ? "committed"
+        : "none";
+    }
+  };
+
+async function classifyEffect(
+  options: AgentLoopOptions,
+  action: AgentLoopActionSummary,
+  success: boolean,
+  threw: boolean
+): Promise<ActionEffectState> {
+  const policy =
+    options.effectPolicy ??
+    DEFAULT_EFFECT_POLICY;
+
+  const effect =
+    await abortable(
+      Promise.resolve(
+        policy.classify({
+          action:
+            structuredClone(action),
+          success,
+          threw
+        })
+      ),
+      options.signal
+    );
+
+  if (
+    !isActionEffectState(effect)
+  ) {
+    throw new TypeError(
+      "Action-effect policy must return none, committed, or unknown."
+    );
+  }
+
+  return effect;
+}
+
 async function rejectDecision(
   options: AgentLoopOptions,
   iteration: number,
   startedAt: number,
   error: unknown,
-  trajectory: AgentLoopTrajectoryEntry[]
+  trajectory:
+    AgentLoopTrajectoryEntry[]
 ): Promise<AgentLoopOutcome> {
   const message =
     error instanceof Error
@@ -280,13 +709,12 @@ async function rejectDecision(
       Date.now() - startedAt
   });
 
-  return {
-    type: "FAIL",
+  return fail(
+    "INVALID_AGENT_DECISION",
     message,
-    iterations: iteration,
-    trajectory:
-      structuredClone(trajectory)
-  };
+    iteration,
+    trajectory
+  );
 }
 
 export async function executeAgentLoop(
@@ -296,7 +724,13 @@ export async function executeAgentLoop(
   const iterationCeiling =
     options.iterationCeiling ??
     DEFAULT_ITERATION_CEILING;
-  validateCeiling(iterationCeiling);
+  validateCeiling(
+    iterationCeiling
+  );
+  validateBudget(
+    options.budget,
+    options.usageMeter
+  );
 
   const trajectory:
     AgentLoopTrajectoryEntry[] = [];
@@ -306,10 +740,17 @@ export async function executeAgentLoop(
     iteration <= iterationCeiling;
     iteration += 1
   ) {
+    throwIfAborted(
+      options.signal
+    );
+
     let startedAt = Date.now();
     const observed =
-      await session.observe(
-        options.goal
+      await abortable(
+        session.observe(
+          options.goal
+        ),
+        options.signal
       );
     const summaries =
       summarizeActions(observed);
@@ -323,23 +764,54 @@ export async function executeAgentLoop(
         Date.now() - startedAt
     });
 
+    const afterObserveBudget =
+      await usageViolation(
+        options
+      );
+
+    if (
+      afterObserveBudget !==
+      undefined
+    ) {
+      return block(
+        afterObserveBudget.code,
+        afterObserveBudget.message,
+        iteration,
+        trajectory
+      );
+    }
+
     startedAt = Date.now();
 
     let decision: AgentLoopDecision;
     try {
       const rawDecision =
-        await options.policy.decide({
-          goal: options.goal,
-          iteration,
-          observedActions:
-            structuredClone(summaries),
-          trajectory:
-            structuredClone(trajectory)
-        });
+        await abortable(
+          options.policy.decide({
+            goal: options.goal,
+            iteration,
+            observedActions:
+              structuredClone(
+                summaries
+              ),
+            trajectory:
+              structuredClone(
+                trajectory
+              )
+          }),
+          options.signal
+        );
 
       decision =
         parseDecision(rawDecision);
     } catch (error) {
+      if (
+        options.signal?.aborted ===
+        true
+      ) {
+        throw error;
+      }
+
       return rejectDecision(
         options,
         iteration,
@@ -358,8 +830,36 @@ export async function executeAgentLoop(
         Date.now() - startedAt
     });
 
+    const afterDecisionBudget =
+      await usageViolation(
+        options
+      );
+
     if (
-      decision.type === "COMPLETE"
+      afterDecisionBudget !==
+      undefined
+    ) {
+      trajectory.push({
+        iteration,
+        observedActions:
+          structuredClone(
+            summaries
+          ),
+        decision:
+          cloneDecision(decision)
+      });
+
+      return block(
+        afterDecisionBudget.code,
+        afterDecisionBudget.message,
+        iteration,
+        trajectory
+      );
+    }
+
+    if (
+      decision.type ===
+      "COMPLETE"
     ) {
       trajectory.push({
         iteration,
@@ -380,32 +880,14 @@ export async function executeAgentLoop(
           },
         iterations: iteration,
         trajectory:
-          structuredClone(trajectory)
-      };
-    }
-
-    if (decision.type === "FAIL") {
-      trajectory.push({
-        iteration,
-        observedActions:
           structuredClone(
-            summaries
-          ),
-        decision:
-          cloneDecision(decision)
-      });
-
-      return {
-        type: "FAIL",
-        message: decision.message,
-        iterations: iteration,
-        trajectory:
-          structuredClone(trajectory)
+            trajectory
+          )
       };
     }
 
     if (
-      decision.type === "BLOCKED"
+      decision.type === "FAIL"
     ) {
       trajectory.push({
         iteration,
@@ -417,13 +899,34 @@ export async function executeAgentLoop(
           cloneDecision(decision)
       });
 
-      return {
-        type: "BLOCKED",
-        message: decision.message,
-        iterations: iteration,
-        trajectory:
-          structuredClone(trajectory)
-      };
+      return fail(
+        "POLICY_FAILED",
+        decision.message,
+        iteration,
+        trajectory
+      );
+    }
+
+    if (
+      decision.type ===
+      "BLOCKED"
+    ) {
+      trajectory.push({
+        iteration,
+        observedActions:
+          structuredClone(
+            summaries
+          ),
+        decision:
+          cloneDecision(decision)
+      });
+
+      return block(
+        "POLICY_BLOCKED",
+        decision.message,
+        iteration,
+        trajectory
+      );
     }
 
     const action =
@@ -451,38 +954,162 @@ export async function executeAgentLoop(
           cloneDecision(decision)
       });
 
-      return {
-        type: "FAIL",
+      return fail(
+        "INVALID_ACTION_SELECTION",
         message,
-        iterations: iteration,
-        trajectory:
-          structuredClone(trajectory)
-      };
+        iteration,
+        trajectory
+      );
+    }
+
+    const actionSummary =
+      summarizeAgentAction(
+        action
+      );
+    const executedSteps =
+      trajectory.filter(
+        (entry) =>
+          entry.actionOutcome !==
+          undefined
+      ).length;
+
+    if (
+      options.budget?.maxSteps !==
+        undefined &&
+      executedSteps >=
+        options.budget.maxSteps
+    ) {
+      trajectory.push({
+        iteration,
+        observedActions:
+          structuredClone(
+            summaries
+          ),
+        decision:
+          cloneDecision(decision)
+      });
+
+      return block(
+        "STEP_LIMIT_EXCEEDED",
+        "Agent loop reached its maximum action-step budget.",
+        iteration,
+        trajectory
+      );
+    }
+
+    if (
+      options.budget
+        ?.maxRepeatedActionSelections !==
+        undefined &&
+      repeatedActionCount(
+        trajectory,
+        actionSummary
+      ) >=
+        options.budget
+          .maxRepeatedActionSelections
+    ) {
+      trajectory.push({
+        iteration,
+        observedActions:
+          structuredClone(
+            summaries
+          ),
+        decision:
+          cloneDecision(decision)
+      });
+
+      return block(
+        "LOOP_DETECTED",
+        "Agent loop detected a repeated action cycle.",
+        iteration,
+        trajectory
+      );
     }
 
     startedAt = Date.now();
 
-    let actionResult:
-      AgentActionResult;
+    const actionExecution =
+      await executeAction(
+        session,
+        action,
+        options.signal
+      );
+
+    if (
+      actionExecution.kind ===
+      "ABORTED"
+    ) {
+      const outcome = {
+        action: actionSummary,
+        success: false,
+        recoverable: false,
+        effect:
+          "unknown" as const
+      };
+
+      await options.onProgress?.({
+        type: "ACTED",
+        iteration,
+        outcome:
+          structuredClone(
+            outcome
+          ),
+        durationMs:
+          Date.now() - startedAt
+      });
+
+      trajectory.push({
+        iteration,
+        observedActions:
+          structuredClone(
+            summaries
+          ),
+        decision:
+          cloneDecision(decision),
+        actionOutcome:
+          structuredClone(
+            outcome
+          )
+      });
+
+      return block(
+        "ACTION_EFFECT_UNKNOWN",
+        "Cancellation or timeout interrupted an in-flight action; its effect is unknown and automatic retry is blocked.",
+        iteration,
+        trajectory
+      );
+    }
+
+    const actionResult =
+      actionExecution.result;
+    const threw =
+      actionExecution.threw;
+
+    let effect:
+      ActionEffectState;
 
     try {
-      actionResult =
-        await session.act(action);
-    } catch (error) {
-      actionResult =
-        actionFailure(
-          action,
-          error
+      effect =
+        await classifyEffect(
+          options,
+          actionSummary,
+          actionResult.success,
+          threw
         );
+    } catch {
+      effect = "unknown";
     }
 
     const outcome = {
-      action:
-        summarizeAgentAction(action),
+      action: actionSummary,
       success:
         actionResult.success,
       recoverable:
-        decision.onFailure === "CONTINUE"
+        !actionResult.success &&
+        decision.onFailure ===
+          "CONTINUE" &&
+        effect === "none",
+      effect
     };
 
     await options.onProgress?.({
@@ -504,41 +1131,87 @@ export async function executeAgentLoop(
         structuredClone(outcome)
     });
 
+    const afterActionBudget =
+      await usageViolation(
+        options
+      );
+
+    if (
+      afterActionBudget !==
+      undefined
+    ) {
+      return block(
+        afterActionBudget.code,
+        afterActionBudget.message,
+        iteration,
+        trajectory
+      );
+    }
+
+    if (effect === "unknown") {
+      return block(
+        "ACTION_EFFECT_UNKNOWN",
+        "Action effect is unknown; automatic retry is blocked.",
+        iteration,
+        trajectory
+      );
+    }
+
     if (
       !actionResult.success &&
-      decision.onFailure === "FAIL"
+      effect === "committed"
     ) {
-      return {
-        type: "FAIL",
-        message:
-          actionResult.message,
-        iterations: iteration,
-        trajectory:
-          structuredClone(trajectory)
-      };
+      return block(
+        "ACTION_EFFECT_COMMITTED",
+        "Action reported failure after a committed effect; automatic retry is blocked.",
+        iteration,
+        trajectory
+      );
+    }
+
+    if (
+      !actionResult.success &&
+      decision.onFailure ===
+        "FAIL"
+    ) {
+      return fail(
+        "ACTION_FAILED",
+        actionResult.message,
+        iteration,
+        trajectory
+      );
     }
   }
 
-  return {
-    type: "FAIL",
-    message:
-      "Agent loop reached its internal iteration ceiling without an explicit COMPLETE decision.",
-    iterations: iterationCeiling,
-    trajectory:
-      structuredClone(trajectory)
-  };
+  return fail(
+    "AGENT_LOOP_FAILED",
+    "Agent loop reached its internal iteration ceiling without an explicit COMPLETE decision.",
+    iterationCeiling,
+    trajectory
+  );
 }
 
 export class AgentLoopExecutor {
   readonly #policy:
     AgentLoopExecutorOptions["policy"];
-  readonly #iterationCeiling?: number;
+  readonly #iterationCeiling?:
+    number;
+  readonly #budget?:
+    AgentLoopBudget;
+  readonly #usageMeter?:
+    AgentLoopUsageMeter;
+  readonly #effectPolicy?:
+    AgentLoopActionEffectPolicy;
 
   public constructor({
     policy,
-    iterationCeiling
+    iterationCeiling,
+    budget,
+    usageMeter,
+    effectPolicy
   }: AgentLoopExecutorOptions) {
     this.#policy = policy;
+
     if (
       iterationCeiling !== undefined
     ) {
@@ -547,6 +1220,30 @@ export class AgentLoopExecutor {
       );
       this.#iterationCeiling =
         iterationCeiling;
+    }
+
+    validateBudget(
+      budget,
+      usageMeter
+    );
+
+    if (budget !== undefined) {
+      this.#budget =
+        structuredClone(budget);
+    }
+
+    if (
+      usageMeter !== undefined
+    ) {
+      this.#usageMeter =
+        usageMeter;
+    }
+
+    if (
+      effectPolicy !== undefined
+    ) {
+      this.#effectPolicy =
+        effectPolicy;
     }
   }
 
@@ -563,7 +1260,36 @@ export class AgentLoopExecutor {
           ? {}
           : {
               iterationCeiling:
-                this.#iterationCeiling
+                this
+                  .#iterationCeiling
+            }),
+        ...(this.#budget ===
+          undefined
+          ? {}
+          : {
+              budget:
+                this.#budget
+            }),
+        ...(this.#usageMeter ===
+          undefined
+          ? {}
+          : {
+              usageMeter:
+                this.#usageMeter
+            }),
+        ...(this.#effectPolicy ===
+          undefined
+          ? {}
+          : {
+              effectPolicy:
+                this.#effectPolicy
+            }),
+        ...(input.signal ===
+          undefined
+          ? {}
+          : {
+              signal:
+                input.signal
             }),
         ...(input.onProgress ===
           undefined

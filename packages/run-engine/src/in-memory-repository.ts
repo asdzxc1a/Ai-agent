@@ -9,29 +9,13 @@ import type {
   RunStepRecord,
   RunUpdate
 } from "./repository.js";
+import {
+  applyRunUpdate,
+  validateRunSnapshot
+} from "./run-state.js";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
-}
-
-function validateTerminal(snapshot: RunSnapshot): void {
-  if (
-    snapshot.status === "COMPLETED" &&
-    snapshot.result === undefined
-  ) {
-    throw new Error(
-      "COMPLETED runs must contain a validated result."
-    );
-  }
-
-  if (
-    snapshot.status === "FAILED" &&
-    snapshot.error === undefined
-  ) {
-    throw new Error(
-      "FAILED runs must contain a typed error."
-    );
-  }
 }
 
 export class InMemoryRunRepository implements RunRepository {
@@ -48,6 +32,7 @@ export class InMemoryRunRepository implements RunRepository {
       throw new Error(`Run ${snapshot.id} already exists.`);
     }
 
+    validateRunSnapshot(snapshot);
     this.#runs.set(snapshot.id, clone(snapshot));
     this.#requests.set(snapshot.id, clone(request));
     this.#steps.set(snapshot.id, []);
@@ -82,13 +67,11 @@ export class InMemoryRunRepository implements RunRepository {
       throw new Error(`Run ${runId} does not exist.`);
     }
 
-    const next: RunSnapshot = {
-      ...current,
-      ...clone(update),
-      updatedAt: new Date().toISOString()
-    };
-
-    validateTerminal(next);
+    const next =
+      applyRunUpdate(
+        current,
+        clone(update)
+      );
     this.#runs.set(runId, next);
     return clone(next);
   }

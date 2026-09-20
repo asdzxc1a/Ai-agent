@@ -39,6 +39,89 @@ CREATE TABLE run_events (
 );
 `;
 
+const MIGRATION_TWO = `
+ALTER TABLE runs
+  ADD COLUMN goal_state TEXT,
+  ADD COLUMN terminal_reason JSONB;
+
+UPDATE runs
+SET
+  goal_state = CASE status
+    WHEN 'COMPLETED' THEN 'COMPLETED'
+    WHEN 'FAILED' THEN 'FAILED'
+    WHEN 'CANCELLED' THEN 'BLOCKED'
+    ELSE 'IN_PROGRESS'
+  END,
+  error = CASE
+    WHEN status = 'CANCELLED' AND error IS NULL
+      THEN '{"code":"CANCELLED","message":"Run cancelled."}'::jsonb
+    ELSE error
+  END;
+
+UPDATE runs
+SET terminal_reason = CASE
+  WHEN status = 'COMPLETED'
+    THEN jsonb_build_object(
+      'code', 'GOAL_VERIFIED',
+      'message', 'Migrated completed run.'
+    )
+  WHEN status = 'FAILED'
+    THEN jsonb_build_object(
+      'code', error->>'code',
+      'message', error->>'message'
+    )
+  WHEN status = 'CANCELLED'
+    THEN jsonb_build_object(
+      'code', 'CANCELLED',
+      'message', COALESCE(
+        error->>'message',
+        'Run cancelled.'
+      )
+    )
+  ELSE NULL
+END;
+
+ALTER TABLE runs
+  ALTER COLUMN goal_state SET NOT NULL,
+  ADD CONSTRAINT runs_goal_state
+    CHECK (
+      goal_state IN (
+        'IN_PROGRESS',
+        'COMPLETED',
+        'FAILED',
+        'BLOCKED'
+      )
+    ),
+  ADD CONSTRAINT runs_goal_status_consistency
+    CHECK (
+      (
+        status IN ('PENDING', 'RUNNING')
+        AND goal_state = 'IN_PROGRESS'
+        AND terminal_reason IS NULL
+      )
+      OR (
+        status = 'COMPLETED'
+        AND goal_state = 'COMPLETED'
+        AND terminal_reason IS NOT NULL
+      )
+      OR (
+        status = 'FAILED'
+        AND goal_state IN ('FAILED', 'BLOCKED')
+        AND terminal_reason IS NOT NULL
+      )
+      OR (
+        status = 'CANCELLED'
+        AND goal_state = 'BLOCKED'
+        AND terminal_reason IS NOT NULL
+      )
+    );
+`;
+
+const MIGRATIONS = [
+  [1, MIGRATION_ONE],
+  [2, MIGRATION_TWO]
+] as const;
+
 export async function runPostgresMigrations(
   pool: Pool
 ): Promise<void> {
@@ -58,22 +141,32 @@ export async function runPostgresMigrations(
       )
     `);
 
-    const applied = await client.query(
-      "SELECT 1 FROM schema_migrations WHERE version = $1",
-      [1]
-    );
+    for (
+      const [version, sql]
+      of MIGRATIONS
+    ) {
+      const applied =
+        await client.query(
+          "SELECT 1 FROM schema_migrations WHERE version = $1",
+          [version]
+        );
 
-    if (applied.rowCount === 0) {
-      await client.query(MIGRATION_ONE);
+      if (applied.rowCount !== 0) {
+        continue;
+      }
+
+      await client.query(sql);
       await client.query(
         "INSERT INTO schema_migrations(version) VALUES ($1)",
-        [1]
+        [version]
       );
     }
 
     await client.query("COMMIT");
   } catch (error) {
-    await client.query("ROLLBACK").catch(() => undefined);
+    await client.query(
+      "ROLLBACK"
+    ).catch(() => undefined);
     throw error;
   } finally {
     client.release();

@@ -7,6 +7,7 @@ export {
 } from "./in-memory-repository.js";
 
 export type {
+  CancelRunResult,
   RunEngineOptions,
   RunService,
   StartRunInput
@@ -18,3 +19,14 @@ export type {
   RunStepRecord,
   RunUpdate
 } from "./repository.js";
+
+export {
+  applyRunUpdate,
+  validateRunSnapshot
+} from "./run-state.js";
+
+export type {
+  CompletionVerificationInput,
+  CompletionVerificationResult,
+  CompletionVerifier
+} from "./completion.js";
