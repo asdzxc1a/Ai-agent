@@ -267,7 +267,7 @@ Live sites and real users are trend/outcome evidence, not deterministic fixtures
 
 Before the first measured sample:
 
-- close the audit-confirmed request-policy, terminal-persistence/supervision, SSE backlog, evidence-provenance, uncertainty-handoff, and rendered-prose evaluation gaps required by `PLAN.md`;
+- keep the merged Gate 13 audit-hardening regressions green: request/redirect policy, terminal atomicity/supervision/reconciliation, >100-event SSE replay, settled capture provenance, uncertainty handoff, prohibited buyer-visible prose, and bounded diagnostics/cleanup;
 - keep execution serial/single-owner;
 - freeze the operator-approved target/domain cohort and do not broaden it during the run;
 - freeze decision thresholds before results;
@@ -346,7 +346,9 @@ A gate is `PASSED` only if:
 - Terminal run status and the corresponding terminal event must have one atomic/transactional ownership boundary; contradictory durable truth is a release blocker.
 - Completed SSE replay must drain all persisted events through the terminal sequence, including backlogs larger than one fetch batch.
 - Network policy assertions must cover actual request paths, including redirects; validating only the initial URL is insufficient.
-- A screenshot's existence is not source provenance. Evidence must carry server-owned capture identity, and material live claims still require human source review until automated support judgment is separately qualified.
+- A screenshot's existence is not source provenance. Evidence must carry a server-owned semantically settled capture receipt binding final page URL, capture time, page-content hash, screenshot hash, and artifact identity; material live claims still require human source review until automated semantic-support judgment is separately qualified.
+- Optional diagnostics and each cleanup operation require independent bounded deadlines; browser/provider cleanup must still be attempted when agent cleanup times out or fails.
+- Buyer-visible prohibited commercial prose must be checked independently of structured claim arrays; an empty `claims` list is never a factuality bypass.
 - Do not use an LLM judge as the sole factuality/security validator.
 - Evaluate speaking transport separately from hidden sales policy when possible.
 

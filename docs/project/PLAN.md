@@ -374,15 +374,14 @@ Purpose:
 Build:
 
 - retain the merged approved-target registry, evidence contract, classified live failures, durable Prospects, and Gate 12 sandbox boundary;
-- close the demonstrated trust gaps that can invalidate the experiment:
-  - enforce the full network policy on every browser request/navigation path, including redirects, with scheme/credentials/port/hostname/resolved-address checks and a regression for an allowed URL redirecting to a forbidden port;
-  - supervise run-execution promises and make terminal run state plus terminal event atomic/transactional, with reconciliation for interrupted jobs;
-  - drain SSE replay through the terminal sequence even when the persisted backlog exceeds one event batch;
-  - add server-owned capture receipts binding run, final page URL, capture time, content hash/relevant excerpt, and screenshot/artifact identity;
-  - preserve research uncertainty and provenance when evidence crosses into sales-domain state;
-  - add adversarial missing-evidence/fabricated-prose failures and evaluate the final buyer-visible response/state update independently before SalesBench is used for release claims;
-  - constrain the research composition to research-safe actions; effect labels describe retry semantics and never authorize the first side effect;
-  - give diagnostics and cleanup their own bounded deadlines so optional evidence cannot indefinitely hold browser resources;
+- preserve the audit hardening now merged on `main`:
+  - PR #70: completed SSE replay drains through the terminal sequence beyond one 100-event batch;
+  - PR #71: the full scheme/credential/port/hostname/DNS/IP network policy owns every Stagehand request path, including redirects/subresources;
+  - PR #72: terminal event + run snapshot are atomic/transactional, background execution is supervised, and orphaned active runs reconcile before API readiness;
+  - PR #73: material evidence uses semantically settled server-owned capture receipts binding final page URL, capture time, page-content hash, screenshot hash, and artifact identity; research uncertainty/provenance survives into sales evidence;
+  - PR #74: prohibited buyer-visible commercial prose hard-fails even when structured `claims` is empty; frozen SalesBench v1 remains 32/40;
+  - PR #75: diagnostics and each cleanup operation have independent bounded deadlines, and browser/provider cleanup is attempted even after agent cleanup failure/timeout;
+- constrain the research composition to research-safe actions; effect labels describe retry semantics and never authorize the first side effect;
 - keep Gate 13 execution serial/single-owner while durable worker ownership, fencing, and cross-process endpoint reservations are not implemented;
 - compose the smallest complete operator workflow: approved target → bounded model-backed research → evidence/uncertainty review → accepted or corrected brief;
 - once the operator supplies and freezes the approved sample, compare Astra with the existing human workflow and, where authorized, a simple model/tool baseline;
@@ -401,10 +400,10 @@ Non-goals:
 
 Acceptance:
 
-- regressions reproduce and then close the audit-confirmed redirect-policy, terminal-persistence/supervision, and >100-event SSE replay failures;
-- material research evidence has server-owned provenance receipts; manual source/screenshot spot-checks remain mandatory for the measured sample until automated support judgment is separately qualified;
+- audit-hardening regressions for redirect/request policy, terminal persistence/supervision/reconciliation, >100-event SSE replay, capture provenance, buyer-visible prohibited prose, and bounded diagnostics/cleanup remain green;
+- material research evidence has server-owned semantically settled provenance receipts; manual source/screenshot spot-checks remain mandatory for the measured sample until automated semantic-support judgment is separately qualified;
 - uncertainty/provenance survive the research → sales-domain handoff;
-- final buyer/operator-visible prose cannot pass factuality solely because structured `claims` is empty;
+- current buyer-visible `SalesDecision` prose cannot pass prohibited-claim checks solely because structured `claims` is empty; any future shipped renderer/state-update pipeline requires an independent equivalent check;
 - one complete operator workflow produces a reviewable accepted/corrected brief without contacting the prospect;
 - the measured cohort contains only explicitly approved, frozen targets and is never broadened during the run;
 - every material observed fact in the measured sample is manually checked against its claimed source;
