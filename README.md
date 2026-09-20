@@ -67,9 +67,12 @@ The audit-confirmed pre-sample hardening is now merged: request-path policy, SSE
 
 Gate 13 is still **IN_PROGRESS** because no acceptance cohort has been live-tested. The previously selected six-company U.S./China set is now treated as **calibration-only**: it can test workflow mechanics, source-page fit, reviewer instructions, and cost accounting, but it cannot close Gate 13.
 
+The first acceptance experiment is **single-market U.S. industrial/logistics operations**. China remains a separate calibration track until its local multi-source research policy is qualified.
+
 The acceptance experiment must:
 
-- freeze **30–50 approved companies from one explicit commercial niche** before browsing;
+- freeze **30–50 approved U.S. companies from the explicit industrial/logistics niche** before browsing, with the selection method recorded before results;
+- compare against the existing human researcher using their **normal tools**, not an artificially one-page-restricted baseline;
 - use an actually measured human baseline for each acceptance target, recorded before Astra starts that target;
 - freeze the cost ceiling and rationale before results;
 - record blind versus unblinded review;
