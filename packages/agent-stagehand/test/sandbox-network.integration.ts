@@ -31,6 +31,7 @@ import {
   SteelClient
 } from "@astra/browser-steel";
 import {
+  DefaultSandboxNetworkPolicy,
   LocalSandboxRuntime,
   SandboxedBrowserRuntime,
   SandboxNetworkPolicyError
@@ -265,6 +266,160 @@ async function startFixture():
   };
 }
 
+async function startForbiddenPortRedirectFixture():
+  Promise<{
+    entryServer: Server;
+    blockedServer: Server;
+    browserEntryUrl: string;
+    blockedRequestCount():
+      number;
+  }> {
+  let blockedRequests = 0;
+
+  const blockedServer =
+    createServer(
+      (request, response) => {
+        const url =
+          new URL(
+            request.url ?? "/",
+            "http://blocked.local"
+          );
+
+        if (
+          url.pathname ===
+          "/private-sentinel"
+        ) {
+          blockedRequests += 1;
+          response.writeHead(
+            200,
+            {
+              "content-type":
+                "text/plain; charset=utf-8"
+            }
+          );
+          response.end(
+            "forbidden port reached"
+          );
+          return;
+        }
+
+        response.writeHead(404);
+        response.end("Not found");
+      }
+    );
+
+  await new Promise<void>(
+    (resolve, reject) => {
+      blockedServer.once(
+        "error",
+        reject
+      );
+      blockedServer.listen(
+        0,
+        "0.0.0.0",
+        resolve
+      );
+    }
+  );
+
+  const blockedAddress =
+    blockedServer.address();
+
+  if (
+    blockedAddress === null ||
+    typeof blockedAddress ===
+      "string"
+  ) {
+    throw new Error(
+      "Blocked-port fixture did not bind a TCP port."
+    );
+  }
+
+  const blockedPort =
+    (
+      blockedAddress as
+        AddressInfo
+    ).port;
+  const entryServer =
+    createServer(
+      (request, response) => {
+        const url =
+          new URL(
+            request.url ?? "/",
+            "http://entry.local"
+          );
+
+        if (
+          url.pathname ===
+          "/redirect-forbidden-port"
+        ) {
+          response.writeHead(
+            302,
+            {
+              location:
+                "http://astra-public.test:" +
+                String(
+                  blockedPort
+                ) +
+                "/private-sentinel"
+            }
+          );
+          response.end();
+          return;
+        }
+
+        response.writeHead(404);
+        response.end("Not found");
+      }
+    );
+
+  await new Promise<void>(
+    (resolve, reject) => {
+      entryServer.once(
+        "error",
+        reject
+      );
+      entryServer.listen(
+        0,
+        "0.0.0.0",
+        resolve
+      );
+    }
+  );
+
+  const entryAddress =
+    entryServer.address();
+
+  if (
+    entryAddress === null ||
+    typeof entryAddress ===
+      "string"
+  ) {
+    await closeServer(
+      blockedServer
+    );
+    throw new Error(
+      "Redirect entry fixture did not bind a TCP port."
+    );
+  }
+
+  return {
+    entryServer,
+    blockedServer,
+    browserEntryUrl:
+      "http://astra-public.test:" +
+      String(
+        (
+          entryAddress as
+            AddressInfo
+        ).port
+      ),
+    blockedRequestCount() {
+      return blockedRequests;
+    }
+  };
+}
+
 async function closeServer(
   server: Server
 ): Promise<void> {
@@ -453,6 +608,108 @@ test(
       );
       await closeServer(
         server
+      );
+    }
+  },
+  300_000
+);
+
+test(
+  "sandboxed Stagehand blocks a same-domain redirect to a forbidden port before the request effect",
+  async () => {
+    const {
+      entryServer,
+      blockedServer,
+      browserEntryUrl,
+      blockedRequestCount
+    } =
+      await startForbiddenPortRedirectFixture();
+    const rawRuntime =
+      new SteelBrowserRuntime({
+        baseUrl:
+          steelBaseUrl,
+        skipFingerprintInjection:
+          true
+      });
+    const runtime =
+      agentRuntime();
+    let rawBrowser:
+      BrowserSession | undefined;
+    let agent:
+      AgentSession | undefined;
+
+    try {
+      rawBrowser =
+        await rawRuntime
+          .createSession({
+            headless: true
+          });
+
+      const entryPort =
+        Number(
+          new URL(
+            browserEntryUrl
+          ).port
+        );
+      const policy =
+        new DefaultSandboxNetworkPolicy({
+          allowedHostnames: [
+            "astra-public.test"
+          ],
+          allowedPorts: [
+            entryPort
+          ],
+          resolver: {
+            async resolve() {
+              return [
+                "93.184.216.34"
+              ];
+            }
+          }
+        });
+      const browser:
+        BrowserSession = {
+          id: rawBrowser.id,
+          cdpUrl:
+            rawBrowser.cdpUrl,
+          networkPolicy:
+            policy,
+          async close() {
+            await rawBrowser
+              ?.close();
+          }
+        };
+
+      agent =
+        await runtime.openSession({
+          browser
+        });
+
+      await agent.navigate(
+        browserEntryUrl +
+          "/redirect-forbidden-port"
+      ).catch(
+        () => undefined
+      );
+
+      expect(
+        blockedRequestCount()
+      ).toBe(0);
+
+      await agent.close();
+      agent = undefined;
+      await rawBrowser.close();
+      rawBrowser = undefined;
+    } finally {
+      await closePair(
+        agent,
+        rawBrowser
+      );
+      await closeServer(
+        entryServer
+      );
+      await closeServer(
+        blockedServer
       );
     }
   },
