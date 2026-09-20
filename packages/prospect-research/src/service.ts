@@ -794,6 +794,8 @@ export class ProspectResearchService {
           target,
           runId:
             run.id,
+          startedAt:
+            run.createdAt,
           researchedAt:
             run.updatedAt,
           capturedAtByEvidenceId,
@@ -876,6 +878,8 @@ export class ProspectResearchService {
           id:
             run.id,
           target,
+          startedAt:
+            run.createdAt,
           createdAt:
             run.updatedAt,
           status: "FAILED",
