@@ -475,3 +475,45 @@ test(
     ).toBe("unknown");
   }
 );
+
+test(
+  "failed action without an effect classifier defaults to unknown and blocks recovery",
+  async () => {
+    const session =
+      new ControlSession();
+    session.actionSuccess = false;
+
+    const outcome =
+      await executeAgentLoop(
+        session,
+        {
+          goal:
+            "Require explicit proof of no effect before retry.",
+          policy:
+            repeatPolicy
+        }
+      );
+
+    expect(outcome.type).toBe(
+      "BLOCKED"
+    );
+    expect(session.actCalls).toBe(1);
+
+    if (
+      outcome.type ===
+      "BLOCKED"
+    ) {
+      expect(
+        outcome.reason.code
+      ).toBe(
+        "ACTION_EFFECT_UNKNOWN"
+      );
+    }
+
+    expect(
+      outcome.trajectory[0]
+        ?.actionOutcome
+        ?.effect
+    ).toBe("unknown");
+  }
+);

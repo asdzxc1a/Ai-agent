@@ -649,7 +649,7 @@ const DEFAULT_EFFECT_POLICY:
     classify(input) {
       return input.success
         ? "committed"
-        : "none";
+        : "unknown";
     }
   };
 

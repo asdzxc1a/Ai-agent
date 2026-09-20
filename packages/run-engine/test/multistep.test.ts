@@ -215,6 +215,13 @@ test("RunEngine persists recoverable multi-step progress without corrupting term
         new AgentLoopExecutor({
           policy:
             recoveryPolicy(),
+          effectPolicy: {
+            classify(input) {
+              return input.success
+                ? "committed"
+                : "none";
+            }
+          },
           iterationCeiling: 5
         })
     });

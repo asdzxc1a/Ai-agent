@@ -224,6 +224,13 @@ test("recoverable action failure returns control to policy", async () => {
       {
         goal: "Recover.",
         policy,
+        effectPolicy: {
+          classify(input) {
+            return input.success
+              ? "committed"
+              : "none";
+          }
+        },
         async onProgress(event) {
           events.push(
             structuredClone(event)
@@ -272,6 +279,13 @@ test("terminal action failure stops immediately", async () => {
       session,
       {
         goal: "Fail safely.",
+        effectPolicy: {
+          classify(input) {
+            return input.success
+              ? "committed"
+              : "none";
+          }
+        },
         policy: {
           async decide() {
             return {
