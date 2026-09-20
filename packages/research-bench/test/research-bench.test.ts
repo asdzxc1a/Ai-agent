@@ -56,6 +56,104 @@ describe("Astra ResearchBench v1", () => {
     }
   });
 
+  it("keeps every frozen task internally consistent", () => {
+    for (
+      const scenario of
+      RESEARCH_BENCH_V1
+    ) {
+      const pages =
+        new Map(
+          scenario.pages.map(
+            (page) =>
+              [page.id, page] as const
+          )
+        );
+
+      expect(
+        pages.has(
+          scenario.startPage
+        )
+      ).toBe(true);
+
+      for (
+        const page of
+        scenario.pages
+      ) {
+        if (
+          page.nextPage !==
+          undefined
+        ) {
+          expect(
+            pages.has(
+              page.nextPage
+            )
+          ).toBe(true);
+        }
+      }
+
+      const represented =
+        new Set<string>();
+
+      for (
+        const expected of
+        scenario.expected.facts
+      ) {
+        const page =
+          pages.get(
+            expected.sourcePage
+          );
+
+        expect(page).toBeDefined();
+        expect(
+          page?.facts.some(
+            (fact) =>
+              fact.field ===
+                expected.field &&
+              fact.value ===
+                expected.value
+          )
+        ).toBe(true);
+        expect(
+          represented.has(
+            expected.field
+          )
+        ).toBe(false);
+        represented.add(
+          expected.field
+        );
+      }
+
+      for (
+        const field of
+        scenario.expected
+          .unknownFields
+      ) {
+        expect(
+          represented.has(field)
+        ).toBe(false);
+        represented.add(field);
+
+        expect(
+          scenario.pages.some(
+            (page) =>
+              page.unknownFields
+                ?.includes(
+                  field
+                ) === true
+          )
+        ).toBe(true);
+      }
+
+      expect(
+        [...represented].sort()
+      ).toEqual(
+        [
+          ...scenario.requiredFields
+        ].sort()
+      );
+    }
+  });
+
   it("passes a fully grounded report with source attribution", () => {
     const scenario =
       researchBenchScenario(

@@ -160,7 +160,6 @@ function injectedEvidenceScript(
     "    target.appendChild(a);",
     "  }",
     "}",
-    "const trigger = document.getElementById(\"research-trigger\");",
     dynamic
       ? "trigger.addEventListener(\"click\", () => { trigger.remove(); const second = document.createElement(\"button\"); second.id = \"research-reveal\"; second.textContent = \"Reveal loaded research evidence\"; second.addEventListener(\"click\", appendEvidence); target.replaceChildren(second); });"
       : "trigger.addEventListener(\"click\", () => { trigger.remove(); appendEvidence(); });",
@@ -801,7 +800,24 @@ test(
             details.status === "released"
           );
 
-          return terminal.result ?? accumulator.report();
+          if (
+            terminal.status !==
+            "COMPLETED"
+          ) {
+            throw new Error(
+              "ResearchBench run terminated " +
+                terminal.status +
+                ": " +
+                (
+                  terminal
+                    .terminalReason
+                    ?.code ??
+                  "UNKNOWN"
+                )
+            );
+          }
+
+          return terminal.result;
         }
       });
 
