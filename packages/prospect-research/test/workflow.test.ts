@@ -519,7 +519,10 @@ describe(
       "starts only from stored approval, never acts, and persists the operator-reviewed evidence mapping",
       async () => {
         const repository =
-          new InMemoryProspectResearchRepository();
+          new InMemoryProspectResearchRepository(
+            () =>
+              "2026-09-20T12:15:00.000Z"
+          );
         const runRepository =
           new InMemoryRunRepository();
         const artifacts =
