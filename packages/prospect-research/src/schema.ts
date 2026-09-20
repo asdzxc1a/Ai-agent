@@ -221,6 +221,32 @@ export const RESEARCH_UNCERTAINTY =
     "material"
   ] as const;
 
+const Sha256Schema =
+  z.string()
+    .regex(
+      /^[a-f0-9]{64}$/
+    );
+
+export const ProspectResearchCaptureReceiptSchema =
+  z.object({
+    artifactId:
+      IdentifierSchema,
+    captureVersion:
+      z.literal(
+        "page-evidence-v1"
+      ),
+    pageUrl:
+      z.string().url(),
+    capturedAt:
+      z.string().datetime({
+        offset: true
+      }),
+    pageContentSha256:
+      Sha256Schema,
+    screenshotSha256:
+      Sha256Schema
+  }).strict();
+
 export const ProspectResearchEvidenceSchema =
   z.object({
     id: IdentifierSchema,
@@ -245,6 +271,10 @@ export const ProspectResearchEvidenceSchema =
     artifactIds:
       z.array(
         IdentifierSchema
+      ).min(1).max(32),
+    captureReceipts:
+      z.array(
+        ProspectResearchCaptureReceiptSchema
       ).min(1).max(32)
   }).strict()
     .superRefine(
@@ -533,6 +563,10 @@ export const ProspectResearchAttemptSchema =
 export type ApprovedResearchTarget =
   z.infer<
     typeof ApprovedResearchTargetSchema
+  >;
+export type ProspectResearchCaptureReceipt =
+  z.infer<
+    typeof ProspectResearchCaptureReceiptSchema
   >;
 export type ProspectResearchEvidence =
   z.infer<
