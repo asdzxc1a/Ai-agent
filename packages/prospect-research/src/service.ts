@@ -6,7 +6,8 @@ import type {
   ArtifactStore
 } from "@astra/artifact-store";
 import type {
-  RunCompletionVerifier
+  RunCompletionVerifier,
+  RunService
 } from "@astra/run-engine";
 
 import {
@@ -26,6 +27,21 @@ import {
   researchNetworkPolicyOptions,
   validateProspectResearchResult
 } from "./validation.js";
+
+type ResearchRunSnapshot =
+  NonNullable<
+    Awaited<
+      ReturnType<
+        RunService["getRun"]
+      >
+    >
+  >;
+
+export type ProspectResearchRunReader =
+  Pick<
+    RunService,
+    "getRun"
+  >;
 
 export class ProspectResearchValidationError
   extends Error {
@@ -51,40 +67,35 @@ export class ProspectResearchValidationError
 export interface RecordCompletedProspectResearchInput {
   targetId: string;
   runId: string;
-  result: unknown;
 }
 
 export interface RecordFailedProspectResearchInput {
   targetId: string;
-  runId: string | null;
-  code: LiveResearchFailureCode;
-  message: string;
+  runId: string;
+  code?:
+    LiveResearchFailureCode;
 }
-
-export type ProspectResearchClock =
-  () => Date;
 
 export class ProspectResearchService {
   readonly #repository:
     ProspectResearchRepository;
   readonly #artifacts:
     ArtifactStore;
-  readonly #clock:
-    ProspectResearchClock;
+  readonly #runs:
+    ProspectResearchRunReader;
 
   public constructor(
     repository:
       ProspectResearchRepository,
     artifacts: ArtifactStore,
-    clock:
-      ProspectResearchClock =
-        () => new Date()
+    runs:
+      ProspectResearchRunReader
   ) {
     this.#repository =
       repository;
     this.#artifacts =
       artifacts;
-    this.#clock = clock;
+    this.#runs = runs;
   }
 
   public approvedTarget(
@@ -127,9 +138,23 @@ export class ProspectResearchService {
     return target;
   }
 
-  #timestamp(): string {
-    return this.#clock()
-      .toISOString();
+  async #requireRun(
+    runId: string
+  ): Promise<
+    ResearchRunSnapshot
+  > {
+    const run =
+      await this.#runs
+        .getRun(runId);
+
+    if (run === undefined) {
+      throw new ProspectResearchValidationError([
+        "research run was not found: " +
+          runId
+      ]);
+    }
+
+    return run;
   }
 
   async #assertAttemptAvailable(
@@ -145,6 +170,91 @@ export class ProspectResearchService {
           attemptId
       ]);
     }
+  }
+
+  #failureCode(
+    run: ResearchRunSnapshot,
+    requested:
+      LiveResearchFailureCode |
+      undefined
+  ): LiveResearchFailureCode {
+    if (
+      run.status ===
+      "CANCELLED"
+    ) {
+      if (
+        requested !== undefined &&
+        requested !== "CANCELLED"
+      ) {
+        throw new ProspectResearchValidationError([
+          "cancelled research run must be classified as CANCELLED"
+        ]);
+      }
+
+      return "CANCELLED";
+    }
+
+    if (
+      run.status !== "FAILED"
+    ) {
+      throw new ProspectResearchValidationError([
+        "only FAILED or CANCELLED runs can be persisted as live-research failures"
+      ]);
+    }
+
+    const terminalCode =
+      run.terminalReason?.code;
+
+    if (
+      terminalCode ===
+      "RUN_TIMEOUT"
+    ) {
+      if (
+        requested !== undefined &&
+        requested !== "TIMEOUT"
+      ) {
+        throw new ProspectResearchValidationError([
+          "RUN_TIMEOUT must be classified as TIMEOUT"
+        ]);
+      }
+
+      return "TIMEOUT";
+    }
+
+    if (
+      terminalCode ===
+      "CLEANUP_FAILED"
+    ) {
+      if (
+        requested !== undefined &&
+        requested !==
+          "CLEANUP_FAILED"
+      ) {
+        throw new ProspectResearchValidationError([
+          "CLEANUP_FAILED must retain its live-research failure code"
+        ]);
+      }
+
+      return "CLEANUP_FAILED";
+    }
+
+    if (
+      requested === undefined
+    ) {
+      throw new ProspectResearchValidationError([
+        "failed research run requires an explicit server-side live-research failure code"
+      ]);
+    }
+
+    if (
+      requested === "CANCELLED"
+    ) {
+      throw new ProspectResearchValidationError([
+        "FAILED research run cannot be classified as CANCELLED"
+      ]);
+    }
+
+    return requested;
   }
 
   public async networkPolicy(
@@ -220,6 +330,24 @@ export class ProspectResearchService {
         input.targetId,
         "research target was not approved before the attempt"
       );
+    const run =
+      await this.#requireRun(
+        input.runId
+      );
+
+    if (
+      run.status !==
+        "COMPLETED" ||
+      run.goalStatus !==
+        "COMPLETED" ||
+      run.terminalReason?.code !==
+        "GOAL_COMPLETED" ||
+      run.result === undefined
+    ) {
+      throw new ProspectResearchValidationError([
+        "only a verifier-accepted completed run can be persisted as prospect research"
+      ]);
+    }
 
     let result;
 
@@ -227,7 +355,7 @@ export class ProspectResearchService {
       result =
         validateProspectResearchResult(
           target,
-          input.result
+          run.result
         );
     } catch (error) {
       throw new ProspectResearchValidationError([
@@ -238,13 +366,13 @@ export class ProspectResearchService {
     }
 
     await this.#assertAttemptAvailable(
-      input.runId
+      run.id
     );
 
     const artifacts =
       await this.#artifacts
         .listArtifacts(
-          input.runId
+          run.id
         );
     const artifactById =
       new Map(
@@ -326,9 +454,9 @@ export class ProspectResearchService {
         buildCompletedProspectResearchAttempt({
           target,
           runId:
-            input.runId,
+            run.id,
           researchedAt:
-            this.#timestamp(),
+            run.updatedAt,
           capturedAtByEvidenceId,
           result
         });
@@ -379,25 +507,45 @@ export class ProspectResearchService {
         input.targetId,
         "research target was not approved before the attempt"
       );
+    const run =
+      await this.#requireRun(
+        input.runId
+      );
+    const code =
+      this.#failureCode(
+        run,
+        input.code
+      );
+    const message =
+      run.error?.message ??
+      run.terminalReason?.message;
+
+    if (
+      message === undefined ||
+      message.trim().length === 0
+    ) {
+      throw new ProspectResearchValidationError([
+        "terminal research run has no server-owned failure message"
+      ]);
+    }
+
     const attempt =
       FailedProspectResearchAttemptSchema
         .parse({
           id:
-            input.runId ??
+            run.id ??
             randomUUID(),
           target,
           createdAt:
-            this.#timestamp(),
+            run.updatedAt,
           status: "FAILED",
           runId:
-            input.runId,
+            run.id,
           failure: {
             kind:
               "LIVE_RESEARCH_FAILURE",
-            code:
-              input.code,
-            message:
-              input.message
+            code,
+            message
           }
         });
 
