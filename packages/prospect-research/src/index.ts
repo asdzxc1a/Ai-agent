@@ -18,7 +18,10 @@ export {
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   ProspectResearchUnknownSchema,
+  PROSPECT_RESEARCH_BASELINE_SOURCES,
   PROSPECT_RESEARCH_BRIEF_DISPOSITIONS,
+  PROSPECT_RESEARCH_REVIEW_MODES,
+  PROSPECT_RESEARCH_SAMPLE_PURPOSES,
   RESEARCH_UNCERTAINTY,
   ResearchApprovalSchema,
   ResearchDomainSchema

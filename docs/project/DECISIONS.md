@@ -857,3 +857,39 @@ The audit found that Astra has substantial reusable infrastructure but no comple
 - one durable human handoff precedes Gate 18 voice selection;
 - an external agency/design-partner pilot cannot silently bypass tenancy/client-operation requirements;
 - the modular TypeScript/PostgreSQL/provider-adapter architecture remains; no microservice rewrite or runtime agent swarm is justified by this audit.
+
+---
+
+## D-030 — Separate calibration from Gate 13 acceptance evidence
+
+**Date:** 2026-09-20
+**Status:** Accepted
+
+**Decision**
+
+Gate 13 distinguishes small **calibration** samples from the **acceptance** cohort that can support a gate verdict.
+
+Calibration samples may contain up to 10 approved targets and are diagnostic only. They may exercise cross-region/source diversity, workflow mechanics, cost accounting, and reviewer instructions, but they always return no pass/fail verdict.
+
+A Gate 13 acceptance sample must contain 30–50 frozen approved targets from the chosen commercial niche, consistent with the September audit. Acceptance outcomes require a measured human baseline rather than a fixed-cap estimate, and the baseline measurement timestamp must predate the Astra attempt. Review mode is recorded so blind versus unblinded evidence remains visible.
+
+**Why**
+
+The initial six-company U.S./China set is useful for calibration but is too small and too heterogeneous to support a commercial conclusion. With six targets, a 90% usability threshold effectively requires 6/6 and remains highly sensitive to one observation. More importantly, the audit explicitly called for roughly 30–50 approved companies across the chosen niche, comparison with the existing human workflow, and blind review where practical.
+
+A fixed 15-minute human baseline entered after seeing Astra output would also create hindsight bias. The acceptance experiment must measure the actual baseline before the corresponding Astra run.
+
+**Consequences**
+
+- the six-company U.S./China set is calibration/stress evidence, not Gate 13 acceptance evidence;
+- calibration metrics may guide source-policy and workflow improvements but cannot close Gate 13;
+- the acceptance cohort is 30–50 targets in one explicit niche/cohort definition;
+- acceptance outcomes require `MEASURED_HUMAN` baseline provenance recorded before the Astra attempt;
+- review mode is durable evidence and blind review is preferred where practical;
+- the frozen cost ceiling remains pre-registered and must include rationale;
+- failed attempts remain in the denominator.
+
+**Revisit when**
+
+Only if a later experiment is deliberately redesigned with a documented statistical/commercial rationale and a new protocol version. Existing calibration and acceptance results are never relabeled retroactively.
+

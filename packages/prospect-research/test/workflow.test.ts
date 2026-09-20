@@ -76,7 +76,11 @@ function sample() {
       id: sampleId,
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v1",
+        "gate13-measured-research-v2",
+      purpose:
+        "CALIBRATION",
+      cohortDefinition:
+        "Single-target workflow calibration fixture; diagnostic only.",
       targets: [
         target()
       ],
@@ -92,6 +96,8 @@ function sample() {
         maxDeliveryCostUsdPerBrief:
           25
       },
+      costCeilingRationale:
+        "Fixture ceiling used only for workflow calibration.",
       humanBaselineDescription:
         "Operator manually researches the approved public page and drafts the same brief.",
       comparisonBaselineDescription:
@@ -636,6 +642,12 @@ describe(
               "operator",
             reviewedAt:
               "2026-09-20T12:20:00.000Z",
+            reviewMode:
+              "UNBLINDED",
+            baselineSource:
+              "FIXED_CAP",
+            baselineMeasuredAt:
+              "2026-09-20T11:55:00.000Z",
             materialClaimsReviewed:
               1,
             unsupportedMaterialClaims:
@@ -669,7 +681,7 @@ describe(
           )
         ).resolves.toMatchObject({
           complete: true,
-          passed: true,
+          passed: null,
           metrics: {
             targetCount: 1,
             outcomeCount: 1,

@@ -523,6 +523,10 @@ const AttemptBase = {
   id: IdentifierSchema,
   target:
     ApprovedResearchTargetSchema,
+  startedAt:
+    z.string().datetime({
+      offset: true
+    }),
   createdAt:
     z.string().datetime({
       offset: true
@@ -571,6 +575,24 @@ export const PROSPECT_RESEARCH_BRIEF_DISPOSITIONS =
     "not_produced"
   ] as const;
 
+export const PROSPECT_RESEARCH_SAMPLE_PURPOSES =
+  [
+    "CALIBRATION",
+    "ACCEPTANCE"
+  ] as const;
+
+export const PROSPECT_RESEARCH_BASELINE_SOURCES =
+  [
+    "FIXED_CAP",
+    "MEASURED_HUMAN"
+  ] as const;
+
+export const PROSPECT_RESEARCH_REVIEW_MODES =
+  [
+    "BLIND",
+    "UNBLINDED"
+  ] as const;
+
 export const ProspectResearchSampleCriteriaSchema =
   z.object({
     maxUnsupportedMaterialClaims:
@@ -598,14 +620,22 @@ export const ProspectResearchSampleSchema =
       z.literal("FROZEN"),
     protocolVersion:
       z.literal(
-        "gate13-measured-research-v1"
+        "gate13-measured-research-v2"
       ),
+    purpose:
+      z.enum(
+        PROSPECT_RESEARCH_SAMPLE_PURPOSES
+      ),
+    cohortDefinition:
+      TextSchema.max(4000),
     targets:
       z.array(
         ApprovedResearchTargetSchema
       ).min(1).max(50),
     criteria:
       ProspectResearchSampleCriteriaSchema,
+    costCeilingRationale:
+      TextSchema.max(2000),
     humanBaselineDescription:
       TextSchema.max(4000),
     comparisonBaselineDescription:
@@ -623,6 +653,35 @@ export const ProspectResearchSampleSchema =
   }).strict()
     .superRefine(
       (sample, context) => {
+        if (
+          sample.purpose ===
+            "CALIBRATION" &&
+          sample.targets.length > 10
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["targets"],
+            message:
+              "calibration samples may contain at most 10 targets"
+          });
+        }
+
+        if (
+          sample.purpose ===
+            "ACCEPTANCE" &&
+          (
+            sample.targets.length < 30 ||
+            sample.targets.length > 50
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["targets"],
+            message:
+              "Gate 13 acceptance samples must contain 30 to 50 frozen targets"
+          });
+        }
+
         const targetIds =
           sample.targets.map(
             (target) =>
@@ -725,6 +784,18 @@ export const ProspectResearchSampleOutcomeSchema =
       z.number()
         .int()
         .nonnegative(),
+    baselineSource:
+      z.enum(
+        PROSPECT_RESEARCH_BASELINE_SOURCES
+      ),
+    baselineMeasuredAt:
+      z.string().datetime({
+        offset: true
+      }),
+    reviewMode:
+      z.enum(
+        PROSPECT_RESEARCH_REVIEW_MODES
+      ),
     baselineHumanPreparationMinutes:
       z.number()
         .finite()
@@ -754,6 +825,24 @@ export const ProspectResearchSampleOutcomeSchema =
   }).strict()
     .superRefine(
       (outcome, context) => {
+        if (
+          Date.parse(
+            outcome.baselineMeasuredAt
+          ) >
+          Date.parse(
+            outcome.reviewedAt
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "baselineMeasuredAt"
+            ],
+            message:
+              "human baseline measurement must predate outcome review"
+          });
+        }
+
         if (
           outcome
             .unsupportedMaterialClaims >

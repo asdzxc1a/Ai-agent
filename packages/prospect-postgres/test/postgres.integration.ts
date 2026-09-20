@@ -82,6 +82,7 @@ function completedAttempt():
         approvedAt: timestamp
       }
     },
+    startedAt: timestamp,
     createdAt: timestamp,
     status: "COMPLETED",
     report: {
@@ -166,7 +167,11 @@ function frozenSample():
     id: "sample.pg",
     status: "FROZEN",
     protocolVersion:
-      "gate13-measured-research-v1",
+      "gate13-measured-research-v2",
+    purpose:
+      "CALIBRATION",
+    cohortDefinition:
+      "PostgreSQL persistence calibration fixture; not a Gate 13 acceptance cohort.",
     targets: [
       completedAttempt()
         .target
@@ -183,6 +188,8 @@ function frozenSample():
       maxDeliveryCostUsdPerBrief:
         20
     },
+    costCeilingRationale:
+      "Persistence fixture ceiling.",
     humanBaselineDescription:
       "Operator researches and drafts the same brief manually.",
     comparisonBaselineDescription:
@@ -209,6 +216,12 @@ function measuredOutcome():
       "operator",
     reviewedAt:
       "2026-09-19T12:10:00Z",
+    reviewMode:
+      "UNBLINDED",
+    baselineSource:
+      "FIXED_CAP",
+    baselineMeasuredAt:
+      "2026-09-19T11:55:00Z",
     materialClaimsReviewed:
       1,
     unsupportedMaterialClaims:
@@ -256,6 +269,8 @@ function failedAttempt():
         approvedAt: timestamp
       }
     },
+    startedAt:
+      "2026-09-19T12:04:00Z",
     createdAt:
       "2026-09-19T12:05:00Z",
     status: "FAILED",

@@ -65,11 +65,15 @@ A separate draft sales/voice branch, [PR #2](https://github.com/asdzxc1a/Ai-agen
 
 The audit-confirmed pre-sample hardening is now merged: request-path policy, SSE backlog replay, atomic terminal persistence/recovery, page/screenshot capture receipts, research uncertainty/provenance handoff, buyer-visible prohibited-prose checks, bounded diagnostics/cleanup, the serial read-only operator workflow, and a durable pre-registered sample/evaluation protocol all have regressions on `main`.
 
-Gate 13 is still **IN_PROGRESS** because no operator-approved real-company/domain cohort has been supplied or researched. There is no remaining autonomous code step before the measured sample. The next step is:
+Gate 13 is still **IN_PROGRESS** because no acceptance cohort has been live-tested. The previously selected six-company U.S./China set is now treated as **calibration-only**: it can test workflow mechanics, source-page fit, reviewer instructions, and cost accounting, but it cannot close Gate 13.
 
-- supply the explicit approved targets, human-baseline description, and per-brief delivery-cost ceiling;
-- freeze that exact cohort/criteria durably before any real browsing;
-- run only those frozen targets through the bounded read-only research path;
+The acceptance experiment must:
+
+- freeze **30–50 approved companies from one explicit commercial niche** before browsing;
+- use an actually measured human baseline for each acceptance target, recorded before Astra starts that target;
+- freeze the cost ceiling and rationale before results;
+- record blind versus unblinded review;
+- run only frozen sample members through the bounded read-only research path;
 - manually audit every material observed fact against its source page/screenshot;
 - produce an accepted or corrected brief without contacting the prospect;
 - measure review time, corrections, coverage, duration, failures, and complete delivery cost against the existing human workflow.

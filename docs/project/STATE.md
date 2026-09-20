@@ -268,7 +268,7 @@ pnpm check:memory
 
 ## Known risks
 
-1. **Product/value risk — current Gate 13 blocker:** no operator-approved real-company/domain cohort, human-baseline description, or per-brief cost ceiling has been supplied, so the durable measured sample cannot yet be frozen or run. Astra still has no human-audited live brief, measured preparation-time reduction, or measured live delivery cost.
+1. **Product/value risk — current Gate 13 blocker:** the six-company U.S./China set is useful only as a calibration/stress sample and cannot close Gate 13. The acceptance experiment still needs a 30–50 company cohort from one explicit commercial niche plus a measured human baseline for each target before its Astra run. Astra still has no human-audited live brief, measured preparation-time reduction, or measured live delivery cost.
 2. **Semantic-support risk — measured-sample control:** capture receipts prove source-page/screenshot identity and hashes, not whether a natural-language claim is actually supported. Every material observed fact still requires human source-page/screenshot review in Gate 13.
 3. **Scale ownership risk:** cancellation intent and Steel endpoint exclusivity are not yet durable cross-process leases/fences. Gate 13 therefore stays serial/single-owner; multiple workers require durable ownership/fencing and centralized endpoint allocation.
 4. **Future renderer/state-update risk:** PR #74 closes the current `SalesDecision` buyer-visible prose loophole, but any future shipped final-response renderer and durable conversation state update need their own independent output evaluation before release claims.
@@ -276,9 +276,9 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 13 — freeze and run the measured operator-approved sample (issue #65):** obtain the operator's explicit fixed company/domain cohort plus approval provenance, human-baseline description, and a positive maximum delivery-cost-per-brief threshold. Do not choose, infer, or broaden targets autonomously.
+**Gate 13 — calibrate, then run the 30–50 target acceptance cohort (issue #65):** treat the existing six-company U.S./China set as `CALIBRATION` only. It may validate workflow mechanics, reviewer instructions, source-page fit, and cost accounting, but it cannot produce a Gate 13 pass/fail verdict.
 
-Once supplied, persist the approvals, freeze the exact durable sample/criteria before browsing, then keep execution serial and run only sample members through: stored approval → frozen-sample membership → bounded read-only model-backed public research → semantically settled capture receipts → evidence/uncertainty review → human source audit → accepted/corrected brief or explicit live failure. Record one measured outcome per frozen target, including unsupported claims, correction severity, requested-field coverage, manual baseline minutes, Astra review minutes, duration, live-site failure, complete cost, and unauthorized-action count. Gate 13 can pass only after the durable sample evaluation is complete and its recorded result is reviewed.
+For Gate 13 acceptance, freeze 30–50 explicitly approved companies from one defined commercial niche. For every acceptance target, measure the human baseline before starting the Astra attempt and record whether review is blind or unblinded. Then run serially through: stored approval → frozen-sample membership → bounded read-only model-backed public research → semantically settled capture receipts → evidence/uncertainty review → human source audit → accepted/corrected brief or explicit live failure. Keep failed attempts in the denominator and freeze the cost ceiling/rationale before results.
 
 Do not start authenticated contact discovery, outreach/email/LinkedIn/X, CRM writes, calendar/social actions, voice/avatar, agency-client data ingestion, or new irreversible external side effects in Gate 13.
 
