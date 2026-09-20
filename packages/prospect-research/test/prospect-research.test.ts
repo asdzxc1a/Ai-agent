@@ -907,7 +907,11 @@ describe(
         await research.recordCompleted({
           targetId:
             "target.example",
-          runId
+          runId,
+          artifactIdsByEvidenceId:
+            artifactMapping(
+              artifactIds
+            )
         });
 
       expect(attempt).toMatchObject({
@@ -1031,7 +1035,9 @@ describe(
         research.recordCompleted({
           targetId:
             "target.example",
-          runId
+          runId,
+          artifactIdsByEvidenceId:
+            {}
         })
       ).rejects.toThrow(
         "only a verifier-accepted completed run can be persisted as prospect research"
@@ -1072,7 +1078,16 @@ describe(
         research.recordCompleted({
           targetId:
             "target.example",
-          runId
+          runId,
+          artifactIdsByEvidenceId:
+            artifactMapping({
+              industry:
+                diagnosticsOnly,
+              workflow:
+                diagnosticsOnly,
+              hiring:
+                diagnosticsOnly
+            })
         })
       ).rejects.toThrow(
         "research evidence requires a screenshot artifact"
@@ -1111,7 +1126,13 @@ describe(
         research.recordCompleted({
           targetId:
             "target.example",
-          runId
+          runId,
+          artifactIdsByEvidenceId:
+            artifactMapping({
+              industry: foreign,
+              workflow: foreign,
+              hiring: foreign
+            })
         })
       ).rejects.toBeInstanceOf(
         ProspectResearchValidationError
@@ -1150,7 +1171,9 @@ describe(
         research.recordCompleted({
           targetId:
             "target.example",
-          runId
+          runId,
+          artifactIdsByEvidenceId:
+            {}
         })
       ).rejects.toThrow(
         "research target was not approved before the attempt"
@@ -1192,7 +1215,11 @@ describe(
       const input = {
         targetId:
           "target.example",
-        runId
+        runId,
+        artifactIdsByEvidenceId:
+          artifactMapping(
+            artifactIds
+          )
       };
 
       await research.approveTarget(
