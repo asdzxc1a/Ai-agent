@@ -106,6 +106,7 @@ function completedAttempt(
   return {
     id: runId,
     target: target(),
+    startedAt: timestamp,
     createdAt: timestamp,
     status: "COMPLETED",
     report: {
