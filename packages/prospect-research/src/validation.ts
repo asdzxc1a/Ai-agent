@@ -140,6 +140,208 @@ export function researchNetworkPolicyOptions(
   };
 }
 
+function isSafePublicEvidenceUrl(
+  value: string
+): boolean {
+  let url: URL;
+
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+
+  const port =
+    url.port.length === 0
+      ? (
+          url.protocol ===
+            "https:"
+            ? 443
+            : 80
+        )
+      : Number(url.port);
+
+  return (
+    (
+      url.protocol === "http:" ||
+      url.protocol === "https:"
+    ) &&
+    url.username.length === 0 &&
+    url.password.length === 0 &&
+    (
+      port === 80 ||
+      port === 443
+    )
+  );
+}
+
+export function validateHumanBaselineBrief(
+  input: unknown
+): ProspectResearchResult {
+  const result =
+    ProspectResearchResultSchema
+      .parse(input);
+  const errors: string[] = [];
+  const evidenceById =
+    new Map(
+      result.evidence.map(
+        (evidence) =>
+          [
+            evidence.id,
+            evidence
+          ] as const
+      )
+    );
+
+  if (
+    evidenceById.size !==
+    result.evidence.length
+  ) {
+    errors.push(
+      "duplicate human baseline evidence id"
+    );
+  }
+
+  for (
+    const evidence of
+    result.evidence
+  ) {
+    if (
+      !isSafePublicEvidenceUrl(
+        evidence.sourceUrl
+      )
+    ) {
+      errors.push(
+        "human baseline evidence source must be a safe public HTTP(S) URL: " +
+          evidence.id
+      );
+    }
+  }
+
+  const claims: ProspectResearchClaim[] = [
+    ...result.companySummary,
+    ...result
+      .transformationOpportunities,
+    ...result.buyingSignals
+  ];
+  const claimIds =
+    claims.map(
+      (claim) => claim.id
+    );
+
+  if (
+    new Set(claimIds).size !==
+    claimIds.length
+  ) {
+    errors.push(
+      "duplicate human baseline claim id"
+    );
+  }
+
+  for (const claim of claims) {
+    const resolved =
+      claim.evidenceIds.map(
+        (id) =>
+          evidenceById.get(id)
+      );
+
+    for (
+      let index = 0;
+      index <
+        claim.evidenceIds.length;
+      index += 1
+    ) {
+      if (
+        resolved[index] ===
+        undefined
+      ) {
+        errors.push(
+          "human baseline claim references unknown evidence: " +
+            claim.evidenceIds[
+              index
+            ]
+        );
+      }
+    }
+
+    if (
+      claim.kind ===
+        "observed_fact" &&
+      !resolved.some(
+        (evidence) =>
+          evidence?.observation ===
+          claim.statement
+      )
+    ) {
+      errors.push(
+        "human baseline observed fact must exactly match referenced evidence: " +
+          claim.id
+      );
+    }
+  }
+
+  if (
+    result.companyName !== null
+  ) {
+    for (
+      const evidenceId of
+      result.companyName
+        .evidenceIds
+    ) {
+      if (
+        !evidenceById.has(
+          evidenceId
+        )
+      ) {
+        errors.push(
+          "human baseline company name references unknown evidence: " +
+            evidenceId
+        );
+      }
+    }
+
+    if (
+      !result.companyName
+        .evidenceIds.some(
+          (evidenceId) =>
+            evidenceById.get(
+              evidenceId
+            )?.observation ===
+            result.companyName
+              ?.value
+        )
+    ) {
+      errors.push(
+        "human baseline company name must exactly match referenced evidence"
+      );
+    }
+  }
+
+  const unknownIds =
+    result.unknowns.map(
+      (unknown) =>
+        unknown.id
+    );
+
+  if (
+    new Set(unknownIds).size !==
+    unknownIds.length
+  ) {
+    errors.push(
+      "duplicate human baseline unknown id"
+    );
+  }
+
+  if (errors.length > 0) {
+    throw new Error(
+      "Human baseline brief failed semantic validation: " +
+        errors.join("; ")
+    );
+  }
+
+  return result;
+}
+
 function exactUniqueSet(
   left: readonly string[],
   right: readonly string[]
