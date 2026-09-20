@@ -827,16 +827,11 @@ describe(
       });
     });
 
-    it("derives protected state, requires run screenshots, persists the prospect, and writes research evidence", async () => {
+    it("binds durable research to the verifier-accepted run and derives protected state", async () => {
       const artifacts =
         new InMemoryArtifactStore();
       const repository =
         new InMemoryProspectResearchRepository();
-      const research =
-        service(
-          repository,
-          artifacts
-        );
       const artifactIds = {
         industry:
           await screenshot(
@@ -854,6 +849,16 @@ describe(
             "hiring.jpg"
           )
       };
+      const result =
+        researchResult(
+          artifactIds
+        );
+      const research =
+        service(
+          repository,
+          artifacts,
+          completedRun(result)
+        );
 
       await research.approveTarget(
         target()
@@ -863,11 +868,7 @@ describe(
         await research.recordCompleted({
           targetId:
             "target.example",
-          runId,
-          result:
-            researchResult(
-              artifactIds
-            )
+          runId
         });
 
       expect(attempt).toMatchObject({
@@ -943,6 +944,7 @@ describe(
         attempt.report.prospect
           .disqualifiers
       ).toEqual([]);
+
       for (
         const evidence of
         attempt.report.evidence
@@ -966,7 +968,7 @@ describe(
       }
     });
 
-    it("requires a screenshot artifact for every material observed evidence item", async () => {
+    it("rejects persistence when the durable run was not verifier-accepted", async () => {
       const artifacts =
         new InMemoryArtifactStore();
       const repository =
@@ -974,12 +976,12 @@ describe(
       const research =
         service(
           repository,
-          artifacts
-        );
-      const diagnosticsOnly =
-        await diagnosticsArtifact(
           artifacts,
-          "page-diagnostics.json"
+          failedRun(
+            runId,
+            "EXECUTION_FAILED",
+            "The run failed."
+          )
         );
 
       await research.approveTarget(
@@ -990,16 +992,48 @@ describe(
         research.recordCompleted({
           targetId:
             "target.example",
-          runId,
-          result:
-            researchResult({
-              industry:
-                diagnosticsOnly,
-              workflow:
-                diagnosticsOnly,
-              hiring:
-                diagnosticsOnly
-            })
+          runId
+        })
+      ).rejects.toThrow(
+        "only a verifier-accepted completed run can be persisted as prospect research"
+      );
+    });
+
+    it("requires a screenshot artifact for every material observed evidence item", async () => {
+      const artifacts =
+        new InMemoryArtifactStore();
+      const repository =
+        new InMemoryProspectResearchRepository();
+      const diagnosticsOnly =
+        await diagnosticsArtifact(
+          artifacts,
+          "page-diagnostics.json"
+        );
+      const result =
+        researchResult({
+          industry:
+            diagnosticsOnly,
+          workflow:
+            diagnosticsOnly,
+          hiring:
+            diagnosticsOnly
+        });
+      const research =
+        service(
+          repository,
+          artifacts,
+          completedRun(result)
+        );
+
+      await research.approveTarget(
+        target()
+      );
+
+      await expect(
+        research.recordCompleted({
+          targetId:
+            "target.example",
+          runId
         })
       ).rejects.toThrow(
         "research evidence requires a screenshot artifact"
@@ -1011,16 +1045,23 @@ describe(
         new InMemoryArtifactStore();
       const repository =
         new InMemoryProspectResearchRepository();
-      const research =
-        service(
-          repository,
-          artifacts
-        );
       const foreign =
         await screenshot(
           artifacts,
           "foreign.jpg",
           "other_run"
+        );
+      const result =
+        researchResult({
+          industry: foreign,
+          workflow: foreign,
+          hiring: foreign
+        });
+      const research =
+        service(
+          repository,
+          artifacts,
+          completedRun(result)
         );
 
       await research.approveTarget(
@@ -1031,13 +1072,7 @@ describe(
         research.recordCompleted({
           targetId:
             "target.example",
-          runId,
-          result:
-            researchResult({
-              industry: foreign,
-              workflow: foreign,
-              hiring: foreign
-            })
+          runId
         })
       ).rejects.toBeInstanceOf(
         ProspectResearchValidationError
@@ -1056,26 +1091,27 @@ describe(
         new InMemoryArtifactStore();
       const repository =
         new InMemoryProspectResearchRepository();
+      const result =
+        researchResult({
+          industry:
+            "missing.industry",
+          workflow:
+            "missing.workflow",
+          hiring:
+            "missing.hiring"
+        });
       const research =
         service(
           repository,
-          artifacts
+          artifacts,
+          completedRun(result)
         );
 
       await expect(
         research.recordCompleted({
           targetId:
             "target.example",
-          runId,
-          result:
-            researchResult({
-              industry:
-                "missing.industry",
-              workflow:
-                "missing.workflow",
-              hiring:
-                "missing.hiring"
-            })
+          runId
         })
       ).rejects.toThrow(
         "research target was not approved before the attempt"
@@ -1087,11 +1123,6 @@ describe(
         new InMemoryArtifactStore();
       const repository =
         new InMemoryProspectResearchRepository();
-      const research =
-        service(
-          repository,
-          artifacts
-        );
       const artifactIds = {
         industry:
           await screenshot(
@@ -1109,14 +1140,20 @@ describe(
             "hiring.jpg"
           )
       };
+      const result =
+        researchResult(
+          artifactIds
+        );
+      const research =
+        service(
+          repository,
+          artifacts,
+          completedRun(result)
+        );
       const input = {
         targetId:
           "target.example",
-        runId,
-        result:
-          researchResult(
-            artifactIds
-          )
+        runId
       };
 
       await research.approveTarget(
@@ -1151,15 +1188,22 @@ describe(
       ).toHaveLength(1);
     });
 
-    it("persists live-research failures with server-owned approval, identity, and time", async () => {
+    it("persists failures using durable run identity, time, and message", async () => {
       const artifacts =
         new InMemoryArtifactStore();
       const repository =
         new InMemoryProspectResearchRepository();
+      const message =
+        "The approved public site blocked automated access.";
       const research =
         service(
           repository,
-          artifacts
+          artifacts,
+          failedRun(
+            "run.failed",
+            "EXECUTION_FAILED",
+            message
+          )
         );
 
       await research.approveTarget(
@@ -1173,9 +1217,7 @@ describe(
           runId:
             "run.failed",
           code:
-            "ACCESS_BLOCKED",
-          message:
-            "The approved public site blocked automated access."
+            "ACCESS_BLOCKED"
         });
 
       expect(
@@ -1192,8 +1234,7 @@ describe(
             "LIVE_RESEARCH_FAILURE",
           code:
             "ACCESS_BLOCKED",
-          message:
-            "The approved public site blocked automated access."
+          message
         }
       });
       expect(
@@ -1201,6 +1242,105 @@ describe(
           "run.failed"
         )
       ).toEqual(failure);
+    });
+
+    it("derives timeout and cancellation classifications from durable terminal state", async () => {
+      const artifacts =
+        new InMemoryArtifactStore();
+      const repository =
+        new InMemoryProspectResearchRepository();
+
+      const timeoutResearch =
+        service(
+          repository,
+          artifacts,
+          failedRun(
+            "run.timeout",
+            "RUN_TIMEOUT",
+            "Research exceeded its execution budget."
+          )
+        );
+      await timeoutResearch
+        .approveTarget(
+          target()
+        );
+
+      await expect(
+        timeoutResearch.recordFailure({
+          targetId:
+            "target.example",
+          runId:
+            "run.timeout"
+        })
+      ).resolves.toMatchObject({
+        failure: {
+          code: "TIMEOUT"
+        }
+      });
+
+      const cancelledRepository =
+        new InMemoryProspectResearchRepository();
+      const cancelledResearch =
+        service(
+          cancelledRepository,
+          artifacts,
+          failedRun(
+            "run.cancelled",
+            "RUN_CANCELLED",
+            "Operator cancelled the run."
+          )
+        );
+      await cancelledResearch
+        .approveTarget(
+          target()
+        );
+
+      await expect(
+        cancelledResearch.recordFailure({
+          targetId:
+            "target.example",
+          runId:
+            "run.cancelled"
+        })
+      ).resolves.toMatchObject({
+        failure: {
+          code: "CANCELLED"
+        }
+      });
+    });
+
+    it("rejects a failure classification that contradicts durable terminal state", async () => {
+      const artifacts =
+        new InMemoryArtifactStore();
+      const repository =
+        new InMemoryProspectResearchRepository();
+      const research =
+        service(
+          repository,
+          artifacts,
+          failedRun(
+            "run.timeout",
+            "RUN_TIMEOUT",
+            "Research exceeded its execution budget."
+          )
+        );
+
+      await research.approveTarget(
+        target()
+      );
+
+      await expect(
+        research.recordFailure({
+          targetId:
+            "target.example",
+          runId:
+            "run.timeout",
+          code:
+            "PROVIDER_FAILED"
+        })
+      ).rejects.toThrow(
+        "RUN_TIMEOUT must be classified as TIMEOUT"
+      );
     });
   }
 );
