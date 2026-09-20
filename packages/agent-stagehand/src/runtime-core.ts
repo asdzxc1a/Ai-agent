@@ -145,17 +145,33 @@ async function clearIsolatedBrowserState(
     failures.push(error);
   }
 
-  for (const origin of origins) {
-    try {
-      await stagehand.context.conn.send(
-        "Storage.clearDataForOrigin",
-        {
-          origin,
-          storageTypes: "all"
-        }
-      );
-    } catch (error) {
-      failures.push(error);
+  const page =
+    stagehand.context.pages()[0];
+
+  if (
+    page === undefined &&
+    origins.size > 0
+  ) {
+    failures.push(
+      new Error(
+        "Cannot clear isolated origin storage without an active page."
+      )
+    );
+  }
+
+  if (page !== undefined) {
+    for (const origin of origins) {
+      try {
+        await page.sendCDP(
+          "Storage.clearDataForOrigin",
+          {
+            origin,
+            storageTypes: "all"
+          }
+        );
+      } catch (error) {
+        failures.push(error);
+      }
     }
   }
 
