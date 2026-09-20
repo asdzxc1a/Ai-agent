@@ -11,6 +11,8 @@ import type {
 import {
   ApprovedResearchTargetSchema,
   FailedProspectResearchAttemptSchema,
+  ProspectResearchTargetEnrichmentProposalInputSchema,
+  ResearchApprovalSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
@@ -20,6 +22,7 @@ import {
   type LiveResearchFailureCode,
   type ProspectResearchCaptureReceipt,
   type ProspectResearchHumanBaseline,
+  type ProspectResearchTargetEnrichmentProposal,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome
 } from "./schema.js";
@@ -119,6 +122,120 @@ export class ProspectResearchService {
   ): ApprovedResearchTarget {
     return ApprovedResearchTargetSchema
       .parse(input);
+  }
+
+  public async proposeTargetEnrichment(
+    input: unknown
+  ): Promise<
+    ProspectResearchTargetEnrichmentProposal
+  > {
+    const proposal =
+      ProspectResearchTargetEnrichmentProposalInputSchema
+        .parse(input);
+
+    try {
+      return await this.#repository
+        .saveTargetEnrichmentProposal(
+          proposal
+        );
+    } catch (error) {
+      throw new ProspectResearchValidationError([
+        error instanceof Error
+          ? error.message
+          : "target enrichment proposal could not be persisted"
+      ]);
+    }
+  }
+
+  public async getTargetEnrichmentProposal(
+    proposalId: string
+  ): Promise<
+    ProspectResearchTargetEnrichmentProposal
+  > {
+    const proposal =
+      await this.#repository
+        .getTargetEnrichmentProposal(
+          proposalId
+        );
+
+    if (proposal === undefined) {
+      throw new ProspectResearchValidationError([
+        "target enrichment proposal does not exist: " +
+          proposalId
+      ]);
+    }
+
+    return proposal;
+  }
+
+  public listTargetEnrichmentProposals(
+    targetId: string
+  ) {
+    return this.#repository
+      .listTargetEnrichmentProposals(
+        targetId
+      );
+  }
+
+  public async approveTargetEnrichmentProposal(
+    input: {
+      proposalId: string;
+      approval: unknown;
+    }
+  ): Promise<
+    ApprovedResearchTarget
+  > {
+    const proposal =
+      await this.getTargetEnrichmentProposal(
+        input.proposalId
+      );
+    const approval =
+      ResearchApprovalSchema
+        .parse({
+          ...(
+            input.approval as
+              Record<
+                string,
+                unknown
+              >
+          ),
+          enrichmentProposalId:
+            proposal.id
+        });
+    const target =
+      ApprovedResearchTargetSchema
+        .parse({
+          id:
+            proposal.targetId,
+          domain:
+            proposal.proposedDomain,
+          startUrl:
+            proposal
+              .proposedStartUrl,
+          approvedDomains: [
+            ...proposal
+              .proposedDomains
+          ],
+          companyNameHint:
+            proposal
+              .companyNameHint,
+          icpContext:
+            proposal.icpContext,
+          approval
+        });
+
+    try {
+      await this.#repository
+        .saveTarget(target);
+    } catch (error) {
+      throw new ProspectResearchValidationError([
+        error instanceof Error
+          ? error.message
+          : "target enrichment proposal could not be approved"
+      ]);
+    }
+
+    return target;
   }
 
   public async approveTarget(
