@@ -168,7 +168,7 @@ function frozenSample():
     id: "sample.pg",
     status: "FROZEN",
     protocolVersion:
-      "gate13-measured-research-v6",
+      "gate13-measured-research-v7",
     purpose:
       "CALIBRATION",
     cohortDefinition:
@@ -205,6 +205,8 @@ function frozenSample():
       "Operator researches and drafts the same brief manually.",
     comparisonBaselineDescription:
       null,
+    reviewRubricVersion:
+      "gate13-brief-review-v1",
     frozenBy:
       "operator",
     frozenAt:
@@ -244,6 +246,8 @@ function measuredOutcome(
     attemptId: "run_pg",
     baselineId:
       baseline.id,
+    reviewRubricVersion:
+      "gate13-brief-review-v1",
     attemptStatus:
       "COMPLETED",
     briefDisposition:
