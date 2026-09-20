@@ -334,14 +334,7 @@ function humanBrief(
     " operates a transportation business.";
 
   return {
-    companyName: {
-      value:
-        "Example Systems " +
-        suffix,
-      evidenceIds: [
-        "human.evidence"
-      ]
-    },
+    companyName: null,
     companySummary: [
       {
         id:
