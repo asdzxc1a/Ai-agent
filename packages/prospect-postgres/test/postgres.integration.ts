@@ -7,6 +7,7 @@ import {
 } from "vitest";
 
 import type {
+  ApprovedResearchTarget,
   CompletedProspectResearchAttempt,
   FailedProspectResearchAttempt,
   ProspectResearchHumanBaseline,
@@ -256,6 +257,115 @@ function frozenSample():
   };
 }
 
+function acceptanceTargets():
+  ApprovedResearchTarget[] {
+  const first =
+    completedAttempt()
+      .target;
+
+  return Array.from(
+    {
+      length: 30
+    },
+    (_value, index) => {
+      const suffix =
+        String(
+          index + 1
+        ).padStart(2, "0");
+
+      return {
+        ...first,
+        id:
+          "target.pg.acceptance." +
+          suffix,
+        companyNameHint:
+          "Acceptance Company " +
+          suffix,
+        approval: {
+          ...first.approval,
+          id:
+            "approval.pg.acceptance." +
+            suffix
+        }
+      };
+    }
+  );
+}
+
+function acceptanceSample():
+  ProspectResearchSample {
+  const targets =
+    acceptanceTargets();
+
+  return {
+    id:
+      "sample.pg.acceptance",
+    status: "FROZEN",
+    protocolVersion:
+      "gate13-measured-research-v7",
+    purpose:
+      "ACCEPTANCE",
+    cohortDefinition:
+      "Thirty deterministic U.S. transportation acceptance fixtures.",
+    selectionMethod:
+      "Complete deterministic fixture universe.",
+    selectionUniverse: {
+      id:
+        "universe.pg.acceptance",
+      sourceName:
+        "Deterministic Postgres acceptance universe",
+      sourceUrl:
+        "https://example.test/postgres-acceptance-universe.csv",
+      methodologyUrl:
+        "https://example.test/postgres-acceptance-methodology",
+      sourceAsOfDate:
+        "2026-09-19",
+      sourceDeclaredCount:
+        30,
+      candidateTargetIds:
+        targets.map(
+          (target) =>
+            target.id
+        ),
+      selectionStrategy:
+        "COMPLETE_UNIVERSE",
+      selectionSeed:
+        null
+    },
+    marketScope:
+      "SINGLE_MARKET",
+    marketDescription:
+      "United States",
+    humanBaselineMode:
+      "NORMAL_TOOLS",
+    targets,
+    criteria: {
+      maxUnsupportedMaterialClaims:
+        0,
+      minUsableBriefRate:
+        0.9,
+      minMedianHumanTimeReductionFraction:
+        0.5,
+      requireNoUnauthorizedActions:
+        true,
+      maxDeliveryCostUsdPerBrief:
+        20
+    },
+    costCeilingRationale:
+      "Acceptance persistence fixture ceiling.",
+    humanBaselineDescription:
+      "Human researcher uses normal research tools.",
+    comparisonBaselineDescription:
+      null,
+    reviewRubricVersion:
+      "gate13-brief-review-v1",
+    frozenBy:
+      "operator",
+    frozenAt:
+      "2026-09-19T12:01:00Z"
+  };
+}
+
 function humanBaselineInput() {
   return {
     id:
@@ -382,6 +492,69 @@ function failedAttempt():
     }
   };
 }
+
+test(
+  "PostgresProspectResearchRepository rejects acceptance freeze assembled from individual approvals",
+  async () => {
+    const repository =
+      new PostgresProspectResearchRepository(
+        pool
+      );
+    const sample =
+      acceptanceSample();
+
+    for (
+      const target of
+      sample.targets
+    ) {
+      await repository
+        .saveTarget(target);
+    }
+
+    await expect(
+      repository.saveSample(
+        sample
+      )
+    ).rejects.toThrow(
+      "must come from one atomic approval batch"
+    );
+  }
+);
+
+test(
+  "PostgresProspectResearchRepository freezes acceptance after one exact approval batch",
+  async () => {
+    const repository =
+      new PostgresProspectResearchRepository(
+        pool
+      );
+    const sample =
+      acceptanceSample();
+    const batch =
+      approvalBatch(
+        sample.targets
+      );
+
+    await repository
+      .saveTargetBatch(
+        batch
+      );
+
+    await expect(
+      repository.saveSample(
+        sample
+      )
+    ).resolves.toBeUndefined();
+
+    await expect(
+      repository.getSample(
+        sample.id
+      )
+    ).resolves.toEqual(
+      sample
+    );
+  }
+);
 
 test(
   "PostgresProspectResearchRepository persists approval batches and targets atomically",
