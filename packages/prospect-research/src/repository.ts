@@ -478,6 +478,38 @@ export class InMemoryProspectResearchRepository
       }
     }
 
+    if (
+      sample.purpose ===
+      "ACCEPTANCE"
+    ) {
+      const batch =
+        [
+          ...this.#approvalBatches
+            .values()
+        ].find(
+          (candidate) =>
+            candidate.targets.length ===
+              sample.targets.length &&
+            sample.targets.every(
+              (target) =>
+                candidate.targets
+                  .some(
+                    (approved) =>
+                      sameApprovedResearchTarget(
+                        approved,
+                        target
+                      )
+                  )
+            )
+        );
+
+      if (batch === undefined) {
+        throw new Error(
+          "Gate 13 acceptance sample targets must come from one atomic approval batch."
+        );
+      }
+    }
+
     this.#samples.set(
       sample.id,
       structuredClone(sample)
