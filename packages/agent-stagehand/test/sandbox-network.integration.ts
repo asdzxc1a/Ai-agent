@@ -20,6 +20,7 @@ import type {
   BrowserSession
 } from "@astra/browser-runtime";
 import {
+  SteelBrowserIsolationError,
   SteelBrowserRuntime,
   SteelClient
 } from "@astra/browser-steel";
@@ -39,6 +40,9 @@ import {
 const steelBaseUrl =
   process.env.STEEL_BASE_URL ??
   "http://127.0.0.1:3000";
+const steelSecondaryBaseUrl =
+  process.env.STEEL_SECONDARY_BASE_URL ??
+  "http://127.0.0.1:3001";
 
 const stateSchema =
   z.object({
@@ -89,7 +93,11 @@ async function startFixture():
   Promise<{
     server: Server;
     browserBaseUrl: string;
+    privateRequestCount():
+      number;
   }> {
+  let privateRequests = 0;
+
   const server =
     createServer(
       (request, response) => {
@@ -126,14 +134,39 @@ async function startFixture():
           url.pathname ===
           "/redirect-private"
         ) {
+          const port =
+            request.headers.host
+              ?.split(":")
+              .at(-1);
+
           response.writeHead(
             302,
             {
               location:
-                "http://169.254.169.254/latest/meta-data/"
+                "http://blocked.docker.internal:" +
+                String(port) +
+                "/private-sentinel"
             }
           );
           response.end();
+          return;
+        }
+
+        if (
+          url.pathname ===
+          "/private-sentinel"
+        ) {
+          privateRequests += 1;
+          response.writeHead(
+            200,
+            {
+              "content-type":
+                "text/plain; charset=utf-8"
+            }
+          );
+          response.end(
+            "private target reached"
+          );
           return;
         }
 
@@ -185,7 +218,10 @@ async function startFixture():
           address as
             AddressInfo
         ).port
-      )
+      ),
+    privateRequestCount() {
+      return privateRequests;
+    }
   };
 }
 
@@ -201,7 +237,9 @@ async function closeServer(
   );
 }
 
-function browserRuntime() {
+function browserRuntime(
+  baseUrl = steelBaseUrl
+) {
   return new SandboxedBrowserRuntime({
     sandboxRuntime:
       new LocalSandboxRuntime({
@@ -211,8 +249,7 @@ function browserRuntime() {
       }),
     browserRuntime:
       new SteelBrowserRuntime({
-        baseUrl:
-          steelBaseUrl,
+        baseUrl,
         skipFingerprintInjection:
           true
       })
@@ -260,7 +297,8 @@ test(
   async () => {
     const {
       server,
-      browserBaseUrl
+      browserBaseUrl,
+      privateRequestCount
     } = await startFixture();
     const runtime =
       browserRuntime();
@@ -331,10 +369,26 @@ test(
 
       await expect(
         agent.navigate(
-          browserBaseUrl +
-            "/redirect-private"
+          "http://blocked.docker.internal:" +
+            new URL(
+              browserBaseUrl
+            ).port +
+            "/private-sentinel"
         )
-      ).rejects.toThrow();
+      ).rejects.toBeInstanceOf(
+        SandboxNetworkPolicyError
+      );
+
+      await agent.navigate(
+        browserBaseUrl +
+          "/redirect-private"
+      ).catch(
+        () => undefined
+      );
+
+      expect(
+        privateRequestCount()
+      ).toBe(0);
 
       const browserId =
         browser.id;
@@ -372,13 +426,23 @@ test(
       server,
       browserBaseUrl
     } = await startFixture();
-    const runtime =
-      browserRuntime();
+    const primaryRuntime =
+      browserRuntime(
+        steelBaseUrl
+      );
+    const secondaryRuntime =
+      browserRuntime(
+        steelSecondaryBaseUrl
+      );
     const agentRuntimeInstance =
       agentRuntime();
-    const steelClient =
+    const primarySteelClient =
       new SteelClient(
         steelBaseUrl
+      );
+    const secondarySteelClient =
+      new SteelClient(
+        steelSecondaryBaseUrl
       );
 
     let firstBrowser:
@@ -392,9 +456,10 @@ test(
 
     try {
       firstBrowser =
-        await runtime.createSession({
-          headless: true
-        });
+        await primaryRuntime
+          .createSession({
+            headless: true
+          });
       firstAgent =
         await agentRuntimeInstance
           .openSession({
@@ -420,10 +485,21 @@ test(
       const firstIsolationId =
         firstBrowser.isolationId;
 
+      await expect(
+        primaryRuntime
+          .createSession({
+            headless: true
+          })
+      ).rejects.toBeInstanceOf(
+        SteelBrowserIsolationError
+      );
+
       secondBrowser =
-        await runtime.createSession({
-          headless: true
-        });
+        await secondaryRuntime
+          .createSession({
+            headless: true
+          });
+
       expect(
         secondBrowser.id
       ).not.toBe(
@@ -461,7 +537,7 @@ test(
 
       expect(
         (
-          await steelClient
+          await primarySteelClient
             .getSession(
               firstBrowserId
             )
@@ -469,7 +545,7 @@ test(
       ).not.toBe("released");
       expect(
         (
-          await steelClient
+          await secondarySteelClient
             .getSession(
               secondBrowserId
             )
@@ -483,7 +559,7 @@ test(
 
       expect(
         (
-          await steelClient
+          await primarySteelClient
             .getSession(
               firstBrowserId
             )
@@ -491,7 +567,7 @@ test(
       ).toBe("released");
       expect(
         (
-          await steelClient
+          await secondarySteelClient
             .getSession(
               secondBrowserId
             )
@@ -506,7 +582,7 @@ test(
 
       expect(
         (
-          await steelClient
+          await secondarySteelClient
             .getSession(
               secondBrowserId
             )

@@ -1,5 +1,10 @@
-export { SteelBrowserRuntime } from "./steel-runtime.js";
-export type { SteelBrowserRuntimeOptions } from "./steel-runtime.js";
+export {
+  SteelBrowserIsolationError,
+  SteelBrowserRuntime
+} from "./steel-runtime.js";
+export type {
+  SteelBrowserRuntimeOptions
+} from "./steel-runtime.js";
 
 export { SteelClient } from "./steel-client.js";
 

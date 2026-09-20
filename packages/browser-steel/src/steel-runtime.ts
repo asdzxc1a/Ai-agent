@@ -17,6 +17,33 @@ export interface SteelBrowserRuntimeOptions {
   skipFingerprintInjection?: boolean;
 }
 
+const DEFAULT_STEEL_BASE_URL =
+  "http://127.0.0.1:3000";
+const ACTIVE_STEEL_ENDPOINTS =
+  new Set<string>();
+
+function endpointKey(
+  baseUrl: string | undefined
+): string {
+  return (
+    baseUrl ??
+    DEFAULT_STEEL_BASE_URL
+  ).replace(/\/+$/, "");
+}
+
+export class SteelBrowserIsolationError
+  extends Error {
+  public constructor(
+    baseUrl: string
+  ) {
+    super(
+      `Steel endpoint ${baseUrl} already has an active browser session. This self-hosted provider is single-tenant; use a separate Steel endpoint for concurrent sandbox isolation.`
+    );
+    this.name =
+      "SteelBrowserIsolationError";
+  }
+}
+
 function isRecord(
   value: unknown
 ): value is Record<string, unknown> {
@@ -136,13 +163,20 @@ class SteelBrowserSession implements BrowserSession {
 
   readonly #client: SteelClient;
   readonly #createdAt: string;
+  readonly #releaseEndpoint:
+    () => void;
   #closePromise?: Promise<void>;
+  #endpointReleased = false;
 
   public constructor(
     client: SteelClient,
-    details: SteelSessionDetails
+    details: SteelSessionDetails,
+    releaseEndpoint:
+      () => void
   ) {
     this.#client = client;
+    this.#releaseEndpoint =
+      releaseEndpoint;
     this.id = details.id;
     this.cdpUrl = details.websocketUrl;
     this.#createdAt =
@@ -188,11 +222,21 @@ class SteelBrowserSession implements BrowserSession {
     return this.#closePromise;
   }
 
+  #releaseEndpointOnce(): void {
+    if (this.#endpointReleased) {
+      return;
+    }
+
+    this.#endpointReleased = true;
+    this.#releaseEndpoint();
+  }
+
   async #closeOnce(): Promise<void> {
     const current =
       await this.#client.getSession(this.id);
 
     if (current.status === "released") {
+      this.#releaseEndpointOnce();
       return;
     }
 
@@ -216,22 +260,27 @@ class SteelBrowserSession implements BrowserSession {
         `Steel session ${this.id} did not reach released state.`
       );
     }
+
+    this.#releaseEndpointOnce();
   }
 }
 
 export class SteelBrowserRuntime
   implements BrowserRuntime {
   readonly #client: SteelClient;
+  readonly #endpointKey: string;
   readonly #skipFingerprintInjection: boolean;
 
   public constructor({
     baseUrl,
     skipFingerprintInjection = false
   }: SteelBrowserRuntimeOptions = {}) {
+    this.#endpointKey =
+      endpointKey(baseUrl);
     this.#client =
-      baseUrl === undefined
-        ? new SteelClient()
-        : new SteelClient(baseUrl);
+      new SteelClient(
+        this.#endpointKey
+      );
     this.#skipFingerprintInjection =
       skipFingerprintInjection;
   }
@@ -239,8 +288,26 @@ export class SteelBrowserRuntime
   public async createSession(
     options: BrowserSessionOptions = {}
   ): Promise<BrowserSession> {
-    const details =
-      await this.#client.createSession({
+    if (
+      ACTIVE_STEEL_ENDPOINTS.has(
+        this.#endpointKey
+      )
+    ) {
+      throw new SteelBrowserIsolationError(
+        this.#endpointKey
+      );
+    }
+
+    ACTIVE_STEEL_ENDPOINTS.add(
+      this.#endpointKey
+    );
+
+    let details:
+      SteelSessionDetails;
+
+    try {
+      details =
+        await this.#client.createSession({
         ...(options.headless === undefined
           ? {}
           : {
@@ -256,16 +323,27 @@ export class SteelBrowserRuntime
               skipFingerprintInjection: true
             }
           : {}),
-        ...(options.signal === undefined
-          ? {}
-          : {
-              signal: options.signal
-            })
-      });
+          ...(options.signal === undefined
+            ? {}
+            : {
+                signal: options.signal
+              })
+        });
+    } catch (error) {
+      ACTIVE_STEEL_ENDPOINTS.delete(
+        this.#endpointKey
+      );
+      throw error;
+    }
 
     return new SteelBrowserSession(
       this.#client,
-      details
+      details,
+      () => {
+        ACTIVE_STEEL_ENDPOINTS.delete(
+          this.#endpointKey
+        );
+      }
     );
   }
 }
