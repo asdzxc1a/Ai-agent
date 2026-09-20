@@ -124,6 +124,32 @@ export function validateProspectResearchSampleOutcomeContext(
     );
   }
 
+  if (
+    sample.purpose ===
+      "ACCEPTANCE" &&
+    outcome.baselineSource !==
+      "MEASURED_HUMAN"
+  ) {
+    throw new Error(
+      "Gate 13 acceptance outcomes require a measured human baseline."
+    );
+  }
+
+  if (
+    sample.purpose ===
+      "ACCEPTANCE" &&
+    Date.parse(
+      outcome.baselineMeasuredAt
+    ) >
+      Date.parse(
+        attempt.createdAt
+      )
+  ) {
+    throw new Error(
+      "Gate 13 acceptance human baseline must be measured before the Astra attempt starts."
+    );
+  }
+
   return outcome;
 }
 
@@ -292,6 +318,18 @@ export function evaluateProspectResearchSample(
       passed: null,
       metrics,
       failures
+    };
+  }
+
+  if (
+    sample.purpose ===
+    "CALIBRATION"
+  ) {
+    return {
+      complete: true,
+      passed: null,
+      metrics,
+      failures: []
     };
   }
 
