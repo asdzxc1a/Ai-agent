@@ -291,19 +291,27 @@ test(
       attempt.target
     );
 
-    const widened = {
-      ...attempt,
-      id:
-        "attempt.pg.widened",
-      target: {
-        ...attempt.target,
-        approvedDomains: [
-          ...attempt.target
-            .approvedDomains,
-          "other-example.com"
-        ]
-      }
-    };
+    const widened:
+      CompletedProspectResearchAttempt = {
+        ...attempt,
+        id:
+          "run_pg_widened",
+        target: {
+          ...attempt.target,
+          approvedDomains: [
+            ...attempt.target
+              .approvedDomains,
+            "other-example.com"
+          ]
+        },
+        report: {
+          ...attempt.report,
+          id:
+            "run_pg_widened",
+          runId:
+            "run_pg_widened"
+        }
+      };
 
     await expect(
       repository.saveAttempt(
@@ -311,6 +319,52 @@ test(
       )
     ).rejects.toThrow(
       "Research attempt target differs from the stored approval."
+    );
+  }
+);
+
+
+test(
+  "PostgresProspectResearchRepository rejects direct protected-state forgery",
+  async () => {
+    const repository =
+      new PostgresProspectResearchRepository(
+        pool
+      );
+    const attempt =
+      completedAttempt();
+
+    await repository.saveTarget(
+      attempt.target
+    );
+
+    const forged:
+      CompletedProspectResearchAttempt = {
+        ...attempt,
+        id:
+          "run_pg_forged",
+        report: {
+          ...attempt.report,
+          id:
+            "run_pg_forged",
+          runId:
+            "run_pg_forged",
+          prospect: {
+            ...attempt.report
+              .prospect,
+            id:
+              "prospect.forged",
+            fit: "strong"
+          }
+        }
+      };
+
+    await expect(
+      repository.saveAttempt(
+        forged
+      )
+    ).rejects.toThrow(
+      "Durable prospect research attempt failed validation"
     );
   }
 );
