@@ -653,8 +653,8 @@ test(
       "/tmp/astra-gate12-isolation-" +
       String(process.pid);
     const processMarker =
-      "astra-gate12-process-" +
-      String(process.pid);
+      "astraIso" +
+      String(process.pid % 100_000);
     const port = 49123;
 
     await docker(
@@ -703,7 +703,7 @@ test(
             ";",
           "const found=fs.readdirSync('/proc')",
           ".filter(x=>/^\\d+$/.test(x))",
-          ".some(x=>{try{return fs.readFileSync('/proc/'+x+'/cmdline','utf8').includes(marker)}catch{return false}});",
+          ".some(x=>{try{return fs.readFileSync('/proc/'+x+'/comm','utf8').trim()===marker}catch{return false}});",
           "process.exit(found?7:0);"
         ].join("")
       )
