@@ -70,7 +70,7 @@ function sample(
       status:
         "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v1",
+        "gate13-measured-research-v2",
       purpose,
       cohortDefinition:
         purpose ===
