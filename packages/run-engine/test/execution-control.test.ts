@@ -41,7 +41,6 @@ class FixtureBrowser
   public async close():
     Promise<void> {
     this.closeCalls += 1;
-    await this.options.close?.();
   }
 }
 
@@ -151,6 +150,7 @@ class FixtureAgent
   public async close():
     Promise<void> {
     this.closeCalls += 1;
+    await this.options.close?.();
   }
 }
 
