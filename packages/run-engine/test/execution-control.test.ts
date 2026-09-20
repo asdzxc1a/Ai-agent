@@ -536,6 +536,198 @@ test(
   }
 );
 
+test(
+  "reconciliation fails durable runs whose executor was lost",
+  async () => {
+    const repository =
+      new InMemoryRunRepository();
+    const timestamp =
+      "2026-09-20T00:00:00.000Z";
+    const pendingId =
+      "run.interrupted.pending";
+    const runningId =
+      "run.interrupted.running";
+    const request = {
+      url:
+        "https://fixture.test/",
+      goal:
+        "Reconcile an interrupted run."
+    };
+
+    await repository.createRun(
+      {
+        id: pendingId,
+        status: "PENDING",
+        goalStatus:
+          "IN_PROGRESS",
+        createdAt: timestamp,
+        updatedAt: timestamp
+      },
+      request
+    );
+    await repository.createRun(
+      {
+        id: runningId,
+        status: "PENDING",
+        goalStatus:
+          "IN_PROGRESS",
+        createdAt: timestamp,
+        updatedAt: timestamp
+      },
+      request
+    );
+    await repository.updateRun(
+      runningId,
+      {
+        status: "RUNNING"
+      }
+    );
+    await repository.appendEvent(
+      runningId,
+      "RUN_STARTED",
+      {
+        status: "RUNNING"
+      }
+    );
+
+    const engine =
+      new RunEngine({
+        repository,
+        browserRuntime:
+          new FixtureBrowserRuntime(),
+        agentRuntime:
+          new FixtureAgentRuntime(
+            new FixtureAgent()
+          )
+      });
+
+    const reconciled =
+      await engine
+        .reconcileInterruptedRuns();
+
+    expect(
+      reconciled.map(
+        (run) => run.id
+      )
+    ).toEqual([
+      pendingId,
+      runningId
+    ]);
+
+    for (
+      const runId of [
+        pendingId,
+        runningId
+      ]
+    ) {
+      const terminal =
+        await repository.getRun(
+          runId
+        );
+
+      expect(
+        terminal?.status
+      ).toBe("FAILED");
+      expect(
+        terminal?.error
+      ).toEqual({
+        code:
+          "EXECUTION_FAILED",
+        message:
+          "Run execution was interrupted before reaching a terminal state."
+      });
+      expect(
+        terminal
+          ?.terminalReason
+          ?.code
+      ).toBe(
+        "EXECUTION_FAILED"
+      );
+
+      const events =
+        await repository
+          .listEvents(runId);
+
+      expect(
+        events.at(-1)
+          ?.eventType
+      ).toBe("RUN_FAILED");
+      expect(
+        events.at(-1)
+          ?.payload
+      ).toMatchObject({
+        reconciled: true
+      });
+    }
+
+    await expect(
+      repository.listActiveRuns()
+    ).resolves.toEqual([]);
+  }
+);
+
+test(
+  "reconciliation does not steal a run from an active in-process executor",
+  async () => {
+    const repository =
+      new InMemoryRunRepository();
+    const agent =
+      new FixtureAgent({
+        navigate:
+          abortWait
+      });
+    const engine =
+      new RunEngine({
+        repository,
+        browserRuntime:
+          new FixtureBrowserRuntime(),
+        agentRuntime:
+          new FixtureAgentRuntime(
+            agent
+          )
+      });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Remain owned until cancellation."
+        }
+      });
+
+    await waitForNavigate(
+      agent
+    );
+
+    await expect(
+      engine
+        .reconcileInterruptedRuns()
+    ).resolves.toEqual([]);
+
+    expect(
+      (
+        await repository
+          .getRun(started.id)
+      )?.status
+    ).toBe("RUNNING");
+
+    await engine.cancelRun(
+      started.id
+    );
+
+    await expect(
+      waitForTerminal(
+        engine,
+        started.id
+      )
+    ).resolves.toMatchObject({
+      status: "CANCELLED"
+    });
+  }
+);
+
 test("wall-clock timeout aborts execution and still cleans resources", async () => {
   const browser =
     new FixtureBrowserRuntime();
