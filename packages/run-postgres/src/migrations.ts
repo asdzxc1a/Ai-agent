@@ -72,12 +72,46 @@ SELECT
   )
 FROM legacy_completed;
 
+WITH legacy_completed_events AS (
+  UPDATE runs
+  SET event_sequence = event_sequence + 1
+  WHERE status = 'COMPLETED'
+  RETURNING
+    id,
+    event_sequence
+)
+INSERT INTO run_events (
+  run_id,
+  sequence_number,
+  event_type,
+  payload
+)
+SELECT
+  id,
+  event_sequence,
+  'RUN_FAILED',
+  jsonb_build_object(
+    'goalState',
+    'BLOCKED',
+    'reason',
+    jsonb_build_object(
+      'code',
+      'COMPLETION_REJECTED',
+      'message',
+      'Legacy completed run predates semantic completion verification.'
+    ),
+    'error',
+    jsonb_build_object(
+      'code',
+      'COMPLETION_REJECTED',
+      'message',
+      'Legacy completed run predates semantic completion verification.'
+    )
+  )
+FROM legacy_completed_events;
+
 UPDATE runs
 SET
-  status = CASE
-    WHEN status = 'COMPLETED' THEN 'FAILED'
-    ELSE status
-  END,
   goal_state = CASE status
     WHEN 'COMPLETED' THEN 'BLOCKED'
     WHEN 'FAILED' THEN 'FAILED'
@@ -106,10 +140,6 @@ SET
       )
     ELSE NULL
   END,
-  result = CASE
-    WHEN status = 'COMPLETED' THEN NULL
-    ELSE result
-  END,
   error = CASE
     WHEN status = 'COMPLETED'
       THEN jsonb_build_object(
@@ -121,6 +151,12 @@ SET
       THEN '{"code":"CANCELLED","message":"Run cancelled."}'::jsonb
     ELSE error
   END;
+
+UPDATE runs
+SET
+  status = 'FAILED',
+  result = NULL
+WHERE status = 'COMPLETED';
 
 ALTER TABLE runs
   ALTER COLUMN goal_state SET NOT NULL,
@@ -154,6 +190,29 @@ ALTER TABLE runs
         status = 'CANCELLED'
         AND goal_state = 'BLOCKED'
         AND terminal_reason IS NOT NULL
+      )
+    ),
+  ADD CONSTRAINT runs_cancelled_error
+    CHECK (
+      status <> 'CANCELLED'
+      OR error IS NOT NULL
+    ),
+  ADD CONSTRAINT runs_completed_verified_reason
+    CHECK (
+      status <> 'COMPLETED'
+      OR terminal_reason->>'code' = 'GOAL_VERIFIED'
+    ),
+  ADD CONSTRAINT runs_failed_reason_matches_error
+    CHECK (
+      status <> 'FAILED'
+      OR terminal_reason->>'code' = error->>'code'
+    ),
+  ADD CONSTRAINT runs_cancelled_reason_matches_error
+    CHECK (
+      status <> 'CANCELLED'
+      OR (
+        terminal_reason->>'code' = 'CANCELLED'
+        AND error->>'code' = 'CANCELLED'
       )
     );
 `;

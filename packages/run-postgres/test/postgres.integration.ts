@@ -443,3 +443,217 @@ test(
     }
   }
 );
+
+
+test(
+  "migration V2 reclassifies legacy completion without inventing verification",
+  async () => {
+    const schema =
+      "gate10_legacy_" +
+      randomUUID().replaceAll(
+        "-",
+        ""
+      );
+
+    await pool.query(
+      "CREATE SCHEMA " +
+        schema
+    );
+
+    const legacyPool =
+      createPostgresPool({
+        connectionString,
+        max: 1,
+        options:
+          "-c search_path=" +
+          schema
+      });
+
+    try {
+      await legacyPool.query(
+        "CREATE TABLE schema_migrations (" +
+          "version INTEGER PRIMARY KEY," +
+          "applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()" +
+        ")"
+      );
+      await legacyPool.query(
+        "INSERT INTO schema_migrations(version) VALUES (1)"
+      );
+
+      await legacyPool.query(
+        "CREATE TABLE runs (" +
+          "id UUID PRIMARY KEY," +
+          "status TEXT NOT NULL CHECK (status IN ('PENDING','RUNNING','COMPLETED','FAILED','CANCELLED'))," +
+          "request JSONB NOT NULL," +
+          "result JSONB," +
+          "error JSONB," +
+          "created_at TIMESTAMPTZ NOT NULL," +
+          "updated_at TIMESTAMPTZ NOT NULL," +
+          "step_sequence INTEGER NOT NULL DEFAULT 0," +
+          "event_sequence INTEGER NOT NULL DEFAULT 0," +
+          "CONSTRAINT runs_completed_result CHECK (status <> 'COMPLETED' OR result IS NOT NULL)," +
+          "CONSTRAINT runs_failed_error CHECK (status <> 'FAILED' OR error IS NOT NULL)" +
+        ")"
+      );
+      await legacyPool.query(
+        "CREATE TABLE run_steps (" +
+          "id BIGSERIAL PRIMARY KEY," +
+          "run_id UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE," +
+          "sequence_number INTEGER NOT NULL," +
+          "kind TEXT NOT NULL," +
+          "payload JSONB NOT NULL," +
+          "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()," +
+          "UNIQUE (run_id, sequence_number)" +
+        ")"
+      );
+      await legacyPool.query(
+        "CREATE TABLE run_events (" +
+          "id BIGSERIAL PRIMARY KEY," +
+          "run_id UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE," +
+          "sequence_number INTEGER NOT NULL," +
+          "event_type TEXT NOT NULL," +
+          "payload JSONB NOT NULL," +
+          "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()," +
+          "UNIQUE (run_id, sequence_number)" +
+        ")"
+      );
+
+      const runId =
+        randomUUID();
+      const now =
+        new Date().toISOString();
+      const legacyResult = {
+        company: "Legacy Acme",
+        status: "claimed-complete"
+      };
+
+      await legacyPool.query(
+        "INSERT INTO runs (" +
+          "id,status,request,result,error,created_at,updated_at,step_sequence,event_sequence" +
+        ") VALUES ($1,'COMPLETED',$2::jsonb,$3::jsonb,NULL,$4,$4,1,2)",
+        [
+          runId,
+          JSON.stringify(request),
+          JSON.stringify(
+            legacyResult
+          ),
+          now
+        ]
+      );
+      await legacyPool.query(
+        "INSERT INTO run_steps (run_id,sequence_number,kind,payload) " +
+        "VALUES ($1,1,'EXTRACT',$2::jsonb)",
+        [
+          runId,
+          JSON.stringify({
+            result:
+              legacyResult
+          })
+        ]
+      );
+      await legacyPool.query(
+        "INSERT INTO run_events (run_id,sequence_number,event_type,payload) VALUES " +
+        "($1,1,'RUN_CREATED',$2::jsonb)," +
+        "($1,2,'RUN_COMPLETED',$3::jsonb)",
+        [
+          runId,
+          JSON.stringify({
+            status: "PENDING"
+          }),
+          JSON.stringify({
+            result:
+              legacyResult
+          })
+        ]
+      );
+
+      await runPostgresMigrations(
+        legacyPool
+      );
+
+      const migratedRepository =
+        new PostgresRunRepository(
+          legacyPool
+        );
+      const migrated =
+        await migratedRepository.getRun(
+          runId
+        );
+
+      expect(migrated).toMatchObject({
+        status: "FAILED",
+        goalState: "BLOCKED",
+        terminalReason: {
+          code:
+            "COMPLETION_REJECTED"
+        },
+        error: {
+          code:
+            "COMPLETION_REJECTED"
+        }
+      });
+      expect(
+        migrated?.result
+      ).toBeUndefined();
+
+      const steps =
+        await migratedRepository.listSteps(
+          runId
+        );
+      expect(
+        steps.map(
+          (step) =>
+            step.sequenceNumber
+        )
+      ).toEqual([1, 2]);
+      expect(
+        steps.at(-1)
+      ).toMatchObject({
+        kind:
+          "LEGACY_UNVERIFIED_RESULT",
+        payload: {
+          previousStatus:
+            "COMPLETED",
+          result:
+            legacyResult
+        }
+      });
+
+      const events =
+        await migratedRepository.listEvents(
+          runId
+        );
+      expect(
+        events.map(
+          (event) =>
+            event.sequenceNumber
+        )
+      ).toEqual([1, 2, 3]);
+      expect(
+        events.at(-1)
+      ).toMatchObject({
+        eventType:
+          "RUN_FAILED",
+        payload: {
+          goalState:
+            "BLOCKED",
+          reason: {
+            code:
+              "COMPLETION_REJECTED"
+          },
+          error: {
+            code:
+              "COMPLETION_REJECTED"
+          }
+        }
+      });
+    } finally {
+      await legacyPool.end();
+      await pool.query(
+        "DROP SCHEMA IF EXISTS " +
+          schema +
+          " CASCADE"
+      );
+    }
+  }
+);
