@@ -786,3 +786,37 @@ A benchmark that exposes expected answers to the candidate, edits failing tasks 
 **Revisit when**
 
 When a new benchmark version is intentionally created with a documented task-distribution change, or when a hosted-model qualification lane is added without changing ResearchBench v1 history.
+
+
+---
+
+## D-028 — Sandbox isolation is owned; self-hosted Steel endpoints are single-tenant until proven otherwise
+
+**Date:** 2026-09-19
+**Status:** Accepted
+
+**Decision**
+
+`@astra/sandbox-runtime` owns sandbox lifecycle, isolation identity, and network-policy semantics. Browser and agent providers consume those owned contracts; they do not define whether a run is isolated.
+
+Untrusted browser research is fail-closed: destinations require explicit hostname egress allowance, explicit navigation receives Astra-owned scheme/credential/port/DNS/IP checks, and Stagehand applies the generic context-wide domain policy to redirects, popups, and subresources.
+
+The pinned self-hosted Steel provider is treated as single-tenant per endpoint. Astra rejects a second concurrent browser session on the same Steel endpoint. Concurrent isolated runs require distinct verified Steel endpoints or a future provider that passes the same owned isolation tests.
+
+**Why**
+
+Gate 12's first provider acceptance showed that two separate Steel session IDs on one pinned self-hosted endpoint shared cookie/localStorage because the service reused one Chrome profile. Provider session identity is therefore not evidence of storage, process, filesystem, or network isolation.
+
+**Consequences**
+
+- `RunEngine` persists an owned `isolationId` without learning Steel/E2B/provider APIs;
+- Stagehand remains sandbox-provider-neutral and consumes only `BrowserNetworkPolicy`;
+- self-hosted Steel enforces one active Astra browser session per endpoint;
+- simultaneous acceptance uses independent pinned Steel endpoints and proves browser-state plus OS/container isolation;
+- sequential endpoint reuse is allowed only after fail-closed browser-state cleanup succeeds;
+- sandboxed agent code receives no filesystem/process/environment/raw-port capability;
+- E2B or another provider may be added later only behind the same contract and acceptance tests.
+
+**Revisit when**
+
+A self-hosted Steel release or another provider demonstrates concurrent storage/process/filesystem/network isolation on one endpoint under the owned Gate 12 tests.

@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-09-19  
 **Repository:** `asdzxc1a/Ai-agent`  
-**Phase:** Deterministic research qualification → sandbox/network isolation
-**Current gate:** Gate 12 — Sandbox + network safety for external research
-**Overall status:** Gates 0–11 are PASSED. Gate 11 completed in PR #62: frozen ResearchBench v1 qualifies the owned Stagehand→Steel research loop at 30/30 first-attempt tasks, with 20/20 core, 10/10 hard, zero false completions, zero unsupported claims, evidence/source attribution checks, and released Steel sessions. Gate 12 is active in issue #63.
+**Phase:** Sandbox/network isolation → controlled live prospect research
+**Current gate:** Gate 13 — Evidence-backed live prospect research
+**Overall status:** Gates 0–12 are PASSED. Gate 12 completed in PR #64: Astra now has an owned sandbox/network-policy boundary, fail-closed egress controls, durable isolation IDs, terminal-path sandbox cleanup, sandboxed ResearchBench at 30/30, and measured provider isolation. Pinned self-hosted Steel is treated as single-tenant per endpoint; simultaneous isolated runs require separate verified endpoints. Gate 13 is active in issue #65.
 
 ## North star
 
@@ -78,6 +78,14 @@ Abort signals propagate through browser/agent contracts into Stagehand/Steel ope
 The evaluator rejects fabricated evidence, unsupported findings, wrong source attribution, unknown→fact promotion, and false completion. The owned Stagehand→Steel candidate stores only evidence actually observed through the browser path, resolves dated conflicts by recency, and preserves missing/ambiguous fields as explicit unknowns.
 
 Final qualification on the frozen suite is 30/30: core 20/20, hard 10/10, zero false completions, zero unsupported claims, and every run's Steel session reaches `released`. Earlier 28/30 and 27/30 measurements are preserved in Gate 11 history as harness-failure evidence rather than hidden or used to rewrite the suite.
+
+### Gate 12 sandbox + network safety
+
+`@astra/sandbox-runtime` owns `SandboxRuntime` / `SandboxSession`, `SandboxedBrowserRuntime`, isolation identity, and browser egress policy. `RunEngine` persists the optional `isolationId` without learning any sandbox-provider API, while Stagehand consumes only the generic browser network policy.
+
+Untrusted egress is fail-closed: allowed hosts must be explicit, navigation is limited to HTTP/HTTPS, credentials and non-approved ports are rejected, DNS is rechecked, and loopback/private/link-local/metadata/reserved targets fail closed. Stagehand's context-wide domain policy covers redirects, popups, and subresources; direct navigation additionally receives Astra-owned DNS/IP preflight.
+
+Provider isolation is measured rather than inferred. The first pinned Steel provider run showed separate session IDs on one self-hosted endpoint shared cookie/localStorage. Astra therefore rejects concurrent browser sessions on one self-hosted Steel endpoint. Final acceptance proves simultaneous browser-state separation across independent pinned Steel endpoints, filesystem/process/loopback-port separation between provider containers, clean sequential endpoint reuse, independent release, and 30/30 ResearchBench through the sandbox composition.
 
 ### Gate 8 sales-domain foundation
 
@@ -157,7 +165,6 @@ D-023 requires selective reuse behind current owned contracts rather than a whol
 
 Astra does not yet have:
 
-- sandbox/network isolation for untrusted live research;
 - live prospect research;
 - durable ICP/prospect queue;
 - outreach drafting/approval workflow;
@@ -185,6 +192,7 @@ Astra does not yet have:
 | 9 — Owned multi-step sales-agent loop | PASSED | PR #55 / CI 35454706979 |
 | 10 — Completion, effects, cancellation + budgets | PASSED | PR #60 / CI 35458628400 |
 | 11 — Deterministic prospect-research qualification | PASSED | PR #62 / Stagehand 35461483407 |
+| 12 — Sandbox + network safety for external research | PASSED | PR #64 / Stagehand 35464578747 |
 
 Gate 8 regression evidence:
 
@@ -200,6 +208,7 @@ Detailed evidence:
 - `docs/project/history/2026-09-19-gate9-owned-multistep-loop.md`
 - `docs/project/history/2026-09-19-gate10-completion-effects-cancellation-budgets.md`
 - `docs/project/history/2026-09-19-gate11-deterministic-research-qualification.md`
+- `docs/project/history/2026-09-19-gate12-sandbox-network-safety.md`
 
 Tests/current code remain stronger evidence than this summary.
 
@@ -209,7 +218,7 @@ The memory system uses:
 
 - `AGENTS.md` as the bootloader;
 - this file as the single hot-memory hub;
-- active GitHub issue #63 as short-lived working memory for Gate 12;
+- active GitHub issue #65 as short-lived working memory for Gate 13;
 - `PLAN.md` for future gates;
 - `DECISIONS.md` for durable rationale;
 - `LESSONS.md` for reusable learning;
@@ -224,7 +233,7 @@ pnpm check:memory
 
 ## Known risks
 
-1. **Isolation risk:** Gate 11 proves deterministic local research reliability, but untrusted external websites are not yet isolated from sensitive networks/runtime state. Gate 12 must establish the sandbox/network boundary before live-web research expands.
+1. **Live-web research risk:** Gate 12 establishes bounded network/isolation controls, but real public websites remain variable and have not yet been manually audited under the evidence contract. Gate 13 must keep the approved target sample explicit and preserve Gate 11 as the deterministic release gate.
 2. **Sales-policy risk:** Baseline 0 is only 32/40. Known weaknesses include evidence requests without evidence, weak-fit handoff, and re-asking known qualification facts.
 3. **External-model evidence risk:** no paid hosted-model benchmark is claimed yet.
 4. **Scope risk:** the browser foundation and draft voice branch are large assets; reuse must remain contract-by-contract.
@@ -235,9 +244,9 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 12 — Sandbox + network safety for external research (issue #63):** define a provider-neutral sandbox/network-policy boundary, prove local isolation and private-network blocking first, then place E2B or another provider behind that owned contract only if it passes the same tests.
+**Gate 13 — Evidence-backed live prospect research (issue #65):** define the durable evidence/prospect contract and approved-domain enforcement first, then use only a small explicitly approved public-company sample and manually audit each material fact. Gate 11 remains the deterministic release gate.
 
-Do not start live prospect research at scale, outreach/email/LinkedIn/X, voice/avatar, CRM/calendar/social actions, or new irreversible external side effects in Gate 12.
+Do not start authenticated contact discovery, outreach/email/LinkedIn/X, CRM writes, calendar/social actions, voice/avatar, or new irreversible external side effects in Gate 13.
 
 ## Gate completion rule
 
