@@ -26,7 +26,8 @@ import {
 
 import {
   InMemoryRunRepository,
-  RunEngine
+  RunEngine,
+  type RunTerminalUpdate
 } from "../src/index.js";
 
 class FixtureBrowser
@@ -172,6 +173,33 @@ class FailingCancellationEventRepository
       runId,
       eventType,
       payload
+    );
+  }
+}
+
+class FailOnceTerminalRepository
+  extends InMemoryRunRepository {
+  #remainingFailures = 1;
+
+  public override async finalizeRun(
+    runId: string,
+    update: RunTerminalUpdate,
+    eventPayload: unknown
+  ) {
+    if (
+      this.#remainingFailures >
+      0
+    ) {
+      this.#remainingFailures -= 1;
+      throw new Error(
+        "injected terminal persistence failure"
+      );
+    }
+
+    return super.finalizeRun(
+      runId,
+      update,
+      eventPayload
     );
   }
 }
@@ -405,6 +433,108 @@ test("completion verifier rejects wrong but schema-valid output", async () => {
     "COMPLETION_REJECTED"
   );
 });
+
+test(
+  "terminal persistence rejection is supervised without a contradictory completion event",
+  async () => {
+    const repository =
+      new FailOnceTerminalRepository();
+    const engine =
+      new RunEngine({
+        repository,
+        browserRuntime:
+          new FixtureBrowserRuntime(),
+        agentRuntime:
+          new FixtureAgentRuntime(
+            new FixtureAgent({
+              extraction: {
+                status: "right"
+              }
+            })
+          ),
+        completionVerifier: {
+          verify({ result }) {
+            return {
+              verified:
+                (
+                  result as {
+                    status?: unknown;
+                  }
+                ).status ===
+                "right",
+              message:
+                "Expected status right."
+            };
+          }
+        }
+      });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Return verified status."
+        },
+        outputSchema: {
+          parse(input) {
+            const value =
+              input as {
+                status?: unknown;
+              };
+
+            if (
+              typeof value.status !==
+              "string"
+            ) {
+              throw new TypeError(
+                "status must be a string"
+              );
+            }
+
+            return {
+              status:
+                value.status
+            };
+          }
+        }
+      });
+    const terminal =
+      await waitForTerminal(
+        engine,
+        started.id
+      );
+
+    expect(
+      terminal.status
+    ).toBe("FAILED");
+    expect(
+      terminal.error
+    ).toEqual({
+      code:
+        "EXECUTION_FAILED",
+      message:
+        "Run execution could not persist its intended terminal state."
+    });
+
+    const events =
+      await repository.listEvents(
+        started.id
+      );
+
+    expect(
+      events.some(
+        (event) =>
+          event.eventType ===
+          "RUN_COMPLETED"
+      )
+    ).toBe(false);
+    expect(
+      events.at(-1)?.eventType
+    ).toBe("RUN_FAILED");
+  }
+);
 
 test("wall-clock timeout aborts execution and still cleans resources", async () => {
   const browser =
