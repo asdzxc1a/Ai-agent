@@ -38,6 +38,9 @@
       ],
       "@astra/sales-bench": [
         "./packages/sales-bench/src/index.ts"
+      ],
+      "@astra/research-bench": [
+        "./packages/research-bench/src/index.ts"
       ]
     }
   },

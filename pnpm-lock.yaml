@@ -94,6 +94,12 @@ importers:
 
   packages/contracts: {}
 
+  packages/research-bench:
+    dependencies:
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
   packages/run-engine:
     dependencies:
       '@astra/agent-loop':
