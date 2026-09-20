@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Sandbox/network isolation → controlled live prospect research
 **Current gate:** Gate 13 — Evidence-backed live prospect research
-**Overall status:** Gates 0–12 are PASSED. Gate 13 is active in issue #65. PR #68 merged the approved live-research foundation onto `main`: stored approval provenance, approved-domain sandbox policy, evidence/prospect persistence, and classified live-research failures now exist. PR #69 hardens the boundary so model-facing research cannot own authorization, protected prospect/run identity, Gate 14 qualification state, or capture clocks. No operator-approved real-company/domain sample has been supplied, so no live company research has been run and Gate 13 remains IN_PROGRESS.
+**Overall status:** Gates 0–12 are PASSED. Gate 13 is active in issue #65. PR #68 merged the approved live-research foundation and PR #69 hardened server-owned research state: stored approval provenance, approved-domain sandbox policy, evidence/prospect persistence, classified live-research failures, protected run/prospect identity, canonical Gate 13 qualification state, and server-owned capture clocks now exist. Gate 13 remains IN_PROGRESS because the audit-confirmed trust gaps must be closed before a measured live sample counts as product evidence, and no operator-approved real-company/domain sample has been supplied or researched.
 
 ## North star
 
@@ -99,6 +99,10 @@ Screenshot artifacts are run-scoped and server-timestamped but do not currently 
 
 No real-company/domain research has been executed under Gate 13 because no operator-approved fixed sample exists yet.
 
+The September 20 audit reproduced trust gaps that block a live sample from counting as Gate 13 acceptance evidence: redirect navigation can bypass the full network policy; terminal event/status persistence and background execution are not one supervised atomic boundary; completed SSE replay truncated after one 100-event batch; screenshot presence still does not prove source-page/content support; uncertainty/provenance are not preserved strongly enough into the sales domain; and SalesBench can miss fabricated buyer-visible prose outside structured claims. This audit-alignment change adds a focused >100-event SSE replay regression/fix; the other trust gaps remain Gate 13 work.
+
+Gate 13 stays serial/single-owner while multi-worker cancellation/leases/fencing, reconciliation, and centralized Steel endpoint ownership remain future scale work.
+
 ### Gate 8 sales-domain foundation
 
 `@astra/sales-domain` now provides runtime-validated contracts for:
@@ -188,6 +192,20 @@ Astra does not yet have:
 - automated experience retrieval;
 - controlled real-market pilot.
 
+## Capability evidence ledger
+
+| Capability | Highest verified state | Current meaning |
+| --- | --- | --- |
+| Browser/run substrate | `WIRED` | Generic run API + deterministic/pinned integration path works; not yet a complete sales operator app |
+| ResearchBench v1 | `WIRED` | 30/30 deterministic fixture qualification; not a real-model arbitrary-web result |
+| Gate 13 approved research foundation | `IMPLEMENTED` | Contracts/storage/server-owned research truth exist; live operator workflow is not yet wired/accepted |
+| Consultative seller | `IMPLEMENTED` | Sales-domain schemas/policy exist; no deployed persistent seller |
+| Human handoff/action plane | none | Planned; no merged real handoff |
+| Agency/client operation | none | Auth/tenancy/per-client controls not built |
+| Commercial customer value | none | No measured time savings, accepted opportunity, willingness-to-pay, or unit economics |
+
+Evidence states are cumulative labels, not synonyms: `IMPLEMENTED` < `WIRED` < `REAL_MODEL_TESTED` < `LIVE_TESTED` < `COMMERCIALLY_VALIDATED`.
+
 ## Completed milestones
 
 | Gate | Status | Durable evidence |
@@ -245,21 +263,21 @@ pnpm check:memory
 
 ## Known risks
 
-1. **Live-web research risk:** Gate 12 establishes bounded network/isolation controls and Gate 13 now has a stored-approval/evidence foundation, but no operator-approved real-company sample has been supplied or manually audited. Screenshot artifacts prove same-run capture and server-owned time but do not bind page URL metadata, so every material observed fact still needs the planned source/screenshot spot-check. Gate 11 remains the deterministic release gate.
-2. **Sales-policy risk:** Baseline 0 is only 32/40. Known weaknesses include evidence requests without evidence, weak-fit handoff, and re-asking known qualification facts.
-3. **External-model evidence risk:** no paid hosted-model benchmark is claimed yet.
-4. **Scope risk:** the browser foundation and draft voice branch are large assets; reuse must remain contract-by-contract.
-5. **Evaluation risk:** persuasive output can still be wrong or spammy; SalesBench components must remain separate.
-6. **Reputation risk:** outreach/publication are external reputation-changing actions and remain gated.
-7. **Platform/compliance risk:** email/social/telephony automation needs provider-policy, consent, rate-limit, and anti-spam controls before autonomy.
-8. **Voice risk:** PR #2 contains substantial transport code, but no canonical realtime route has been selected for this product.
-
+1. **Request-policy risk — Gate 13 blocker:** the audited redirect probe reached a forbidden port after an allowed initial URL. Full scheme/credential/port/hostname/resolved-address enforcement must cover redirects and actual request paths before measured live research.
+2. **Durable truth/supervision risk — Gate 13 blocker:** terminal event and terminal run state are separate writes and background execution can reject without supervision. Interrupted work needs an atomic terminal boundary plus reconciliation.
+3. **Evidence/provenance risk — Gate 13 blocker:** PR #69 strengthens server-owned capture identity and manual screenshot mapping, but same-run screenshot presence is still not proof that a claimed source/page supports the observation. Add server-owned source/page/content capture receipts and preserve uncertainty/provenance through the sales-domain handoff; keep manual material-claim audits.
+4. **Evaluation risk — before seller/release claims:** SalesBench can miss unsupported buyer-visible prose when structured claims are empty, and several sub-scores are overlapping proxies. Final rendered output and durable state update require independent evaluation.
+5. **Scale ownership risk:** cancellation and Steel endpoint exclusivity are process-local. Gate 13 therefore stays serial/single-owner; multiple workers require durable cancellation intent, leases/fencing, guarded transitions, reconciliation, and centralized endpoint ownership.
+6. **Cleanup risk:** optional diagnostics can outlive the run deadline and delay resource release; diagnostics/cleanup need independent bounded deadlines.
+7. **Product/value risk:** there is no complete main-branch operator workflow and no measured preparation-time savings, accepted handoff, willingness to pay, or delivery cost.
+8. **Agency boundary risk:** authentication, tenant/client ownership, per-client offer/claim configuration, budgets, retention/export/deletion, audit, and recovery must exist before accepting another organization's data.
 ## Next action
 
-**Gate 13 — Evidence-backed live prospect research (issue #65):** wait for the operator to supply the fixed approved company/domain sample; do not choose targets autonomously. Once supplied, register only those targets, run only their approved public domains through the stored-approval + sandbox boundary, preserve blocked/failed attempts honestly, and manually verify every material observed fact against its claimed source and same-run screenshot before considering Gate 13 PASSED. Keep Gate 11 frozen as the deterministic release gate.
+**Gate 13 — audit hardening before the measured sample (issue #65):** accept the focused SSE backlog regression/fix in PR #70, then close the full redirect/request policy path, terminal persistence/supervision + reconciliation, server-owned source/page/content capture receipt + uncertainty handoff, rendered-prose evaluator, and bounded diagnostics/cleanup gaps. Keep execution serial and preserve Gate 11/12 regressions.
 
-Do not start authenticated contact discovery, outreach/email/LinkedIn/X, CRM writes, calendar/social actions, voice/avatar, or new irreversible external side effects in Gate 13.
+After those trust blockers are green, obtain the operator's explicit fixed company/domain cohort, freeze it, wire approved target → bounded real-model research → evidence review → accepted/corrected brief, and record review time, corrections, coverage, duration, failures, and complete cost. Do not choose or broaden real-company targets autonomously.
 
+Do not start authenticated contact discovery, outreach/email/LinkedIn/X, CRM writes, calendar/social actions, voice/avatar, agency-client data ingestion, or new irreversible external side effects in Gate 13.
 ## Gate completion rule
 
 A product gate is complete only when its acceptance tests in `PLAN.md` and `TEST_STRATEGY.md` pass and this file reflects the verified result.

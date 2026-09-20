@@ -61,18 +61,16 @@ A separate draft sales/voice branch, [PR #2](https://github.com/asdzxc1a/Ai-agen
 
 ## Current gate
 
-**Gate 8 — Sales domain contract + SalesBench baseline**
+**Gate 13 — Evidence-backed live prospect research**
 
-Before Astra contacts real prospects, Gate 8 defines:
+Gate 13 now has an approved-target/evidence foundation, but it remains in progress. Before measured live research, Astra must close the audit-confirmed trust gaps that would invalidate the experiment, then run one complete human-supervised workflow:
 
-- the service/claim boundary;
-- evidence/fact/hypothesis semantics;
-- prospect/buyer/opportunity/qualification state;
-- consultative sales policy;
-- deterministic SalesBench scenarios;
-- separate factuality, evidence, relevance, information-gain, trust, pressure, qualification, and next-step metrics.
+- operator-approved target → bounded research → evidence review → accepted/corrected brief;
+- no contact or other irreversible external action;
+- full material-claim source review and explicit uncertainty;
+- measured review time, corrections, coverage, duration, and cost against the existing human workflow.
 
-See [STATE.md](./docs/project/STATE.md) for the one current source of truth.
+See [STATE.md](./docs/project/STATE.md) for the current verified truth. `pnpm check:memory` enforces that this README gate matches it.
 
 ## Persistent project memory
 

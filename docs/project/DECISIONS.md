@@ -820,3 +820,40 @@ Gate 12's first provider acceptance showed that two separate Steel session IDs o
 **Revisit when**
 
 A self-hosted Steel release or another provider demonstrates concurrent storage/process/filesystem/network isolation on one endpoint under the owned Gate 12 tests.
+
+---
+
+## D-029 — Pull trustworthy internal value validation ahead of feature breadth
+
+**Date:** 2026-09-20
+**Status:** Accepted
+
+**Decision**
+
+Use the September 2026 technical/commercial audit to tighten the post-Gate-12 order without discarding the existing architecture.
+
+Gate 13 now owns three things before it can pass:
+
+1. close the demonstrated trust gaps that would invalidate a live research measurement;
+2. wire one complete human-supervised internal workflow from approved target through reviewed brief;
+3. measure that workflow against the existing human process on a frozen operator-approved sample.
+
+Keep execution serial/single-owner for this phase. Multi-worker operation remains blocked until durable cancellation intent, leased/fenced ownership, atomic guarded transitions, reconciliation, and centrally owned browser-endpoint allocation exist.
+
+After the text seller is qualified, prove one durable real human handoff before realtime voice/avatar. Voice is retained only if measured outcome/reliability/cost evidence justifies its complexity.
+
+Before Astra accepts data for an external agency/client organization, require an explicit operating boundary for identity/authorization, tenant/client ownership, per-client offers/ICP/claims, approval roles, budgets, retention/export/deletion, audit, and recovery.
+
+**Why**
+
+The audit found that Astra has substantial reusable infrastructure but no complete shipped operator workflow or measured customer value. It also reproduced request-policy, terminal-persistence, SSE replay, evidence-provenance, and evaluator gaps that can make a live result look stronger than the underlying guarantees. Building more connectors, voice, or presentation layers before resolving those gaps would delay the decisive product experiment.
+
+**Consequences**
+
+- Gates 0–12 remain passed historical evidence; their benchmarks are not weakened or rerun to manufacture a better story.
+- Gate 13 is broader than public-site browsing: it is the trust-hardening and internal-value checkpoint.
+- deterministic ResearchBench/SalesBench numbers are reported as benchmark evidence, not sales competence or conversion likelihood;
+- `IMPLEMENTED`, `WIRED`, `REAL_MODEL_TESTED`, `LIVE_TESTED`, and `COMMERCIALLY_VALIDATED` remain distinct evidence states;
+- one durable human handoff precedes Gate 18 voice selection;
+- an external agency/design-partner pilot cannot silently bypass tenancy/client-operation requirements;
+- the modular TypeScript/PostgreSQL/provider-adapter architecture remains; no microservice rewrite or runtime agent swarm is justified by this audit.
