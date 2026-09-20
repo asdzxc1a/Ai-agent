@@ -7,6 +7,7 @@ import {
 import type {
   AgentAction,
   AgentActionResult,
+  AgentOperationOptions,
   AgentRuntime,
   AgentSession,
   OpenAgentSessionOptions,
@@ -212,6 +213,91 @@ class ReadOnlyResearchAgent
 
   public async close():
     Promise<void> {}
+}
+
+class BlockingResearchAgent
+  implements AgentSession {
+  public navigateStarted =
+    false;
+
+  public async navigate(
+    url: string,
+    options:
+      AgentOperationOptions = {}
+  ): Promise<void> {
+    expect(url).toBe(
+      startUrl
+    );
+    this.navigateStarted =
+      true;
+
+    await new Promise<void>(
+      (_resolve, reject) => {
+        const signal =
+          options.signal;
+
+        if (signal?.aborted) {
+          reject(
+            signal.reason
+          );
+          return;
+        }
+
+        signal?.addEventListener(
+          "abort",
+          () => {
+            reject(
+              signal.reason
+            );
+          },
+          {
+            once: true
+          }
+        );
+      }
+    );
+  }
+
+  public async observe():
+    Promise<AgentAction[]> {
+    return [];
+  }
+
+  public async act(
+    action: AgentAction
+  ): Promise<AgentActionResult> {
+    return {
+      success: false,
+      message:
+        "Blocking fixture must not act.",
+      actions: [action],
+      effect: "none"
+    };
+  }
+
+  public async extract<T>(
+    instruction: string,
+    schema: RuntimeSchema<T>
+  ): Promise<T> {
+    void instruction;
+    return schema.parse(
+      result()
+    );
+  }
+
+  public async close():
+    Promise<void> {}
+}
+
+class BlockingResearchRuntime
+  implements AgentRuntime {
+  public readonly session =
+    new BlockingResearchAgent();
+
+  public async openSession():
+    Promise<AgentSession> {
+    return this.session;
+  }
 }
 
 class ReadOnlyResearchRuntime
@@ -457,6 +543,96 @@ describe(
           browser.session
             .closeCalls
         ).toBe(1);
+      }
+    );
+
+    it(
+      "rejects a second research start while the serial Gate 13 executor is active",
+      async () => {
+        const agent =
+          new BlockingResearchRuntime();
+        const workflow =
+          new ProspectResearchWorkflow({
+            repository:
+              new InMemoryProspectResearchRepository(),
+            runRepository:
+              new InMemoryRunRepository(),
+            artifactStore:
+              new InMemoryArtifactStore(),
+            browserRuntime:
+              new ReadOnlyBrowserRuntime(),
+            agentRuntime:
+              agent,
+            sandboxRuntimeFactory(
+              policy
+            ) {
+              return new LocalSandboxRuntime({
+                ...policy,
+                resolver: {
+                  async resolve() {
+                    return [
+                      "93.184.216.34"
+                    ];
+                  }
+                }
+              });
+            }
+          });
+
+        await workflow
+          .approveTarget(
+            target()
+          );
+
+        const first =
+          await workflow.start({
+            targetId:
+              "target.workflow"
+          });
+
+        for (
+          let attempt = 0;
+          attempt < 100 &&
+          !agent.session
+            .navigateStarted;
+          attempt += 1
+        ) {
+          await new Promise(
+            (resolve) =>
+              setTimeout(
+                resolve,
+                5
+              )
+          );
+        }
+
+        expect(
+          agent.session
+            .navigateStarted
+        ).toBe(true);
+
+        await expect(
+          workflow.start({
+            targetId:
+              "target.workflow"
+          })
+        ).rejects.toThrow(
+          "Gate 13 research workflow is serial"
+        );
+
+        await workflow.cancelRun(
+          first.id
+        );
+
+        await expect(
+          waitForTerminal(
+            workflow,
+            first.id
+          )
+        ).resolves.toMatchObject({
+          status:
+            "CANCELLED"
+        });
       }
     );
 
