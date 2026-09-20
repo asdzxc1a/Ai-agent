@@ -64,6 +64,7 @@ export {
   sameApprovedResearchTarget,
   toSalesEvidence,
   validateProspectResearch,
+  validateProspectResearchAttemptForPersistence,
   validateProspectResearchResult
 } from "./validation.js";
 
