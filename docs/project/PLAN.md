@@ -389,7 +389,7 @@ Build:
 - use small cross-region samples only for calibration/stress testing; they may not close Gate 13;
 - for the first Gate 13 acceptance, freeze 30–50 approved U.S. industrial/logistics companies using a predeclared selection method; cross-market U.S./China work is calibration-only under D-031;
 - compare against the existing human researcher using normal tools; scope-matched human restrictions are calibration-only;
-- require a measured human baseline for each acceptance target before its Astra attempt starts; fixed-cap baseline estimates are calibration-only;
+- require a durable server-timestamped measured human baseline record for each acceptance target before its Astra attempt can start; fixed-cap baseline estimates are calibration-only;
 - record whether review was blind or unblinded and prefer blind review where practical;
 - freeze a rationale-backed cost ceiling before results and record every attempt, review minutes, correction count/severity, unsupported material claims, requested-field coverage, duration, and complete provider/browser cost.
 
@@ -416,7 +416,7 @@ Acceptance:
 - calibration cohorts return no pass/fail verdict even when complete;
 - the first Gate 13 acceptance cohort contains 30–50 frozen U.S. industrial/logistics targets selected by a frozen method; incomplete cohorts return no verdict and exactly one outcome per frozen target is required;
 - acceptance sample metadata is `SINGLE_MARKET` and `NORMAL_TOOLS`; cross-market or scope-matched settings are rejected by the v3 protocol;
-- acceptance outcomes use `MEASURED_HUMAN` baseline provenance recorded before the corresponding Astra attempt; baseline source and review mode remain durable evidence;
+- acceptance state order is approval → sample freeze → durable `MEASURED_HUMAN` baseline → Astra attempt → reviewed outcome; the later outcome must reference and exactly match the stored baseline record; baseline source and review mode remain durable evidence;
 - every material observed fact in the measured sample is manually checked against its claimed source;
 - unsupported hypotheses are never represented as observed facts and unknowns remain explicit;
 - live-site failures remain `LIVE_RESEARCH_FAILURE` and do not change the frozen Gate 11 deterministic release result;
