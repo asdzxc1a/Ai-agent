@@ -236,12 +236,32 @@ function researchResult(
               evidence.uncertainty,
             uncertaintyNote:
               evidence
-                .uncertaintyNote,
-            artifactIds: [
-              ...evidence.artifactIds
-            ]
+                .uncertaintyNote
           })
         )
+  };
+}
+
+function artifactMapping(
+  artifactIds: {
+    industry: string;
+    workflow: string;
+    hiring: string;
+  }
+): Record<
+  string,
+  readonly string[]
+> {
+  return {
+    "e.industry": [
+      artifactIds.industry
+    ],
+    "e.workflow": [
+      artifactIds.workflow
+    ],
+    "e.hiring": [
+      artifactIds.hiring
+    ]
   };
 }
 
@@ -602,6 +622,25 @@ describe(
                         ...evidence,
                         capturedAt:
                           "2025-01-01T00:00:00.000Z"
+                      }
+                    : evidence
+              )
+          })
+      ).toThrow();
+
+      expect(() =>
+        ProspectResearchResultSchema
+          .parse({
+            ...result,
+            evidence:
+              result.evidence.map(
+                (evidence, index) =>
+                  index === 0
+                    ? {
+                        ...evidence,
+                        artifactIds: [
+                          "forged.artifact"
+                        ]
                       }
                     : evidence
               )
