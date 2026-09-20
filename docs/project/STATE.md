@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-09-19  
 **Repository:** `asdzxc1a/Ai-agent`  
-**Phase:** Sales domain/evaluation foundation → multi-step sales-agent orchestration  
-**Current gate:** Gate 9 — Owned multi-step sales-agent loop  
-**Overall status:** Gates 0–8 are PASSED. Gate 8 adds Astra's first owned sales-domain truth layer, AI-native company/workforce transformation ontology V1, 40-scenario SalesBench V1, and an honest deterministic Baseline 0 of 32/40 (80%). Gate 9 is next; issue #53 is the active working-memory anchor.
+**Phase:** Multi-step sales-agent orchestration → completion/effect/cancellation/budget semantics
+**Current gate:** Gate 10 — Completion, effects, cancellation + budgets
+**Overall status:** Gates 0–9 are PASSED. Gate 9 adds Astra-owned multi-step observe → decide → act orchestration with explicit `ACTION | COMPLETE | FAIL | BLOCKED` decisions, durable ordered progress, recoverable action failure, and a deterministic three-action Stagehand → Steel research acceptance. Gate 10 is next.
 
 ## North star
 
@@ -113,6 +113,25 @@ The eight failed scenarios are intentionally preserved. They expose proof reques
 
 No paid external-model benchmark is claimed. The pinned-model lane exists and is contract-tested, but no production credential/spend authorization was used.
 
+### Gate 9 owned multi-step loop
+
+`@astra/agent-loop` now owns the provider-neutral orchestration boundary for repeated observe → decide → act cycles.
+
+The loop:
+
+- runtime-validates explicit `ACTION | COMPLETE | FAIL | BLOCKED` decisions;
+- preserves compact ordered trajectory records;
+- treats successful browser actions as action evidence rather than goal completion;
+- returns failed/thrown action attempts to the decision policy for safe recovery;
+- enforces an internal iteration ceiling against endless repetition;
+- keeps Stagehand and Steel outside owned loop state.
+
+`RunEngine` can execute the owned loop while retaining browser/session lifecycle ownership. It persists redacted loop observations, decisions, action outcomes, progress events, per-action screenshots, terminal loop results, and cleanup evidence through the existing repository/artifact boundary.
+
+The deterministic Gate 9 research fixture requires three browser actions. The acceptance performs a fourth observation before explicit `COMPLETE`, then extracts and validates the final structured result. A separate regression proves that even an explicit loop `COMPLETE` does not make the run `COMPLETED` when final goal/result verification fails.
+
+No live prospect research or external action was introduced.
+
 ## Reusable sales/voice asset outside `main`
 
 Draft PR #2 / branch `codex/sales-avatar-foundation` remains a reusable experimental asset containing:
@@ -131,7 +150,6 @@ D-023 requires selective reuse behind current owned contracts rather than a whol
 
 Astra does not yet have:
 
-- an owned multi-step agent loop;
 - explicit completion/effect semantics, cancellation propagation, and execution budgets for broader autonomy;
 - deterministic multi-page prospect-research qualification;
 - sandbox/network isolation for untrusted live research;
@@ -159,6 +177,7 @@ Astra does not yet have:
 | 6 — Replayable SSE | PASSED | PR #33 |
 | 7 — Artifacts + debugging | PASSED | PR #35 |
 | 8 — Sales domain + SalesBench baseline | PASSED | PR #51 / CI 35452463916 |
+| 9 — Owned multi-step sales-agent loop | PASSED | PR #54 / CI 35455009337, Stagehand 35455009352, Steel 35455009347 |
 
 Gate 8 regression evidence:
 
@@ -166,11 +185,18 @@ Gate 8 regression evidence:
 - Steel `35452463895` — pinned Steel 10/10 green;
 - Stagehand `35452463890` — Stagehand 10/10 + API/Postgres/SSE/restart green.
 
+Gate 9 regression evidence:
+
+- CI `35455009337` — memory/quality/tests/build green;
+- Stagehand `35455009352` — Stagehand 10/10, owned three-action research loop, API browser, PostgreSQL, SSE, and restart regressions green;
+- Steel `35455009347` — pinned Steel 10/10 green.
+
 Detailed evidence:
 
 - `docs/project/history/2026-09-18-gates-0-7-browser-foundation.md`
 - `docs/project/history/2026-09-19-astra-sales-product-pivot.md`
 - `docs/project/history/2026-09-19-gate8-sales-domain-salesbench.md`
+- `docs/project/history/2026-09-19-gate9-owned-multistep-agent-loop.md`
 
 Tests/current code remain stronger evidence than this summary.
 
@@ -180,7 +206,7 @@ The memory system uses:
 
 - `AGENTS.md` as the bootloader;
 - this file as the single hot-memory hub;
-- active GitHub issue #53 as short-lived working memory for Gate 9;
+- GitHub issue #53 as the completed Gate 9 working-memory/evidence thread;
 - `PLAN.md` for future gates;
 - `DECISIONS.md` for durable rationale;
 - `LESSONS.md` for reusable learning;
@@ -195,7 +221,7 @@ pnpm check:memory
 
 ## Known risks
 
-1. **Capability risk:** Gate 8 defines the domain/evaluation layer, but broad multi-step agent capability is still unproven. Gates 9–11 must close that gap before live prospecting expands.
+1. **Capability risk:** Gate 9 proves one owned deterministic multi-step loop and research fixture, not broad autonomous research capability. Gates 10–11 must still establish completion/effect/cancellation/budget semantics and a materially broader deterministic research qualification before live prospecting expands.
 2. **Sales-policy risk:** Baseline 0 is only 32/40. Known weaknesses include evidence requests without evidence, weak-fit handoff, and re-asking known qualification facts.
 3. **External-model evidence risk:** no paid hosted-model benchmark is claimed yet.
 4. **Scope risk:** the browser foundation and draft voice branch are large assets; reuse must remain contract-by-contract.
@@ -206,9 +232,9 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 9 — Owned multi-step sales-agent loop (issue #53):** implement owned repeated observe → decide → act orchestration with explicit `ACTION | COMPLETE | FAIL | BLOCKED` outcomes, persisted multi-step progress, and recoverable failure handling.
+**Gate 10 — Completion, effects, cancellation + budgets:** make verified goal completion explicit and bound execution with effect semantics, step/time/model budgets, cancellation propagation, loop detection, and typed terminal reasons.
 
-Do not start live prospect research, outreach, voice, E2B, or external actions in Gate 9.
+Do not start live prospect research, outreach, voice, E2B, or external actions before the later gates that authorize them.
 
 ## Gate completion rule
 
