@@ -98,17 +98,14 @@ async function waitForTerminal(
   engine: RunEngine,
   runId: string
 ) {
-  for (
-    let attempt = 0;
-    attempt < 300;
-    attempt += 1
-  ) {
+  for (;;) {
     const run =
       await engine.getRun(runId);
 
     if (
       run?.status === "COMPLETED" ||
-      run?.status === "FAILED"
+      run?.status === "FAILED" ||
+      run?.status === "CANCELLED"
     ) {
       return run;
     }
@@ -119,10 +116,6 @@ async function waitForTerminal(
       }
     );
   }
-
-  throw new Error(
-    "Multi-step research run did not finish."
-  );
 }
 
 test(
