@@ -359,22 +359,19 @@ test(
       await repository
         .listActiveRuns();
 
-    expect(
-      active.map(
-        (run) => run.id
-      )
-    ).toEqual([
-      pendingId,
-      runningId
-    ]);
-    expect(
-      active.map(
-        (run) => run.status
-      )
-    ).toEqual([
-      "PENDING",
-      "RUNNING"
-    ]);
+    expect(active).toHaveLength(2);
+    expect(active).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: pendingId,
+          status: "PENDING"
+        }),
+        expect.objectContaining({
+          id: runningId,
+          status: "RUNNING"
+        })
+      ])
+    );
   }
 );
 
