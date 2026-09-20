@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type {
   ArtifactStore
 } from "@astra/artifact-store";
@@ -12,7 +14,8 @@ import {
   type ApprovedResearchTarget,
   type CompletedProspectResearchAttempt,
   type FailedProspectResearchAttempt,
-  type LiveResearchFailureCode
+  type LiveResearchFailureCode,
+  type ProspectResearchCaptureReceipt
 } from "./schema.js";
 import type {
   ProspectResearchRepository
@@ -392,6 +395,11 @@ export class ProspectResearchService {
         string,
         readonly string[]
       >();
+    const captureReceiptsByEvidenceId =
+      new Map<
+        string,
+        readonly ProspectResearchCaptureReceipt[]
+      >();
     const expectedEvidenceIds =
       result.evidence.map(
         (evidence) =>
@@ -430,6 +438,8 @@ export class ProspectResearchService {
           ];
       const screenshotCaptureTimes:
         string[] = [];
+      const captureReceipts:
+        ProspectResearchCaptureReceipt[] = [];
 
       if (
         !Array.isArray(
@@ -492,9 +502,136 @@ export class ProspectResearchService {
           artifact.kind ===
           "SCREENSHOT"
         ) {
+          const metadata =
+            artifact.metadata;
+          const captureVersion =
+            metadata?.captureVersion;
+          const pageUrl =
+            metadata?.pageUrl;
+          const pageContentSha256 =
+            metadata
+              ?.pageContentSha256;
+          const screenshotSha256 =
+            metadata
+              ?.screenshotSha256;
+          const shaPattern =
+            /^[a-f0-9]{64}$/;
+
+          if (
+            captureVersion !==
+              "page-evidence-v1" ||
+            typeof pageUrl !==
+              "string" ||
+            typeof pageContentSha256 !==
+              "string" ||
+            !shaPattern.test(
+              pageContentSha256
+            ) ||
+            typeof screenshotSha256 !==
+              "string" ||
+            !shaPattern.test(
+              screenshotSha256
+            )
+          ) {
+            errors.push(
+              "research screenshot is missing a server-owned page capture receipt: " +
+                evidence.id +
+                " -> " +
+                artifactId
+            );
+            continue;
+          }
+
+          let sourceHref:
+            string | undefined;
+          let pageHref:
+            string | undefined;
+
+          try {
+            sourceHref =
+              new URL(
+                evidence.sourceUrl
+              ).href;
+            pageHref =
+              new URL(
+                pageUrl
+              ).href;
+          } catch {
+            sourceHref =
+              undefined;
+            pageHref =
+              undefined;
+          }
+
+          if (
+            sourceHref ===
+              undefined ||
+            pageHref !==
+              sourceHref
+          ) {
+            errors.push(
+              "research screenshot page URL must match evidence source URL: " +
+                evidence.id +
+                " -> " +
+                artifactId
+            );
+            continue;
+          }
+
+          const content =
+            await this.#artifacts
+              .readArtifact(
+                run.id,
+                artifactId
+              );
+
+          if (
+            content ===
+            undefined
+          ) {
+            errors.push(
+              "research screenshot content is unavailable: " +
+                evidence.id +
+                " -> " +
+                artifactId
+            );
+            continue;
+          }
+
+          const computedScreenshotSha256 =
+            createHash(
+              "sha256"
+            )
+              .update(
+                content.data
+              )
+              .digest("hex");
+
+          if (
+            computedScreenshotSha256 !==
+              screenshotSha256
+          ) {
+            errors.push(
+              "research screenshot hash does not match server-owned capture metadata: " +
+                evidence.id +
+                " -> " +
+                artifactId
+            );
+            continue;
+          }
+
           screenshotCaptureTimes.push(
             artifact.createdAt
           );
+          captureReceipts.push({
+            artifactId,
+            captureVersion,
+            pageUrl,
+            capturedAt:
+              artifact.createdAt,
+            pageContentSha256,
+            screenshotSha256
+          });
         }
       }
 
@@ -519,6 +656,17 @@ export class ProspectResearchService {
         evidence.id,
         [...suppliedArtifactIds]
       );
+      captureReceiptsByEvidenceId.set(
+        evidence.id,
+        captureReceipts
+          .sort(
+            (left, right) =>
+              left.capturedAt
+                .localeCompare(
+                  right.capturedAt
+                )
+          )
+      );
     }
 
     if (errors.length > 0) {
@@ -540,6 +688,7 @@ export class ProspectResearchService {
             run.updatedAt,
           capturedAtByEvidenceId,
           artifactIdsByEvidenceId,
+          captureReceiptsByEvidenceId,
           result
         });
     } catch (error) {
