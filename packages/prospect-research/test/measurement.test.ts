@@ -71,7 +71,7 @@ function sample(
       status:
         "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v6",
+        "gate13-measured-research-v7",
       purpose,
       cohortDefinition:
         purpose ===
@@ -240,6 +240,16 @@ function outcome(input: {
         "reviewer",
       reviewedAt:
         "2026-09-20T13:00:00.000Z",
+      humanBriefDisposition:
+        "accepted",
+      humanMaterialClaimsReviewed:
+        3,
+      humanUnsupportedMaterialClaims:
+        0,
+      humanRequestedFieldsTotal:
+        4,
+      humanRequestedFieldsCovered:
+        4,
       reviewMode:
         "BLIND",
       baselineSource:
@@ -311,6 +321,61 @@ function outcome(input: {
     });
 }
 
+function humanBrief(
+  targetIndex: number
+) {
+  const suffix =
+    String(
+      targetIndex
+    ).padStart(2, "0");
+  const observation =
+    "Example Systems " +
+    suffix +
+    " operates a transportation business.";
+
+  return {
+    companyName: {
+      value:
+        "Example Systems " +
+        suffix,
+      evidenceIds: [
+        "human.evidence"
+      ]
+    },
+    companySummary: [
+      {
+        id:
+          "human.claim",
+        kind:
+          "observed_fact" as const,
+        statement:
+          observation,
+        evidenceIds: [
+          "human.evidence"
+        ]
+      }
+    ],
+    transformationOpportunities:
+      [],
+    buyingSignals: [],
+    unknowns: [],
+    evidence: [
+      {
+        id:
+          "human.evidence",
+        sourceUrl:
+          "https://public-research.example.com/company/" +
+          suffix,
+        observation,
+        uncertainty:
+          "none" as const,
+        uncertaintyNote:
+          null
+      }
+    ]
+  };
+}
+
 function baseline(input: {
   sampleId: string;
   targetIndex: number;
@@ -345,6 +410,10 @@ function baseline(input: {
         20,
       toolingDescription:
         "Normal human research tools for the declared sample baseline.",
+      brief:
+        humanBrief(
+          input.targetIndex
+        ),
       notes: null,
       recordedAt:
         input.recordedAt ??
@@ -464,13 +533,21 @@ describe(
               targetCount: 30,
               outcomeCount: 30,
               usableBriefRate: 1,
+              humanUsableBriefRate:
+                1,
+              usableBriefRateDeltaVsHuman:
+                0,
               unsupportedMaterialClaims:
+                0,
+              humanUnsupportedMaterialClaims:
                 0,
               medianHumanTimeReductionFraction:
                 0.6,
               medianAstraHumanPreparationMinutes:
                 8,
               requestedFieldCoverageRate:
+                1,
+              humanRequestedFieldCoverageRate:
                 1,
               unauthorizedActions:
                 0,
