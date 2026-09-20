@@ -21,6 +21,7 @@ import {
   ProspectResearchValidationError,
   isApprovedResearchUrl,
   toSalesEvidence,
+  validateHumanBaselineBrief,
   validateProspectResearch,
   validateProspectResearchResult,
   type ApprovedResearchTarget,
@@ -1697,3 +1698,67 @@ it(
     ).toEqual(result);
   }
 );
+
+it(
+  "validates normal-tools human baseline evidence without restricting it to Astra's approved company domain",
+  () => {
+    const brief = {
+      companyName: null,
+      companySummary: [
+        {
+          id:
+            "human.claim",
+          kind:
+            "observed_fact" as const,
+          statement:
+            "A third-party industry source reports an operational expansion.",
+          evidenceIds: [
+            "human.evidence"
+          ]
+        }
+      ],
+      transformationOpportunities:
+        [],
+      buyingSignals: [],
+      unknowns: [],
+      evidence: [
+        {
+          id:
+            "human.evidence",
+          sourceUrl:
+            "https://industry-source.example/research/example-systems",
+          observation:
+            "A third-party industry source reports an operational expansion.",
+          uncertainty:
+            "none" as const,
+          uncertaintyNote:
+            null
+        }
+      ]
+    };
+
+    expect(
+      validateHumanBaselineBrief(
+        brief
+      )
+    ).toEqual(brief);
+
+    expect(() =>
+      validateHumanBaselineBrief({
+        ...brief,
+        companySummary: [
+          {
+            ...brief
+              .companySummary[0],
+            evidenceIds: [
+              "missing.evidence"
+            ]
+          }
+        ]
+      })
+    ).toThrow(
+      "human baseline claim references unknown evidence"
+    );
+  }
+);
+
