@@ -897,23 +897,6 @@ export class RunEngine implements RunService {
       );
     }
 
-    await this.#repository.updateRun(
-      runId,
-      {
-        status: "RUNNING"
-      }
-    );
-
-    await this.#repository.appendEvent(
-      runId,
-      "RUN_STARTED",
-      {
-        status: "RUNNING",
-        goalState:
-          "IN_PROGRESS"
-      }
-    );
-
     let browser:
       BrowserSession | undefined;
     let agent:
@@ -932,6 +915,23 @@ export class RunEngine implements RunService {
 
     try {
       throwIfAborted(signal);
+
+      await this.#repository.updateRun(
+        runId,
+        {
+          status: "RUNNING"
+        }
+      );
+
+      await this.#repository.appendEvent(
+        runId,
+        "RUN_STARTED",
+        {
+          status: "RUNNING",
+          goalState:
+            "IN_PROGRESS"
+        }
+      );
 
       let startedAt = Date.now();
       browser =

@@ -1465,7 +1465,7 @@ class StartEventFailingRepository
 }
 
 test(
-  "cancelRun reports NOT_ACTIVE if execution exits before durable terminalization",
+  "startup event persistence failure is terminalized instead of stranding RUNNING state",
   async () => {
     const repository =
       new StartEventFailingRepository();
@@ -1494,6 +1494,30 @@ test(
         }
       });
 
+    const terminal =
+      await waitForTerminal(
+        engine,
+        started.id
+      );
+
+    expect(
+      terminal.status
+    ).toBe("FAILED");
+    expect(
+      terminal.goalState
+    ).toBe("FAILED");
+    expect(
+      terminal.terminalReason
+        ?.code
+    ).toBe(
+      "EXECUTION_FAILED"
+    );
+    expect(
+      terminal.error?.message
+    ).toBe(
+      "start event persistence failed"
+    );
+
     const cancelled =
       await engine.cancelRun(
         started.id
@@ -1501,14 +1525,9 @@ test(
 
     expect(
       cancelled?.kind
-    ).toBe("NOT_ACTIVE");
+    ).toBe("TERMINAL");
     expect(
       cancelled?.run.status
-    ).toBe("RUNNING");
-    expect(
-      cancelled?.run.goalState
-    ).toBe(
-      "IN_PROGRESS"
-    );
+    ).toBe("FAILED");
   }
 );
