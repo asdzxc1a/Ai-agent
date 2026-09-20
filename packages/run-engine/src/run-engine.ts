@@ -1323,6 +1323,15 @@ export class RunEngine implements RunService {
           );
         }
 
+        await this.#captureScreenshot(
+          runId,
+          browser,
+          agent,
+          "final-observation.jpg",
+          true,
+          artifactErrors
+        );
+
         result =
           loopResult.result;
       } else {

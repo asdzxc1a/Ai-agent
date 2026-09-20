@@ -115,15 +115,24 @@ importers:
 
   packages/prospect-research:
     dependencies:
+      '@astra/agent-loop':
+        specifier: workspace:*
+        version: link:../agent-loop
+      '@astra/agent-runtime':
+        specifier: workspace:*
+        version: link:../agent-runtime
       '@astra/artifact-store':
         specifier: workspace:*
         version: link:../artifact-store
-      '@astra/sales-domain':
+      '@astra/browser-runtime':
         specifier: workspace:*
-        version: link:../sales-domain
+        version: link:../browser-runtime
       '@astra/run-engine':
         specifier: workspace:*
         version: link:../run-engine
+      '@astra/sales-domain':
+        specifier: workspace:*
+        version: link:../sales-domain
       '@astra/sandbox-runtime':
         specifier: workspace:*
         version: link:../sandbox-runtime

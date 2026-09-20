@@ -18,10 +18,13 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@astra/agent-loop": "workspace:*",
+    "@astra/agent-runtime": "workspace:*",
     "@astra/artifact-store": "workspace:*",
+    "@astra/browser-runtime": "workspace:*",
+    "@astra/run-engine": "workspace:*",
     "@astra/sales-domain": "workspace:*",
     "@astra/sandbox-runtime": "workspace:*",
-    "zod": "4.4.3",
-    "@astra/run-engine": "workspace:*"
+    "zod": "4.4.3"
   }
 }
