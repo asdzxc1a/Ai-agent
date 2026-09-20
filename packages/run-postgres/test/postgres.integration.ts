@@ -296,6 +296,89 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
 });
 
 test(
+  "PostgresRunRepository lists only non-terminal runs for startup reconciliation",
+  async () => {
+    const pendingId =
+      randomUUID();
+    const runningId =
+      randomUUID();
+    const completedId =
+      randomUUID();
+
+    await repository.createRun(
+      pendingRun(pendingId),
+      request
+    );
+    await repository.createRun(
+      pendingRun(runningId),
+      request
+    );
+    await repository.createRun(
+      pendingRun(completedId),
+      request
+    );
+
+    await repository.updateRun(
+      runningId,
+      {
+        status: "RUNNING"
+      }
+    );
+    await repository.finalizeRun(
+      completedId,
+      {
+        status: "COMPLETED",
+        goalStatus:
+          "COMPLETED",
+        result: {
+          ok: true
+        },
+        terminalReason: {
+          code:
+            "GOAL_COMPLETED",
+          message:
+            "fixture verified"
+        }
+      },
+      {
+        goalStatus:
+          "COMPLETED",
+        result: {
+          ok: true
+        },
+        terminalReason: {
+          code:
+            "GOAL_COMPLETED",
+          message:
+            "fixture verified"
+        }
+      }
+    );
+
+    const active =
+      await repository
+        .listActiveRuns();
+
+    expect(
+      active.map(
+        (run) => run.id
+      )
+    ).toEqual([
+      pendingId,
+      runningId
+    ]);
+    expect(
+      active.map(
+        (run) => run.status
+      )
+    ).toEqual([
+      "PENDING",
+      "RUNNING"
+    ]);
+  }
+);
+
+test(
   "PostgresRunRepository rolls back terminal state, event, and sequence together",
   async () => {
     const runId =
