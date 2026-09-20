@@ -51,7 +51,7 @@ export {
 } from "./service.js";
 
 export type {
-  ProspectResearchClock,
+  ProspectResearchRunReader,
   RecordCompletedProspectResearchInput,
   RecordFailedProspectResearchInput
 } from "./service.js";
