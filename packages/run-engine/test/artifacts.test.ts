@@ -399,6 +399,8 @@ test("configured artifact store captures successful lifecycle evidence", async (
   ).toMatchObject({
     captureVersion:
       "page-evidence-v1",
+    semanticSettled:
+      false,
     pageUrl:
       "https://fixture.test/evidence",
     pageTitle:
