@@ -263,6 +263,15 @@ export class ProspectResearchService {
     return requested;
   }
 
+  public getApprovedTarget(
+    targetId: string
+  ): Promise<ApprovedResearchTarget> {
+    return this.#requireTarget(
+      targetId,
+      "research target was not approved before workflow execution"
+    );
+  }
+
   public async networkPolicy(
     targetId: string
   ) {
