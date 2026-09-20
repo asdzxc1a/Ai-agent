@@ -605,6 +605,121 @@ export const PROSPECT_RESEARCH_MARKET_SCOPES =
     "CROSS_MARKET"
   ] as const;
 
+export const PROSPECT_RESEARCH_SELECTION_STRATEGIES =
+  [
+    "COMPLETE_UNIVERSE",
+    "DETERMINISTIC_SUBSET"
+  ] as const;
+
+export const ProspectResearchSelectionUniverseSchema =
+  z.object({
+    id: IdentifierSchema,
+    sourceName:
+      TextSchema.max(1000),
+    sourceUrl:
+      z.string().url(),
+    methodologyUrl:
+      z.string()
+        .url()
+        .nullable(),
+    sourceAsOfDate:
+      z.string().regex(
+        /^\d{4}-\d{2}-\d{2}$/
+      ),
+    sourceDeclaredCount:
+      z.number()
+        .int()
+        .positive()
+        .max(500),
+    candidateTargetIds:
+      z.array(
+        IdentifierSchema
+      ).min(1).max(500),
+    selectionStrategy:
+      z.enum(
+        PROSPECT_RESEARCH_SELECTION_STRATEGIES
+      ),
+    selectionSeed:
+      z.string()
+        .trim()
+        .min(1)
+        .max(240)
+        .nullable()
+  }).strict()
+    .superRefine(
+      (universe, context) => {
+        if (
+          new Set(
+            universe
+              .candidateTargetIds
+          ).size !==
+            universe
+              .candidateTargetIds
+              .length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "candidateTargetIds"
+            ],
+            message:
+              "selection universe target IDs must be unique"
+          });
+        }
+
+        if (
+          universe
+            .sourceDeclaredCount !==
+          universe
+            .candidateTargetIds
+            .length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "sourceDeclaredCount"
+            ],
+            message:
+              "selection universe declared count must equal frozen candidate membership"
+          });
+        }
+
+        if (
+          universe
+            .selectionStrategy ===
+              "COMPLETE_UNIVERSE" &&
+          universe.selectionSeed !==
+            null
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "selectionSeed"
+            ],
+            message:
+              "complete-universe selection must not use a sampling seed"
+          });
+        }
+
+        if (
+          universe
+            .selectionStrategy ===
+              "DETERMINISTIC_SUBSET" &&
+          universe.selectionSeed ===
+            null
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "selectionSeed"
+            ],
+            message:
+              "deterministic subset selection requires a frozen seed"
+          });
+        }
+      }
+    );
+
 export const ProspectResearchSampleCriteriaSchema =
   z.object({
     maxUnsupportedMaterialClaims:
@@ -632,7 +747,7 @@ export const ProspectResearchSampleSchema =
       z.literal("FROZEN"),
     protocolVersion:
       z.literal(
-        "gate13-measured-research-v4"
+        "gate13-measured-research-v5"
       ),
     purpose:
       z.enum(
@@ -642,6 +757,9 @@ export const ProspectResearchSampleSchema =
       TextSchema.max(4000),
     selectionMethod:
       TextSchema.max(4000),
+    selectionUniverse:
+      ProspectResearchSelectionUniverseSchema
+        .nullable(),
     marketScope:
       z.enum(
         PROSPECT_RESEARCH_MARKET_SCOPES
@@ -743,6 +861,88 @@ export const ProspectResearchSampleSchema =
             (target) =>
               target.id
           );
+
+        if (
+          sample.purpose ===
+            "ACCEPTANCE" &&
+          sample.selectionUniverse ===
+            null
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "selectionUniverse"
+            ],
+            message:
+              "Gate 13 acceptance requires frozen candidate-universe provenance"
+          });
+        }
+
+        if (
+          sample.selectionUniverse !==
+            null
+        ) {
+          const candidateIds =
+            new Set(
+              sample
+                .selectionUniverse
+                .candidateTargetIds
+            );
+          const outside =
+            targetIds.find(
+              (targetId) =>
+                !candidateIds.has(
+                  targetId
+                )
+            );
+
+          if (
+            outside !== undefined
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: [
+                "targets"
+              ],
+              message:
+                "frozen sample contains a target outside the selection universe: " +
+                outside
+            });
+          }
+
+          if (
+            sample
+              .selectionUniverse
+              .selectionStrategy ===
+                "COMPLETE_UNIVERSE" &&
+            (
+              targetIds.length !==
+                sample
+                  .selectionUniverse
+                  .candidateTargetIds
+                  .length ||
+              sample
+                .selectionUniverse
+                .candidateTargetIds
+                .some(
+                  (candidateId) =>
+                    !targetIds
+                      .includes(
+                        candidateId
+                      )
+                )
+            )
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: [
+                "targets"
+              ],
+              message:
+                "complete-universe selection requires the frozen sample to contain every candidate exactly once"
+            });
+          }
+        }
 
         if (
           new Set(targetIds).size !==
@@ -1039,6 +1239,10 @@ export type ProspectResearchHumanBaselineInput =
 export type ProspectResearchHumanBaseline =
   z.infer<
     typeof ProspectResearchHumanBaselineSchema
+  >;
+export type ProspectResearchSelectionUniverse =
+  z.infer<
+    typeof ProspectResearchSelectionUniverseSchema
   >;
 export type ProspectResearchSampleCriteria =
   z.infer<
