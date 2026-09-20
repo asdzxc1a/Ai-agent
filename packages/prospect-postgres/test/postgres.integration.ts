@@ -167,7 +167,7 @@ function frozenSample():
     id: "sample.pg",
     status: "FROZEN",
     protocolVersion:
-      "gate13-measured-research-v1",
+      "gate13-measured-research-v2",
     purpose:
       "CALIBRATION",
     cohortDefinition:
