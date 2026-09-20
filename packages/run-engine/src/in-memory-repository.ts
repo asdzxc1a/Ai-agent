@@ -177,6 +177,16 @@ export class InMemoryRunRepository implements RunRepository {
       throw new Error(`Run ${runId} does not exist.`);
     }
 
+    if (
+      isTerminalStatus(
+        current.status
+      )
+    ) {
+      throw new Error(
+        `Run ${runId} is already terminal.`
+      );
+    }
+
     const next: RunSnapshot = {
       ...current,
       ...clone(update),
