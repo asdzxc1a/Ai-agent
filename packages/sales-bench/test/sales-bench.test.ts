@@ -113,6 +113,15 @@ describe("SalesBench", () => {
     expect(committed).toEqual(
       runBaselineSalesBench()
     );
+
+    const report =
+      runBaselineSalesBench();
+    expect(
+      report.results.every(
+        (result) =>
+          result.decision !== undefined
+      )
+    ).toBe(true);
   });
 
   test("hard evaluator catches unapproved claims and unauthorized external actions", () => {
@@ -249,6 +258,9 @@ describe("SalesBench", () => {
     ).toContain(
       "prohibited_commercial_claim_text"
     );
+    expect(
+      result.score.factuality
+    ).toBe(0);
   });
 
   test("pinned model lane rejects moving model aliases", async () => {

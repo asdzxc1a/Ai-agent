@@ -228,7 +228,9 @@ export function evaluateSalesDecision(
             item ===
               "unapproved_claim" ||
             item ===
-              "unknown_evidence_reference"
+              "unknown_evidence_reference" ||
+            item ===
+              "prohibited_commercial_claim_text"
         )
           ? 0
           : 1,
@@ -305,6 +307,7 @@ export function evaluateSalesDecision(
       hardViolations.length === 0,
     hardViolations,
     policyMatched,
+    decision,
     score,
     overallScore
   });

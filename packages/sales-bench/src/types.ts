@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   ConsultativePolicyInputSchema,
   NextActionKindSchema,
+  SalesDecisionSchema,
   SalesObjectiveSchema
 } from "@astra/sales-domain";
 
@@ -108,6 +109,8 @@ export const SalesBenchResultSchema =
     hardGatePassed: z.boolean(),
     hardViolations: z.array(z.string()),
     policyMatched: z.boolean(),
+    decision:
+      SalesDecisionSchema.optional(),
     score:
       SalesBenchScoreVectorSchema,
     overallScore: z

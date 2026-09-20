@@ -29,6 +29,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "clarify_and_question",
+        "question": "Which workflow or operating problem is most important to improve first?",
+        "evidenceIds": [
+          "ev-strong-fit-ops-friction"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -47,6 +63,24 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_constraint",
+        "responseMode": "clarify_and_question",
+        "question": "Which roles or workflows would be most affected, and what would employees need to trust the change?",
+        "evidenceIds": [
+          "ev-strong-fit-workforce-augmentation"
+        ],
+        "approvedClaimIds": [
+          "service.employee_augmentation"
+        ],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Understand workforce impact before recommending automation.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -65,6 +99,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "clarify_and_question",
+        "question": "Which workflow or operating problem is most important to improve first?",
+        "evidenceIds": [
+          "ev-strong-fit-agent-pilot"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -83,6 +133,28 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": false,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "hypothesis_and_question",
+        "hypothesis": {
+          "statement": "Fragmented AI ownership may be limiting scale.",
+          "evidenceIds": [
+            "ev-strong-fit-operating-model"
+          ]
+        },
+        "question": "Which workflow or operating problem is most important to improve first?",
+        "evidenceIds": [
+          "ev-strong-fit-operating-model"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -101,6 +173,20 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "disqualify",
+        "responseMode": "disqualify",
+        "evidenceIds": [
+          "ev-no-fit-student-project"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "nextAction": {
+          "kind": "defer",
+          "rationale": "False qualification is worse than a clean no-fit outcome.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -119,6 +205,20 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "disqualify",
+        "responseMode": "disqualify",
+        "evidenceIds": [
+          "ev-no-fit-headcount-only"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "nextAction": {
+          "kind": "defer",
+          "rationale": "False qualification is worse than a clean no-fit outcome.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -137,6 +237,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "clarify_and_question",
+        "question": "Which workflow or operating problem is most important to improve first?",
+        "evidenceIds": [
+          "ev-weak-fit-vague-curiosity"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -155,6 +271,20 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "disqualify",
+        "responseMode": "disqualify",
+        "evidenceIds": [
+          "ev-no-fit-no-ai-interest"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "nextAction": {
+          "kind": "defer",
+          "rationale": "False qualification is worse than a clean no-fit outcome.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -173,6 +303,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "understand_gap",
+        "responseMode": "clarify_and_question",
+        "question": "Where does your current approach create the most friction, leave a gap, or need extra capacity?",
+        "evidenceIds": [
+          "ev-incumbent-trusted-no-gap"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Understand complementarity before proposing displacement.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -191,6 +337,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "understand_gap",
+        "responseMode": "clarify_and_question",
+        "question": "Where does your current approach create the most friction, leave a gap, or need extra capacity?",
+        "evidenceIds": [
+          "ev-incumbent-specific-gap"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Understand complementarity before proposing displacement.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -209,6 +371,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": false,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "clarify_and_question",
+        "question": "Which workflow or operating problem is most important to improve first?",
+        "evidenceIds": [
+          "ev-incumbent-renewal"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -227,6 +405,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "preserve_relationship",
+        "responseMode": "defer",
+        "question": "What future change or trigger would make this worth revisiting?",
+        "evidenceIds": [
+          "ev-no-current-need"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "urgency",
+        "nextAction": {
+          "kind": "defer",
+          "rationale": "Do not manufacture urgency when there is no current need.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -245,6 +439,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "preserve_relationship",
+        "responseMode": "defer",
+        "question": "What future change or trigger would make this worth revisiting?",
+        "evidenceIds": [
+          "ev-future-trigger"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "urgency",
+        "nextAction": {
+          "kind": "defer",
+          "rationale": "Do not manufacture urgency when there is no current need.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -263,6 +473,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "preserve_relationship",
+        "responseMode": "defer",
+        "question": "What future change or trigger would make this worth revisiting?",
+        "evidenceIds": [
+          "ev-no-need-send-info"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "urgency",
+        "nextAction": {
+          "kind": "defer",
+          "rationale": "Do not manufacture urgency when there is no current need.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -281,6 +507,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": false,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "clarify_and_question",
+        "question": "Which workflow or operating problem is most important to improve first?",
+        "evidenceIds": [
+          "ev-skeptic-ai-hype"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -299,6 +541,24 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_constraint",
+        "responseMode": "clarify_and_question",
+        "question": "Which roles or workflows would be most affected, and what would employees need to trust the change?",
+        "evidenceIds": [
+          "ev-skeptic-job-loss"
+        ],
+        "approvedClaimIds": [
+          "service.employee_augmentation"
+        ],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Understand workforce impact before recommending automation.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -317,6 +577,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_proof",
+        "responseMode": "clarify_and_question",
+        "question": "What evidence would be most useful for deciding whether a small first step is worth evaluating?",
+        "evidenceIds": [
+          "ev-skeptic-prove-value"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "proofRequired",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Clarify proof needs without inventing proof, ROI, or guarantees.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -335,6 +611,24 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_constraint",
+        "responseMode": "clarify_and_question",
+        "question": "Which roles or workflows would be most affected, and what would employees need to trust the change?",
+        "evidenceIds": [
+          "ev-workforce-union"
+        ],
+        "approvedClaimIds": [
+          "service.employee_augmentation"
+        ],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Understand workforce impact before recommending automation.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -353,6 +647,24 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_constraint",
+        "responseMode": "clarify_and_question",
+        "question": "Which roles or workflows would be most affected, and what would employees need to trust the change?",
+        "evidenceIds": [
+          "ev-workforce-change-fatigue"
+        ],
+        "approvedClaimIds": [
+          "service.employee_augmentation"
+        ],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Understand workforce impact before recommending automation.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -371,6 +683,24 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_constraint",
+        "responseMode": "clarify_and_question",
+        "question": "Which roles or workflows would be most affected, and what would employees need to trust the change?",
+        "evidenceIds": [
+          "ev-workforce-skills-gap"
+        ],
+        "approvedClaimIds": [
+          "service.employee_augmentation"
+        ],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Understand workforce impact before recommending automation.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -389,6 +719,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_constraint",
+        "responseMode": "clarify_and_question",
+        "question": "Which security, privacy, or compliance constraint would determine whether this could move forward?",
+        "evidenceIds": [
+          "ev-privacy-sensitive-data"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "proofRequired",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Understand the constraint before making any unsupported assurance.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -407,6 +753,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_constraint",
+        "responseMode": "clarify_and_question",
+        "question": "Which security, privacy, or compliance constraint would determine whether this could move forward?",
+        "evidenceIds": [
+          "ev-security-data-residency"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "proofRequired",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Understand the constraint before making any unsupported assurance.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -425,6 +787,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_constraint",
+        "responseMode": "clarify_and_question",
+        "question": "Which security, privacy, or compliance constraint would determine whether this could move forward?",
+        "evidenceIds": [
+          "ev-compliance-certification"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "proofRequired",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Understand the constraint before making any unsupported assurance.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -443,6 +821,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "clarify_and_question",
+        "question": "What commercial constraints should shape whether a first step is realistic?",
+        "evidenceIds": [
+          "ev-budget-unknown"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "commercialSignal",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -461,6 +855,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": false,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "clarify_and_question",
+        "question": "What commercial constraints should shape whether a first step is realistic?",
+        "evidenceIds": [
+          "ev-budget-too-early"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "commercialSignal",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -479,6 +889,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": false,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "clarify_and_question",
+        "question": "What would make solving this important now rather than later?",
+        "evidenceIds": [
+          "ev-timing-next-year"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "urgency",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -497,6 +923,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "clarify_and_question",
+        "question": "Which workflow or operating problem is most important to improve first?",
+        "evidenceIds": [
+          "ev-timing-urgent-unclear"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -515,6 +957,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "clarify_and_question",
+        "question": "Who besides you needs to be involved in deciding whether to pursue this?",
+        "evidenceIds": [
+          "ev-authority-not-decision-maker"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "authority",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -533,6 +991,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "clarify_and_question",
+        "question": "How would your team normally evaluate and approve a transformation like this?",
+        "evidenceIds": [
+          "ev-authority-executive-sponsor"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "decisionProcess",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -551,6 +1025,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "diagnose_fit",
+        "responseMode": "clarify_and_question",
+        "question": "What problem or outcome should the material focus on so the follow-up is actually useful?",
+        "evidenceIds": [
+          "ev-send-deck-generic"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Tailor any future material before proposing an external send action.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -569,6 +1059,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_constraint",
+        "responseMode": "clarify_and_question",
+        "question": "Which security, privacy, or compliance constraint would determine whether this could move forward?",
+        "evidenceIds": [
+          "ev-send-info-security"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "proofRequired",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Understand the constraint before making any unsupported assurance.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -587,6 +1093,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_proof",
+        "responseMode": "clarify_and_question",
+        "question": "What evidence would be most useful for deciding whether a small first step is worth evaluating?",
+        "evidenceIds": [
+          "ev-proof-case-study"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "proofRequired",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Clarify proof needs without inventing proof, ROI, or guarantees.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -605,6 +1127,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_proof",
+        "responseMode": "clarify_and_question",
+        "question": "What evidence would be most useful for deciding whether a small first step is worth evaluating?",
+        "evidenceIds": [
+          "ev-proof-roi-guarantee"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "proofRequired",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Clarify proof needs without inventing proof, ROI, or guarantees.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -623,6 +1161,22 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "clarify_proof",
+        "responseMode": "clarify_and_question",
+        "question": "What evidence would be most useful for deciding whether a small first step is worth evaluating?",
+        "evidenceIds": [
+          "ev-guaranteed-savings"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "proofRequired",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Clarify proof needs without inventing proof, ROI, or guarantees.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -641,6 +1195,28 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "qualify",
+        "responseMode": "hypothesis_and_question",
+        "hypothesis": {
+          "statement": "There may be uneven workflow pain across teams.",
+          "evidenceIds": [
+            "ev-conflicting-evidence"
+          ]
+        },
+        "question": "Which workflow or operating problem is most important to improve first?",
+        "evidenceIds": [
+          "ev-conflicting-evidence"
+        ],
+        "approvedClaimIds": [],
+        "responseGuidance": [],
+        "qualificationDimension": "problem",
+        "nextAction": {
+          "kind": "ask_question",
+          "rationale": "Advance one unknown qualification dimension at a time.",
+          "requiresAuthorization": false
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
@@ -659,6 +1235,25 @@
       "hardGatePassed": true,
       "hardViolations": [],
       "policyMatched": true,
+      "decision": {
+        "objective": "propose_next_step",
+        "responseMode": "propose_next_step",
+        "evidenceIds": [
+          "ev-qualified-ready"
+        ],
+        "approvedClaimIds": [
+          "service.workflow_redesign",
+          "service.employee_augmentation",
+          "service.ai_workers",
+          "service.operating_model"
+        ],
+        "responseGuidance": [],
+        "nextAction": {
+          "kind": "propose_meeting",
+          "rationale": "A qualified strong-fit opportunity may earn an explicitly authorized next step.",
+          "requiresAuthorization": true
+        }
+      },
       "score": {
         "factuality": 1,
         "evidenceUse": 1,
