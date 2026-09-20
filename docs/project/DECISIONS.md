@@ -695,3 +695,31 @@ The demonstration is part of the product: an agent that sells itself is stronger
 
 After Gate 22 demonstrates bounded, revocable autonomous external actions and the operator explicitly enables publication capability.
 
+---
+
+## D-025 — RunEngine owns durable lifecycle; agent-loop owns repeated orchestration
+
+**Date:** 2026-09-19
+**Status:** Accepted
+
+**Decision**
+
+`RunEngine` owns the durable run lifecycle: run creation/status, persisted steps/events, artifacts, diagnostics, cleanup, and terminal run state.
+
+`@astra/agent-loop` owns repeated observe → decide → act orchestration through the provider-neutral `AgentSession` contract. Stagehand remains a replaceable semantic `AgentSession` provider behind that owned boundary.
+
+**Why**
+
+Gate 9 needs autonomous multi-step behavior without moving Astra's lifecycle into Stagehand or another provider. Separating orchestration from durable lifecycle preserves provider replaceability, keeps the previous one-step RunEngine path available, and gives tests a deterministic policy boundary for completion and recovery.
+
+**Consequences**
+
+- loop policy decisions are explicit `ACTION | COMPLETE | FAIL | BLOCKED`;
+- action recovery is explicit through `onFailure: CONTINUE | FAIL`;
+- successful browser actions do not imply goal completion;
+- RunEngine persists sanitized loop summaries and owns screenshots/terminal state;
+- Stagehand can be replaced without changing the durable lifecycle contract.
+
+**Revisit when**
+
+Only if measured requirements show the lifecycle/orchestration split prevents correct cancellation, budgeting, effect tracking, or verified completion semantics.
