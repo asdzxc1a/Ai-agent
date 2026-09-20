@@ -82,6 +82,7 @@ function completedAttempt():
         approvedAt: timestamp
       }
     },
+    startedAt: timestamp,
     createdAt: timestamp,
     status: "COMPLETED",
     report: {
@@ -268,6 +269,8 @@ function failedAttempt():
         approvedAt: timestamp
       }
     },
+    startedAt:
+      "2026-09-19T12:04:00Z",
     createdAt:
       "2026-09-19T12:05:00Z",
     status: "FAILED",
