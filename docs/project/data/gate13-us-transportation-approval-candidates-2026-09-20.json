@@ -1,0 +1,656 @@
+{
+  "id": "g13-us-transportation-approval-candidates-2026-09-20",
+  "universeId": "g13-us-transportation-iyt-2026-09-17",
+  "purpose": "APPROVAL_CANDIDATE_ENRICHMENT",
+  "status": "NOT_APPROVED",
+  "generatedFrom": "Frozen complete 43-equity U.S. transportation universe; public metadata enrichment only.",
+  "verificationDate": "2026-09-20",
+  "approvalRule": "These records are candidates only. Operator approval must create separate ApprovedResearchTarget state before any Gate 13 run.",
+  "targets": [
+    {
+      "ticker": "UNP",
+      "targetId": "g13.us.transport.unp",
+      "companyName": "Union Pacific Corporation",
+      "canonicalDomain": "up.com",
+      "startUrl": "https://www.up.com/about-us",
+      "approvedDomainsCandidate": [
+        "up.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.up.com/about-us",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "UBER",
+      "targetId": "g13.us.transport.uber",
+      "companyName": "Uber Technologies, Inc.",
+      "canonicalDomain": "uber.com",
+      "startUrl": "https://www.uber.com/us/en/about/",
+      "approvedDomainsCandidate": [
+        "uber.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.uber.com/us/en/about/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "CSX",
+      "targetId": "g13.us.transport.csx",
+      "companyName": "CSX Corporation",
+      "canonicalDomain": "csx.com",
+      "startUrl": "https://www.csx.com/index.cfm/about-us/company-overview/",
+      "approvedDomainsCandidate": [
+        "csx.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.csx.com/index.cfm/about-us/company-overview/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "UPS",
+      "targetId": "g13.us.transport.ups",
+      "companyName": "United Parcel Service, Inc.",
+      "canonicalDomain": "ups.com",
+      "startUrl": "https://about.ups.com/us/en/our-company.html",
+      "approvedDomainsCandidate": [
+        "ups.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://about.ups.com/us/en/our-company.html",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "DAL",
+      "targetId": "g13.us.transport.dal",
+      "companyName": "Delta Air Lines, Inc.",
+      "canonicalDomain": "delta.com",
+      "startUrl": "https://www.delta.com/us/en/about-delta/overview",
+      "approvedDomainsCandidate": [
+        "delta.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.delta.com/us/en/about-delta/overview",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "NSC",
+      "targetId": "g13.us.transport.nsc",
+      "companyName": "Norfolk Southern Corporation",
+      "canonicalDomain": "norfolksouthern.com",
+      "startUrl": "https://www.norfolksouthern.com/en/about-us/company-overview",
+      "approvedDomainsCandidate": [
+        "norfolksouthern.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.norfolksouthern.com/en/about-us/company-overview",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "UAL",
+      "targetId": "g13.us.transport.ual",
+      "companyName": "United Airlines Holdings, Inc.",
+      "canonicalDomain": "united.com",
+      "startUrl": "https://ir.united.com/",
+      "approvedDomainsCandidate": [
+        "united.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://ir.united.com/",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "FDX",
+      "targetId": "g13.us.transport.fdx",
+      "companyName": "FedEx Corporation",
+      "canonicalDomain": "fedex.com",
+      "startUrl": "https://www.fedex.com/en-us/about/company-structure.html",
+      "approvedDomainsCandidate": [
+        "fedex.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.fedex.com/en-us/about/company-structure.html",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "ODFL",
+      "targetId": "g13.us.transport.odfl",
+      "companyName": "Old Dominion Freight Line, Inc.",
+      "canonicalDomain": "odfl.com",
+      "startUrl": "https://www.odfl.com/us/en/about.html",
+      "approvedDomainsCandidate": [
+        "odfl.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.odfl.com/us/en/about.html",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "EXPD",
+      "targetId": "g13.us.transport.expd",
+      "companyName": "Expeditors International of Washington, Inc.",
+      "canonicalDomain": "expeditors.com",
+      "startUrl": "https://www.expeditors.com/about-us/company",
+      "approvedDomainsCandidate": [
+        "expeditors.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.expeditors.com/about-us/company",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "XPO",
+      "targetId": "g13.us.transport.xpo",
+      "companyName": "XPO, Inc.",
+      "canonicalDomain": "xpo.com",
+      "startUrl": "https://www.xpo.com/about-us/",
+      "approvedDomainsCandidate": [
+        "xpo.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.xpo.com/about-us/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "LUV",
+      "targetId": "g13.us.transport.luv",
+      "companyName": "Southwest Airlines Co.",
+      "canonicalDomain": "southwest.com",
+      "startUrl": "https://www.southwest.com/about-southwest/",
+      "approvedDomainsCandidate": [
+        "southwest.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.southwest.com/about-southwest/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "CHRW",
+      "targetId": "g13.us.transport.chrw",
+      "companyName": "C.H. Robinson Worldwide, Inc.",
+      "canonicalDomain": "chrobinson.com",
+      "startUrl": "https://www.chrobinson.com/about-us/",
+      "approvedDomainsCandidate": [
+        "chrobinson.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.chrobinson.com/about-us/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "JBHT",
+      "targetId": "g13.us.transport.jbht",
+      "companyName": "J.B. Hunt Transport Services, Inc.",
+      "canonicalDomain": "jbhunt.com",
+      "startUrl": "https://www.jbhunt.com/our-company",
+      "approvedDomainsCandidate": [
+        "jbhunt.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.jbhunt.com/our-company",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "FDXF",
+      "targetId": "g13.us.transport.fdxf",
+      "companyName": "FedEx Freight Holding Company, Inc.",
+      "canonicalDomain": "fedexfreight.com",
+      "startUrl": "https://ir.fedexfreight.com/company-information",
+      "approvedDomainsCandidate": [
+        "fedexfreight.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://ir.fedexfreight.com/company-information",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "KNX",
+      "targetId": "g13.us.transport.knx",
+      "companyName": "Knight-Swift Transportation Holdings Inc.",
+      "canonicalDomain": "knight-swift.com",
+      "startUrl": "https://knight-swift.com/about/",
+      "approvedDomainsCandidate": [
+        "knight-swift.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://knight-swift.com/about/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "R",
+      "targetId": "g13.us.transport.r",
+      "companyName": "Ryder System, Inc.",
+      "canonicalDomain": "ryder.com",
+      "startUrl": "https://investors.ryder.com/about/default.aspx",
+      "approvedDomainsCandidate": [
+        "ryder.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://investors.ryder.com/about/default.aspx",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "SAIA",
+      "targetId": "g13.us.transport.saia",
+      "companyName": "Saia, Inc.",
+      "canonicalDomain": "saia.com",
+      "startUrl": "https://www.saia.com/about-us/investor-relations/",
+      "approvedDomainsCandidate": [
+        "saia.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.saia.com/about-us/investor-relations/",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "AAL",
+      "targetId": "g13.us.transport.aal",
+      "companyName": "American Airlines Group Inc.",
+      "canonicalDomain": "aa.com",
+      "startUrl": "https://www.aa.com/web/i18n/customer-service/about-us/american-airlines-group.html",
+      "approvedDomainsCandidate": [
+        "aa.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.aa.com/web/i18n/customer-service/about-us/american-airlines-group.html",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "KEX",
+      "targetId": "g13.us.transport.kex",
+      "companyName": "Kirby Corporation",
+      "canonicalDomain": "kirbycorp.com",
+      "startUrl": "https://kirbycorp.com/about/",
+      "approvedDomainsCandidate": [
+        "kirbycorp.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://kirbycorp.com/about/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "MATX",
+      "targetId": "g13.us.transport.matx",
+      "companyName": "Matson, Inc.",
+      "canonicalDomain": "matson.com",
+      "startUrl": "https://www.matson.com/corporate/about_us/index.html",
+      "approvedDomainsCandidate": [
+        "matson.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.matson.com/corporate/about_us/index.html",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "LYFT",
+      "targetId": "g13.us.transport.lyft",
+      "companyName": "Lyft, Inc.",
+      "canonicalDomain": "lyft.com",
+      "startUrl": "https://investor.lyft.com/",
+      "approvedDomainsCandidate": [
+        "lyft.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://investor.lyft.com/",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "LSTR",
+      "targetId": "g13.us.transport.lstr",
+      "companyName": "Landstar System, Inc.",
+      "canonicalDomain": "landstar.com",
+      "startUrl": "https://investor.landstar.com/",
+      "approvedDomainsCandidate": [
+        "landstar.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://investor.landstar.com/",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "UHAL B",
+      "targetId": "g13.us.transport.uhal-b",
+      "companyName": "U-Haul Holding Company",
+      "canonicalDomain": "uhaul.com",
+      "startUrl": "https://investors.uhaul.com/overview/",
+      "approvedDomainsCandidate": [
+        "uhaul.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://investors.uhaul.com/overview/",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "GXO",
+      "targetId": "g13.us.transport.gxo",
+      "companyName": "GXO Logistics, Inc.",
+      "canonicalDomain": "gxo.com",
+      "startUrl": "https://gxo.com/about-gxo/",
+      "approvedDomainsCandidate": [
+        "gxo.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://gxo.com/about-gxo/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "ALK",
+      "targetId": "g13.us.transport.alk",
+      "companyName": "Alaska Air Group, Inc.",
+      "canonicalDomain": "alaskaair.com",
+      "startUrl": "https://news.alaskaair.com/alaska-air-group-fact-sheet/",
+      "approvedDomainsCandidate": [
+        "alaskaair.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://news.alaskaair.com/alaska-air-group-fact-sheet/",
+      "verificationSourceKind": "COMPANY_FACT_SHEET",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "JOBY",
+      "targetId": "g13.us.transport.joby",
+      "companyName": "Joby Aviation, Inc.",
+      "canonicalDomain": "jobyaviation.com",
+      "startUrl": "https://www.jobyaviation.com/company",
+      "approvedDomainsCandidate": [
+        "jobyaviation.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.jobyaviation.com/company",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "SKYW",
+      "targetId": "g13.us.transport.skyw",
+      "companyName": "SkyWest, Inc.",
+      "canonicalDomain": "skywest.com",
+      "startUrl": "https://inc.skywest.com/corporate-information/who-we-are/",
+      "approvedDomainsCandidate": [
+        "skywest.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://inc.skywest.com/corporate-information/who-we-are/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "RXO",
+      "targetId": "g13.us.transport.rxo",
+      "companyName": "RXO, Inc.",
+      "canonicalDomain": "rxo.com",
+      "startUrl": "https://rxo.com/about-us/",
+      "approvedDomainsCandidate": [
+        "rxo.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://rxo.com/about-us/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "ARCB",
+      "targetId": "g13.us.transport.arcb",
+      "companyName": "ArcBest Corporation",
+      "canonicalDomain": "arcb.com",
+      "startUrl": "https://arcb.com/about-arcbest",
+      "approvedDomainsCandidate": [
+        "arcb.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://arcb.com/about-arcbest",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "WERN",
+      "targetId": "g13.us.transport.wern",
+      "companyName": "Werner Enterprises, Inc.",
+      "canonicalDomain": "werner.com",
+      "startUrl": "https://www.werner.com/about/",
+      "approvedDomainsCandidate": [
+        "werner.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.werner.com/about/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "HUBG",
+      "targetId": "g13.us.transport.hubg",
+      "companyName": "Hub Group, Inc.",
+      "canonicalDomain": "hubgroup.com",
+      "startUrl": "https://www.hubgroup.com/about-us/",
+      "approvedDomainsCandidate": [
+        "hubgroup.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.hubgroup.com/about-us/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "CAR",
+      "targetId": "g13.us.transport.car",
+      "companyName": "Avis Budget Group, Inc.",
+      "canonicalDomain": "avisbudgetgroup.com",
+      "startUrl": "https://www.avisbudgetgroup.com/home/about-us",
+      "approvedDomainsCandidate": [
+        "avisbudgetgroup.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.avisbudgetgroup.com/home/about-us",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "ALGT",
+      "targetId": "g13.us.transport.algt",
+      "companyName": "Allegiant Travel Company",
+      "canonicalDomain": "allegiantair.com",
+      "startUrl": "https://ir.allegiantair.com/overview/default.aspx",
+      "approvedDomainsCandidate": [
+        "allegiantair.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://ir.allegiantair.com/overview/default.aspx",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "SNDR",
+      "targetId": "g13.us.transport.sndr",
+      "companyName": "Schneider National, Inc.",
+      "canonicalDomain": "schneider.com",
+      "startUrl": "https://schneider.com/company/about",
+      "approvedDomainsCandidate": [
+        "schneider.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://schneider.com/company/about",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "JBLU",
+      "targetId": "g13.us.transport.jblu",
+      "companyName": "JetBlue Airways Corporation",
+      "canonicalDomain": "jetblue.com",
+      "startUrl": "https://www.jetblue.com/our-company",
+      "approvedDomainsCandidate": [
+        "jetblue.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.jetblue.com/our-company",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "GNK",
+      "targetId": "g13.us.transport.gnk",
+      "companyName": "Genco Shipping & Trading Limited",
+      "canonicalDomain": "gencoshipping.com",
+      "startUrl": "https://investors.gencoshipping.com/overview/",
+      "approvedDomainsCandidate": [
+        "gencoshipping.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://investors.gencoshipping.com/overview/",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "MRTN",
+      "targetId": "g13.us.transport.mrtn",
+      "companyName": "Marten Transport, Ltd.",
+      "canonicalDomain": "marten.com",
+      "startUrl": "https://www.marten.com/about/",
+      "approvedDomainsCandidate": [
+        "marten.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.marten.com/about/",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "HTLD",
+      "targetId": "g13.us.transport.htld",
+      "companyName": "Heartland Express, Inc.",
+      "canonicalDomain": "heartlandexpress.com",
+      "startUrl": "https://www.heartlandexpress.com/investors",
+      "approvedDomainsCandidate": [
+        "heartlandexpress.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.heartlandexpress.com/investors",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "CVLG",
+      "targetId": "g13.us.transport.cvlg",
+      "companyName": "Covenant Logistics Group, Inc.",
+      "canonicalDomain": "covenantlogistics.com",
+      "startUrl": "https://www.covenantlogistics.com/company",
+      "approvedDomainsCandidate": [
+        "covenantlogistics.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.covenantlogistics.com/company",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "ULCC",
+      "targetId": "g13.us.transport.ulcc",
+      "companyName": "Frontier Group Holdings, Inc.",
+      "canonicalDomain": "flyfrontier.com",
+      "startUrl": "https://ir.flyfrontier.com/overview/",
+      "approvedDomainsCandidate": [
+        "flyfrontier.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://ir.flyfrontier.com/overview/",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "FIP",
+      "targetId": "g13.us.transport.fip",
+      "companyName": "FTAI Infrastructure Inc.",
+      "canonicalDomain": "fipinc.com",
+      "startUrl": "https://www.fipinc.com/about-us",
+      "approvedDomainsCandidate": [
+        "fipinc.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://www.fipinc.com/about-us",
+      "verificationSourceKind": "COMPANY_OVERVIEW",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    },
+    {
+      "ticker": "HTZ",
+      "targetId": "g13.us.transport.htz",
+      "companyName": "Hertz Global Holdings, Inc.",
+      "canonicalDomain": "hertz.com",
+      "startUrl": "https://ir.hertz.com/overview/",
+      "approvedDomainsCandidate": [
+        "hertz.com"
+      ],
+      "icpContext": "U.S. transportation operations; evaluate only public evidence for operational, workforce, technology, and transformation signals while preserving explicit unknowns.",
+      "verificationStatus": "VERIFIED_OFFICIAL_PUBLIC",
+      "verificationSourceUrl": "https://ir.hertz.com/overview/",
+      "verificationSourceKind": "INVESTOR_RELATIONS",
+      "approvalStatus": "PENDING_OPERATOR_APPROVAL"
+    }
+  ]
+}
