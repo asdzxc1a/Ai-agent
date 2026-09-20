@@ -522,3 +522,48 @@ Require the policy to choose `onFailure: CONTINUE | FAIL` for every action. Pers
 **Prevention**
 
 Treat recovery as a typed policy decision, never as an automatic reaction to a caught exception. Keep durable loop telemetry allowlisted and provider-neutral rather than serializing raw provider/model objects.
+
+
+---
+
+## L-021 — Abort must outlive telemetry; bounded execution cannot depend on cooperative providers
+
+**Date:** 2026-09-19
+
+**Symptom / context**
+
+A cancellation request or timeout can arrive while provider/model work is still pending. Telemetry persistence can also fail at exactly that moment, and a model policy may ignore an abort signal entirely.
+
+**Cause**
+
+If abort propagation happens only after a progress event is persisted, or if Astra merely passes a signal without racing the owned async boundary, failed telemetry or a non-cooperative provider can leave execution running beyond its budget.
+
+**Fix**
+
+Abort active work in a `finally` path independent of cancellation-request telemetry, and race owned loop/provider calls against the run abort signal. Keep cleanup in the durable run lifecycle `finally` path.
+
+**Prevention**
+
+Cancellation, timeout, and cleanup are control-plane invariants. Observability must never be a prerequisite for stopping work, and providers should not be trusted to enforce Astra's execution deadline on their own.
+
+---
+
+## L-022 — Capture navigation evidence after a settle condition, not immediately after the click
+
+**Date:** 2026-09-19
+
+**Symptom / context**
+
+The first Gate 10 Stagehand integration run completed the three-action research goal but missed the first per-action screenshot. Steel returned HTTP 500 for a screenshot issued about 14 ms after a link navigation, while later screenshots succeeded.
+
+**Cause**
+
+Action completion and destination-page readiness are different conditions. Capturing immediately when the click promise returns races browser navigation.
+
+**Fix**
+
+Defer a navigation action's screenshot until the next successful observe has proved the destination page is usable. For a terminal action with no next observe, capture after the loop returns. Add a deterministic regression whose browser rejects screenshots between action completion and the next observation.
+
+**Prevention**
+
+Use semantic settle/observation conditions for evidence capture around navigation. Do not hide deterministic evidence races with arbitrary sleeps or blind screenshot retries.

@@ -723,3 +723,35 @@ Gate 9 needs autonomous multi-step behavior without moving Astra's lifecycle int
 **Revisit when**
 
 Only if measured requirements show the lifecycle/orchestration split prevents correct cancellation, budgeting, effect tracking, or verified completion semantics.
+
+
+---
+
+## D-026 — Completion is verified separately from execution; uncertain irreversible effects stop retry
+
+**Date:** 2026-09-19
+**Status:** Accepted
+
+**Decision**
+
+Astra may persist a run as `COMPLETED` only after an owned completion verifier accepts the requested goal result. Browser/action success, an explicit loop `COMPLETE` decision, and output-schema validity are inputs to verification, not sufficient completion proof by themselves.
+
+Run transport status and goal state remain distinct durable concepts. Terminal outcomes carry typed reasons.
+
+Every action path also carries owned effect semantics `none | committed | unknown`. If an irreversible action reports an `unknown` effect, or reports failure after a committed effect, Astra blocks automatic retry rather than guessing whether the side effect happened.
+
+**Why**
+
+False completion and duplicate irreversible effects are higher-severity failures than explicit failure. Provider success flags cannot prove the requested business/research goal, and provider timeouts cannot safely establish whether a side effect committed.
+
+**Consequences**
+
+- `RunEngine` owns completion verification, cancellation, wall-clock bounds, terminal persistence, and cleanup;
+- `@astra/agent-loop` owns action-count/model budgets, repeated-action detection, and effect-aware retry blocking;
+- cancellation propagates through owned `AbortSignal` boundaries rather than provider-specific control paths;
+- `CANCELLED` remains a run lifecycle status while the bounded goal state stays `IN_PROGRESS | COMPLETED | FAILED | BLOCKED`;
+- future irreversible action providers must return defensible effect state before retry policy can act.
+
+**Revisit when**
+
+Only if later durable action receipts/idempotency contracts provide stronger provider-independent proof that changes how `unknown` effects or completion verification should be represented.
