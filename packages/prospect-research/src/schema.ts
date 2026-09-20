@@ -619,7 +619,11 @@ export const ProspectResearchSampleCriteriaSchema =
         .max(1),
     requireNoUnauthorizedActions:
       z.literal(true),
-    maxDeliveryCostUsdPerBrief:
+    maxInfrastructureCostUsdPerAttempt:
+      z.number()
+        .finite()
+        .positive(),
+    maxTotalDeliveryCostUsdPerUsableBrief:
       z.number()
         .finite()
         .positive()
@@ -632,7 +636,7 @@ export const ProspectResearchSampleSchema =
       z.literal("FROZEN"),
     protocolVersion:
       z.literal(
-        "gate13-measured-research-v3"
+        "gate13-measured-research-v4"
       ),
     purpose:
       z.enum(
@@ -658,6 +662,10 @@ export const ProspectResearchSampleSchema =
       ).min(1).max(50),
     criteria:
       ProspectResearchSampleCriteriaSchema,
+    reviewLaborRateUsdPerHour:
+      z.number()
+        .finite()
+        .positive(),
     costCeilingRationale:
       TextSchema.max(2000),
     humanBaselineDescription:
@@ -864,7 +872,11 @@ export const ProspectResearchSampleOutcomeSchema =
       z.number()
         .int()
         .positive(),
-    deliveryCostUsd:
+    infrastructureCostUsd:
+      z.number()
+        .finite()
+        .nonnegative(),
+    otherDeliveryCostUsd:
       z.number()
         .finite()
         .nonnegative(),
