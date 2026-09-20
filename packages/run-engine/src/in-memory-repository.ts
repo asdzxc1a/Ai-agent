@@ -153,6 +153,20 @@ export class InMemoryRunRepository implements RunRepository {
       : clone(request);
   }
 
+  public async listActiveRuns():
+    Promise<RunSnapshot[]> {
+    return clone(
+      [...this.#runs.values()]
+        .filter(
+          (run) =>
+            run.status ===
+              "PENDING" ||
+            run.status ===
+              "RUNNING"
+        )
+    );
+  }
+
   public async updateRun(
     runId: string,
     update: RunUpdate
