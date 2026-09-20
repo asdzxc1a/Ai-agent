@@ -38,6 +38,19 @@ function combinedText(decision: SalesDecision): string {
   ].join(" ").toLowerCase();
 }
 
+function buyerVisibleText(
+  decision: SalesDecision
+): string {
+  return [
+    decision.responseGuidance,
+    decision.question ?? "",
+    ...decision.claims.map(
+      (claim) =>
+        claim.statement
+    )
+  ].join(" ").toLowerCase();
+}
+
 export function evaluateSalesDecision(
   scenario: SalesBenchScenario,
   rawDecision: unknown
@@ -107,11 +120,44 @@ export function evaluateSalesDecision(
     }
   }
 
-  for (const prohibited of scenario.input.serviceOffer.prohibitedClaims) {
-    for (const claim of decision.claims) {
-      if (claim.statement.toLowerCase().includes(prohibited.toLowerCase())) {
-        hardFailures.push(`prohibited_claim:${prohibited}`);
+  const visibleText =
+    buyerVisibleText(
+      decision
+    );
+
+  for (
+    const prohibited of
+    scenario.input.serviceOffer
+      .prohibitedClaims
+  ) {
+    const lowerProhibited =
+      prohibited.toLowerCase();
+
+    for (
+      const claim of
+      decision.claims
+    ) {
+      if (
+        claim.statement
+          .toLowerCase()
+          .includes(
+            lowerProhibited
+          )
+      ) {
+        hardFailures.push(
+          `prohibited_claim:${prohibited}`
+        );
       }
+    }
+
+    if (
+      visibleText.includes(
+        lowerProhibited
+      )
+    ) {
+      hardFailures.push(
+        `prohibited_buyer_text:${prohibited}`
+      );
     }
   }
 
@@ -132,6 +178,7 @@ export function evaluateSalesDecision(
       !hardFailures.some((failure) =>
         failure.startsWith("evidence:") ||
         failure.startsWith("prohibited_claim:") ||
+        failure.startsWith("prohibited_buyer_text:") ||
         failure.startsWith("forbidden_text:")
       )
     ),
@@ -145,7 +192,8 @@ export function evaluateSalesDecision(
     trust: Number(
       !hardFailures.some((failure) =>
         failure.startsWith("forbidden_text:") ||
-        failure.startsWith("prohibited_claim:")
+        failure.startsWith("prohibited_claim:") ||
+        failure.startsWith("prohibited_buyer_text:")
       )
     ),
     pressure: Number(
