@@ -800,6 +800,7 @@ export function validateProspectResearchResult(
 export interface BuildCompletedProspectResearchAttemptInput {
   target: ApprovedResearchTarget;
   runId: string;
+  startedAt: string;
   researchedAt: string;
   capturedAtByEvidenceId:
     ReadonlyMap<string, string>;
@@ -819,6 +820,7 @@ export interface BuildCompletedProspectResearchAttemptInput {
 export function buildCompletedProspectResearchAttempt({
   target,
   runId,
+  startedAt,
   researchedAt,
   capturedAtByEvidenceId,
   artifactIdsByEvidenceId,
@@ -875,6 +877,7 @@ export function buildCompletedProspectResearchAttempt({
       .parse({
         id: runId,
         target,
+        startedAt,
         createdAt:
           researchedAt,
         status: "COMPLETED",
