@@ -138,6 +138,7 @@ function injectedEvidenceScript(
     "const unknowns = " + unknowns + ";",
     "const nextPath = " + nextJson + ";",
     "const target = document.getElementById(\"dynamic-target\");",
+    "const trigger = document.getElementById(\"research-trigger\");",
     "function appendEvidence() {",
     "  target.replaceChildren();",
     "  for (const fact of facts) {",
@@ -158,9 +159,10 @@ function injectedEvidenceScript(
     "    target.appendChild(a);",
     "  }",
     "}",
+    "const trigger = document.getElementById(\"research-trigger\");",
     dynamic
-      ? "document.getElementById(\"research-trigger\").addEventListener(\"click\", () => { const second = document.createElement(\"button\"); second.id = \"research-reveal\"; second.textContent = \"Reveal loaded research evidence\"; second.addEventListener(\"click\", appendEvidence); target.replaceChildren(second); });"
-      : "document.getElementById(\"research-trigger\").addEventListener(\"click\", appendEvidence);",
+      ? "trigger.addEventListener(\"click\", () => { trigger.remove(); const second = document.createElement(\"button\"); second.id = \"research-reveal\"; second.textContent = \"Reveal loaded research evidence\"; second.addEventListener(\"click\", appendEvidence); target.replaceChildren(second); });"
+      : "trigger.addEventListener(\"click\", () => { trigger.remove(); appendEvidence(); });",
     "</script>"
   ].join("\n");
 }
@@ -801,9 +803,13 @@ test(
         "ASTRA_RESEARCHBENCH_V1",
         JSON.stringify({
           ...report.summary,
-          failedScenarioIds: report.results
+          failedScenarios: report.results
             .filter((result) => !result.passed)
-            .map((result) => result.scenarioId)
+            .map((result) => ({
+              id: result.scenarioId,
+              hardFailures:
+                result.hardFailures
+            }))
         })
       );
 
