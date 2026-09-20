@@ -17,19 +17,96 @@ import type {
 
 export type CreateStagehand = (cdpUrl: string) => Stagehand;
 
-function throwIfAborted(
-  signal: AbortSignal | undefined
-): void {
-  if (signal?.aborted !== true) {
-    return;
-  }
-
+function agentStartupAbortError(): Error {
   const error =
     new Error(
       "Agent session opening aborted."
     );
   error.name = "AbortError";
-  throw error;
+  return error;
+}
+
+function throwIfAborted(
+  signal: AbortSignal | undefined
+): void {
+  if (signal?.aborted === true) {
+    throw agentStartupAbortError();
+  }
+}
+
+async function initializeStagehand(
+  stagehand: Stagehand,
+  signal: AbortSignal | undefined
+): Promise<void> {
+  let closePromise:
+    Promise<void> | undefined;
+
+  const closePartial = () => {
+    closePromise ??=
+      stagehand
+        .close()
+        .catch(() => undefined);
+    return closePromise;
+  };
+
+  if (signal === undefined) {
+    try {
+      await stagehand.init();
+    } catch (error) {
+      await closePartial();
+      throw error;
+    }
+    return;
+  }
+
+  throwIfAborted(signal);
+
+  let onAbort:
+    (() => void) | undefined;
+
+  const aborted =
+    new Promise<never>(
+      (_, reject) => {
+        onAbort = () => {
+          void closePartial().finally(
+            () => {
+              reject(
+                agentStartupAbortError()
+              );
+            }
+          );
+        };
+
+        signal.addEventListener(
+          "abort",
+          onAbort,
+          {
+            once: true
+          }
+        );
+
+        if (signal.aborted) {
+          onAbort();
+        }
+      }
+    );
+
+  try {
+    await Promise.race([
+      stagehand.init(),
+      aborted
+    ]);
+  } catch (error) {
+    await closePartial();
+    throw error;
+  } finally {
+    if (onAbort !== undefined) {
+      signal.removeEventListener(
+        "abort",
+        onAbort
+      );
+    }
+  }
 }
 
 function toAgentAction(action: {
@@ -135,14 +212,10 @@ export class StagehandRuntimeCore implements AgentRuntime {
         browser.cdpUrl
       );
 
-    try {
-      await stagehand.init();
-    } catch (error) {
-      await stagehand
-        .close()
-        .catch(() => undefined);
-      throw error;
-    }
+    await initializeStagehand(
+      stagehand,
+      signal
+    );
 
     return new StagehandAgentSession(
       stagehand

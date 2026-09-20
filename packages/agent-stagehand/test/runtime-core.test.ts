@@ -93,3 +93,51 @@ test(
     ).toHaveBeenCalledTimes(1);
   }
 );
+
+test(
+  "abort during Stagehand initialization closes the partial provider and rejects",
+  async () => {
+    const stagehand = {
+      init: vi.fn(
+        () =>
+          new Promise<void>(
+            () => undefined
+          )
+      ),
+      close: vi
+        .fn()
+        .mockResolvedValue(
+          undefined
+        )
+    } as unknown as Stagehand;
+    const runtime =
+      new StagehandRuntimeCore(
+        () => stagehand
+      );
+    const controller =
+      new AbortController();
+
+    const opening =
+      runtime.openSession({
+        browser: browser(),
+        signal:
+          controller.signal
+      });
+
+    expect(
+      stagehand.init
+    ).toHaveBeenCalledTimes(1);
+
+    controller.abort();
+
+    await expect(
+      opening
+    ).rejects.toMatchObject({
+      name: "AbortError"
+    });
+
+    expect(
+      stagehand.close
+    ).toHaveBeenCalledTimes(1);
+  }
+);
