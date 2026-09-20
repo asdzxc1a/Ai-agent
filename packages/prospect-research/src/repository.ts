@@ -4,11 +4,13 @@ import type {
 
 import {
   ApprovedResearchTargetSchema,
+  ResearchApprovalBatchSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   type ApprovedResearchTarget,
+  type ResearchApprovalBatch,
   type ProspectResearchAttempt,
   type ProspectResearchHumanBaseline,
   type ProspectResearchHumanBaselineInput,
@@ -28,6 +30,18 @@ export interface ProspectResearchRepository {
     target:
       ApprovedResearchTarget
   ): Promise<void>;
+
+  saveTargetBatch(
+    batch:
+      ResearchApprovalBatch
+  ): Promise<void>;
+
+  getApprovalBatch(
+    batchId: string
+  ): Promise<
+    ResearchApprovalBatch |
+    undefined
+  >;
 
   getTarget(
     targetId: string
@@ -119,6 +133,11 @@ export class InMemoryProspectResearchRepository
       string,
       ApprovedResearchTarget
     >();
+  readonly #approvalBatches =
+    new Map<
+      string,
+      ResearchApprovalBatch
+    >();
   readonly #attempts =
     new Map<
       string,
@@ -173,6 +192,72 @@ export class InMemoryProspectResearchRepository
       target.id,
       structuredClone(target)
     );
+  }
+
+  public async saveTargetBatch(
+    input:
+      ResearchApprovalBatch
+  ): Promise<void> {
+    const batch =
+      ResearchApprovalBatchSchema
+        .parse(input);
+
+    if (
+      this.#approvalBatches
+        .has(
+          batch.id
+        )
+    ) {
+      throw new Error(
+        "Research approval batch already exists: " +
+          batch.id
+      );
+    }
+
+    const existing =
+      batch.targets.find(
+        (target) =>
+          this.#targets.has(
+            target.id
+          )
+      );
+
+    if (existing !== undefined) {
+      throw new Error(
+        "Research target already exists: " +
+          existing.id
+      );
+    }
+
+    this.#approvalBatches.set(
+      batch.id,
+      structuredClone(batch)
+    );
+
+    for (
+      const target of
+      batch.targets
+    ) {
+      this.#targets.set(
+        target.id,
+        structuredClone(target)
+      );
+    }
+  }
+
+  public async getApprovalBatch(
+    batchId: string
+  ): Promise<
+    ResearchApprovalBatch |
+    undefined
+  > {
+    const batch =
+      this.#approvalBatches
+        .get(batchId);
+
+    return batch === undefined
+      ? undefined
+      : structuredClone(batch);
   }
 
   public async getTarget(
