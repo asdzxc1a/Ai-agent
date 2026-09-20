@@ -106,6 +106,11 @@ test("PostgresRunRepository persists ordered run state, steps, and events", asyn
   await expect(
     repository.updateRun(runId, {
       status: "COMPLETED",
+      terminalReason: {
+        code: "GOAL_VERIFIED",
+        message:
+          "Fixture claimed verification without completing the goal state."
+      },
       result: {
         count: 1,
         status: "clicked"
