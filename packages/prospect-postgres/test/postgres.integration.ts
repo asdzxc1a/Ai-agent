@@ -11,6 +11,7 @@ import type {
   FailedProspectResearchAttempt,
   ProspectResearchHumanBaseline,
   ProspectResearchSample,
+  ResearchApprovalBatch,
   ProspectResearchSampleOutcome
 } from "@astra/prospect-research";
 
@@ -48,7 +49,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query(
-    "TRUNCATE prospect_research_sample_outcomes, prospect_research_human_baselines, prospect_research_samples, prospect_research_attempts, prospects, approved_research_targets RESTART IDENTITY CASCADE"
+    "TRUNCATE prospect_research_sample_outcomes, prospect_research_human_baselines, prospect_research_samples, prospect_research_attempts, prospects, approved_research_targets, prospect_research_approval_batches RESTART IDENTITY CASCADE"
   );
 });
 
@@ -58,6 +59,47 @@ afterAll(async () => {
 
 const timestamp =
   "2026-09-19T12:00:00Z";
+
+function secondApprovedTarget() {
+  const first =
+    completedAttempt()
+      .target;
+
+  return {
+    ...first,
+    id:
+      "target.pg.second",
+    companyNameHint:
+      "Second Systems",
+    approval: {
+      ...first.approval,
+      id:
+        "approval.pg.second"
+    }
+  };
+}
+
+function approvalBatch(
+  targets = [
+    completedAttempt()
+      .target,
+    secondApprovedTarget()
+  ]
+): ResearchApprovalBatch {
+  return {
+    id:
+      "approval-batch.pg",
+    sourceManifestId:
+      "manifest.pg",
+    sourceManifestSha256:
+      "c".repeat(64),
+    approvedBy:
+      "operator",
+    approvedAt:
+      timestamp,
+    targets
+  };
+}
 
 function completedAttempt():
   CompletedProspectResearchAttempt {
@@ -340,6 +382,94 @@ function failedAttempt():
     }
   };
 }
+
+test(
+  "PostgresProspectResearchRepository persists approval batches and targets atomically",
+  async () => {
+    const first =
+      new PostgresProspectResearchRepository(
+        pool
+      );
+    const batch =
+      approvalBatch();
+
+    await first.saveTargetBatch(
+      batch
+    );
+
+    const second =
+      new PostgresProspectResearchRepository(
+        pool
+      );
+
+    await expect(
+      second.getApprovalBatch(
+        batch.id
+      )
+    ).resolves.toEqual(
+      batch
+    );
+    expect(
+      (
+        await second.listTargets()
+      ).map(
+        (target) => target.id
+      )
+    ).toEqual([
+      "target.pg",
+      "target.pg.second"
+    ]);
+  }
+);
+
+test(
+  "PostgresProspectResearchRepository rolls back the whole approval batch on a duplicate target",
+  async () => {
+    const repository =
+      new PostgresProspectResearchRepository(
+        pool
+      );
+    const first =
+      completedAttempt()
+        .target;
+    const second =
+      secondApprovedTarget();
+
+    await repository.saveTarget(
+      first
+    );
+
+    const batch =
+      approvalBatch([
+        second,
+        first
+      ]);
+
+    await expect(
+      repository.saveTargetBatch(
+        batch
+      )
+    ).rejects.toThrow();
+
+    await expect(
+      repository.getApprovalBatch(
+        batch.id
+      )
+    ).resolves.toBeUndefined();
+    await expect(
+      repository.getTarget(
+        second.id
+      )
+    ).resolves.toBeUndefined();
+    await expect(
+      repository.getTarget(
+        first.id
+      )
+    ).resolves.toEqual(
+      first
+    );
+  }
+);
 
 test(
   "PostgresProspectResearchRepository persists completed prospects and classified failures across repository instances",
