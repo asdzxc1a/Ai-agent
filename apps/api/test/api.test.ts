@@ -20,6 +20,10 @@ import type {
   BrowserSessionOptions
 } from "@astra/browser-runtime";
 import type { RunSnapshot } from "@astra/contracts";
+import type {
+  RunEventRecord,
+  RunService
+} from "@astra/run-engine";
 
 import {
   createApiServer
@@ -221,7 +225,156 @@ class CancellationAgentRuntime
   }
 }
 
+class ReplayRunService
+  implements RunService {
+  readonly #runId =
+    "run-replay-backlog";
+  readonly #events:
+    RunEventRecord[];
+  readonly #snapshot:
+    RunSnapshot;
+
+  public constructor(
+    eventCount = 151
+  ) {
+    const timestamp =
+      "2026-09-20T00:00:00.000Z";
+
+    this.#events =
+      Array.from(
+        {
+          length: eventCount
+        },
+        (_unused, index) => {
+          const sequenceNumber =
+            index + 1;
+
+          return {
+            runId: this.#runId,
+            sequenceNumber,
+            eventType:
+              sequenceNumber ===
+              eventCount
+                ? "RUN_COMPLETED"
+                : "RUN_PROGRESS",
+            payload: {
+              sequenceNumber
+            },
+            createdAt: timestamp
+          };
+        }
+      );
+
+    this.#snapshot = {
+      id: this.#runId,
+      status: "COMPLETED",
+      goalStatus: "COMPLETED",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      result: {
+        ok: true
+      },
+      terminalReason: {
+        code: "GOAL_COMPLETED",
+        message:
+          "Completed replay fixture."
+      }
+    };
+  }
+
+  public get runId(): string {
+    return this.#runId;
+  }
+
+  public async createRun():
+    Promise<RunSnapshot> {
+    throw new Error(
+      "Replay fixture does not create runs."
+    );
+  }
+
+  public async getRun(
+    runId: string
+  ): Promise<
+    RunSnapshot | undefined
+  > {
+    return runId === this.#runId
+      ? this.#snapshot
+      : undefined;
+  }
+
+  public async cancelRun(
+    runId: string
+  ): Promise<
+    RunSnapshot | undefined
+  > {
+    return this.getRun(runId);
+  }
+
+  public async listEventsAfter(
+    runId: string,
+    afterSequence: number,
+    limit = 100
+  ): Promise<RunEventRecord[]> {
+    if (runId !== this.#runId) {
+      return [];
+    }
+
+    return this.#events
+      .filter(
+        (event) =>
+          event.sequenceNumber >
+          afterSequence
+      )
+      .slice(0, limit);
+  }
+
+  public async listArtifacts() {
+    return [];
+  }
+
+  public async readArtifact() {
+    return undefined;
+  }
+}
+
 const servers: Server[] = [];
+
+async function startRunServiceServer(
+  runService: RunService
+): Promise<string> {
+  const server =
+    createApiServer(runService);
+  servers.push(server);
+
+  await new Promise<void>(
+    (resolve, reject) => {
+      server.once("error", reject);
+      server.listen(
+        0,
+        "127.0.0.1",
+        resolve
+      );
+    }
+  );
+
+  const address = server.address();
+
+  if (
+    address === null ||
+    typeof address === "string"
+  ) {
+    throw new Error(
+      "API server did not bind a TCP port."
+    );
+  }
+
+  return (
+    `http://127.0.0.1:${
+      (address as AddressInfo).port
+    }`
+  );
+}
 
 async function startServer(
   browserRuntime: BrowserRuntime,
@@ -229,7 +382,8 @@ async function startServer(
   artifactStore?: ArtifactStore
 ): Promise<string> {
   const runService = new RunEngine({
-    repository: new InMemoryRunRepository(),
+    repository:
+      new InMemoryRunRepository(),
     browserRuntime,
     agentRuntime,
     ...(artifactStore === undefined
@@ -239,24 +393,9 @@ async function startServer(
         })
   });
 
-  const server = createApiServer(runService);
-  servers.push(server);
-
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", resolve);
-  });
-
-  const address = server.address();
-
-  if (
-    address === null ||
-    typeof address === "string"
-  ) {
-    throw new Error("API server did not bind a TCP port.");
-  }
-
-  return `http://127.0.0.1:${(address as AddressInfo).port}`;
+  return startRunServiceServer(
+    runService
+  );
 }
 
 async function waitForTerminal(
@@ -568,6 +707,50 @@ describe("first product API", () => {
         error: { code: string };
       }).error.code
     ).toBe("RUN_NOT_FOUND");
+  });
+
+  it("drains completed SSE replay across event batches", async () => {
+    const runService =
+      new ReplayRunService(151);
+    const baseUrl =
+      await startRunServiceServer(
+        runService
+      );
+
+    const response = await fetch(
+      `${baseUrl}/v1/runs/${runService.runId}/events`
+    );
+
+    expect(response.status).toBe(200);
+
+    const body = await response.text();
+    const ids = [
+      ...body.matchAll(
+        /^id: (\d+)$/gm
+      )
+    ].map(
+      (match) => Number(match[1])
+    );
+    const eventTypes = [
+      ...body.matchAll(
+        /^event: ([^\n]+)$/gm
+      )
+    ].map(
+      (match) => match[1]
+    );
+
+    expect(ids).toEqual(
+      Array.from(
+        {
+          length: 151
+        },
+        (_unused, index) =>
+          index + 1
+      )
+    );
+    expect(
+      eventTypes.at(-1)
+    ).toBe("RUN_COMPLETED");
   });
 
   it("returns typed 400 and 404 errors", async () => {
