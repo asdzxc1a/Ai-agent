@@ -7,6 +7,7 @@ import type {
   RunEventRecord,
   RunRepository,
   RunStepRecord,
+  RunTerminalUpdate,
   RunUpdate
 } from "./repository.js";
 
@@ -90,6 +91,30 @@ function validateTerminal(snapshot: RunSnapshot): void {
   }
 }
 
+function isTerminalStatus(
+  status: RunSnapshot["status"]
+): boolean {
+  return (
+    status === "COMPLETED" ||
+    status === "FAILED" ||
+    status === "CANCELLED"
+  );
+}
+
+function terminalEventType(
+  status:
+    RunTerminalUpdate["status"]
+): string {
+  switch (status) {
+    case "COMPLETED":
+      return "RUN_COMPLETED";
+    case "FAILED":
+      return "RUN_FAILED";
+    case "CANCELLED":
+      return "RUN_CANCELLED";
+  }
+}
+
 export class InMemoryRunRepository implements RunRepository {
   readonly #runs = new Map<string, RunSnapshot>();
   readonly #requests = new Map<string, CreateRunRequest>();
@@ -144,8 +169,81 @@ export class InMemoryRunRepository implements RunRepository {
       updatedAt: new Date().toISOString()
     };
 
+    if (
+      isTerminalStatus(
+        next.status
+      )
+    ) {
+      throw new Error(
+        "Terminal runs must use finalizeRun()."
+      );
+    }
+
     validateTerminal(next);
     this.#runs.set(runId, next);
+    return clone(next);
+  }
+
+  public async finalizeRun(
+    runId: string,
+    update: RunTerminalUpdate,
+    eventPayload: unknown
+  ): Promise<RunSnapshot> {
+    const current =
+      this.#runs.get(runId);
+    const records =
+      this.#events.get(runId);
+
+    if (
+      current === undefined ||
+      records === undefined
+    ) {
+      throw new Error(
+        `Run ${runId} does not exist.`
+      );
+    }
+
+    if (
+      isTerminalStatus(
+        current.status
+      )
+    ) {
+      throw new Error(
+        `Run ${runId} is already terminal.`
+      );
+    }
+
+    const now =
+      new Date().toISOString();
+    const next:
+      RunSnapshot = {
+        ...current,
+        ...clone(update),
+        updatedAt: now
+      };
+
+    validateTerminal(next);
+
+    const record:
+      RunEventRecord = {
+        runId,
+        sequenceNumber:
+          records.length + 1,
+        eventType:
+          terminalEventType(
+            update.status
+          ),
+        payload:
+          clone(eventPayload),
+        createdAt: now
+      };
+
+    this.#runs.set(
+      runId,
+      next
+    );
+    records.push(record);
+
     return clone(next);
   }
 
