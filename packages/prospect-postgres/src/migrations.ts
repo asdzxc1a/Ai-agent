@@ -67,6 +67,23 @@ CREATE INDEX prospect_research_sample_outcome_order
   ON prospect_research_sample_outcomes(sample_id, reviewed_at, id);
 `;
 
+const MIGRATION_THREE = `
+CREATE TABLE prospect_research_human_baselines (
+  id TEXT PRIMARY KEY,
+  sample_id TEXT NOT NULL
+    REFERENCES prospect_research_samples(id),
+  target_id TEXT NOT NULL
+    REFERENCES approved_research_targets(id),
+  baseline JSONB NOT NULL,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT prospect_research_human_baseline_target_once
+    UNIQUE (sample_id, target_id)
+);
+
+CREATE INDEX prospect_research_human_baseline_order
+  ON prospect_research_human_baselines(sample_id, recorded_at, id);
+`;
+
 async function applyMigration(
   client: PoolClient,
   version: number,
@@ -117,6 +134,11 @@ export async function runProspectPostgresMigrations(
       client,
       2,
       MIGRATION_TWO
+    );
+    await applyMigration(
+      client,
+      3,
+      MIGRATION_THREE
     );
 
     await client.query("COMMIT");
