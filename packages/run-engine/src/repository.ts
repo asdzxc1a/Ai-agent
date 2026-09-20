@@ -20,11 +20,7 @@ export interface RunTerminalUpdate {
     | "COMPLETED"
     | "FAILED"
     | "CANCELLED";
-  goalStatus:
-    Exclude<
-      GoalStatus,
-      "IN_PROGRESS"
-    >;
+  goalStatus: GoalStatus;
   result?: unknown;
   error?: RunFailure;
   terminalReason:
