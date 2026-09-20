@@ -1210,6 +1210,69 @@ describe(
       );
     });
 
+    it("rejects a screenshot whose captured page URL does not match the claimed source", async () => {
+      const artifacts =
+        new InMemoryArtifactStore();
+      const repository =
+        new InMemoryProspectResearchRepository();
+      const artifactIds = {
+        industry:
+          await screenshot(
+            artifacts,
+            "industry.jpg"
+          ),
+        workflow:
+          await screenshot(
+            artifacts,
+            "workflow.jpg"
+          ),
+        hiring:
+          await screenshot(
+            artifacts,
+            "hiring.jpg"
+          )
+      };
+      const result =
+        researchResult(
+          artifactIds
+        );
+      const research =
+        service(
+          repository,
+          artifacts,
+          completedRun(result)
+        );
+
+      await research.approveTarget(
+        target()
+      );
+
+      await expect(
+        research.recordCompleted({
+          targetId:
+            "target.example",
+          runId,
+          artifactIdsByEvidenceId: {
+            ...artifactMapping(
+              artifactIds
+            ),
+            "e.workflow": [
+              artifactIds.industry
+            ]
+          }
+        })
+      ).rejects.toThrow(
+        "research screenshot page URL must match evidence source URL"
+      );
+
+      expect(
+        await repository
+          .getProspect(
+            "target.example"
+          )
+      ).toBeUndefined();
+    });
+
     it("fails closed when evidence references a real screenshot from another run", async () => {
       const artifacts =
         new InMemoryArtifactStore();
