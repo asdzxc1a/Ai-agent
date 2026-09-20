@@ -1041,3 +1041,45 @@ The research workflow deliberately requires human evidence review, so that labor
 
 If later UI/system instrumentation can capture operator labor directly, it may replace stopwatch input with system-timed components while preserving the same total-labor definition.
 
+---
+
+## D-035 — Gate 13 brief usability follows a frozen deterministic review rubric
+
+**Date:** 2026-09-20
+**Status:** Accepted
+
+**Decision**
+
+Gate 13 acceptance no longer treats `accepted | minor_edit | major_edit | rejected` as a free reviewer label.
+
+Protocol v7 freezes `gate13-brief-review-v1` in the sample and outcome. The only valid disposition is derived from the recorded correction severities and unsupported material claims:
+
+- **accepted** — completed brief with zero minor, major, or critical corrections and zero unsupported material claims;
+- **minor_edit** — completed brief with one or more minor corrections, zero major/critical corrections, and zero unsupported material claims;
+- **major_edit** — completed brief with one or more major corrections, zero critical corrections, and zero unsupported material claims;
+- **rejected** — completed brief with any critical correction or any unsupported material claim;
+- **not_produced** — failed research attempt.
+
+Correction severity definitions are frozen for this rubric:
+
+- **minor** — wording, formatting, clarity, or presentation change that does not alter the material factual meaning, opportunity thesis, buying signal, or requested decision;
+- **major** — substantive rework to a material claim, opportunity framing, buying signal, or requested field while the brief remains salvageable without restarting the research task;
+- **critical** — wrong company, materially false/misleading content, unsupported material claim, unsafe/unauthorized action, or a brief that cannot be made usable without re-research.
+
+**Why**
+
+The Gate 13 threshold requires at least 90% of briefs to be usable with only a minor edit. Without a frozen rubric, reviewers can unconsciously move the boundary after seeing results, which makes the usability metric vulnerable to hindsight bias.
+
+**Consequences**
+
+- protocol advances to `gate13-measured-research-v7`;
+- sample and outcome both carry the frozen review-rubric version;
+- schema validation rejects a disposition inconsistent with correction counts or unsupported claims;
+- an unsupported material claim cannot be counted as a usable minor-edit brief;
+- the usability metric remains `accepted + minor_edit`, but those labels now have deterministic semantics;
+- existing results from prior protocol versions are not reclassified retroactively.
+
+**Revisit when**
+
+Only through a new versioned rubric and protocol with explicit migration/benchmark rationale. Historical v7 outcomes retain their original rubric.
+
