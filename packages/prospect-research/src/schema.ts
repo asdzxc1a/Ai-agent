@@ -575,6 +575,9 @@ export const PROSPECT_RESEARCH_BRIEF_DISPOSITIONS =
     "not_produced"
   ] as const;
 
+export const PROSPECT_RESEARCH_REVIEW_RUBRIC_VERSION =
+  "gate13-brief-review-v1" as const;
+
 export const PROSPECT_RESEARCH_SAMPLE_PURPOSES =
   [
     "CALIBRATION",
@@ -747,7 +750,7 @@ export const ProspectResearchSampleSchema =
       z.literal("FROZEN"),
     protocolVersion:
       z.literal(
-        "gate13-measured-research-v6"
+        "gate13-measured-research-v7"
       ),
     purpose:
       z.enum(
@@ -786,6 +789,10 @@ export const ProspectResearchSampleSchema =
         .min(1)
         .max(4000)
         .nullable(),
+    reviewRubricVersion:
+      z.literal(
+        PROSPECT_RESEARCH_REVIEW_RUBRIC_VERSION
+      ),
     frozenBy:
       TextSchema.max(240),
     frozenAt:
@@ -1127,6 +1134,10 @@ export const ProspectResearchSampleOutcomeSchema =
     targetId: IdentifierSchema,
     attemptId: IdentifierSchema,
     baselineId: IdentifierSchema,
+    reviewRubricVersion:
+      z.literal(
+        PROSPECT_RESEARCH_REVIEW_RUBRIC_VERSION
+      ),
     attemptStatus:
       z.enum([
         "COMPLETED",
@@ -1212,6 +1223,40 @@ export const ProspectResearchSampleOutcomeSchema =
   }).strict()
     .superRefine(
       (outcome, context) => {
+        const expectedDisposition =
+          outcome.attemptStatus ===
+            "FAILED"
+            ? "not_produced"
+            : (
+                outcome
+                  .unsupportedMaterialClaims >
+                  0 ||
+                outcome.corrections
+                  .critical > 0
+                  ? "rejected"
+                  : outcome.corrections
+                      .major > 0
+                    ? "major_edit"
+                    : outcome.corrections
+                        .minor > 0
+                      ? "minor_edit"
+                      : "accepted"
+              );
+
+        if (
+          outcome.briefDisposition !==
+          expectedDisposition
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "briefDisposition"
+            ],
+            message:
+              "brief disposition must match the frozen Gate 13 review rubric"
+          });
+        }
+
         if (
           Date.parse(
             outcome.baselineMeasuredAt

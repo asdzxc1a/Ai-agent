@@ -76,7 +76,7 @@ function sample() {
       id: sampleId,
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v6",
+        "gate13-measured-research-v7",
       purpose:
         "CALIBRATION",
       cohortDefinition:
@@ -112,6 +112,8 @@ function sample() {
         "Operator manually researches the approved public page and drafts the same brief.",
       comparisonBaselineDescription:
         null,
+      reviewRubricVersion:
+        "gate13-brief-review-v1",
       frozenBy:
         "operator",
       frozenAt:
@@ -151,7 +153,7 @@ function acceptanceSample() {
         "sample.acceptance.workflow",
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v6",
+        "gate13-measured-research-v7",
       purpose:
         "ACCEPTANCE",
       cohortDefinition:
@@ -224,6 +226,8 @@ function acceptanceSample() {
         "Human researcher uses normal research tools before Astra.",
       comparisonBaselineDescription:
         null,
+      reviewRubricVersion:
+        "gate13-brief-review-v1",
       frozenBy:
         "operator",
       frozenAt:
@@ -779,6 +783,8 @@ describe(
               attempt.id,
             baselineId:
               humanBaseline.id,
+            reviewRubricVersion:
+              "gate13-brief-review-v1",
             attemptStatus:
               "COMPLETED",
             briefDisposition:

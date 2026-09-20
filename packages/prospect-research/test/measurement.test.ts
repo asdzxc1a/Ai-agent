@@ -71,7 +71,7 @@ function sample(
       status:
         "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v6",
+        "gate13-measured-research-v7",
       purpose,
       cohortDefinition:
         purpose ===
@@ -164,6 +164,8 @@ function sample(
         "A human researcher completes the same brief from the same approved scope using the baseline policy declared for the sample.",
       comparisonBaselineDescription:
         null,
+      reviewRubricVersion:
+        "gate13-brief-review-v1",
       frozenBy:
         "operator",
       frozenAt
@@ -234,6 +236,8 @@ function outcome(input: {
         String(
           input.targetIndex
         ).padStart(2, "0"),
+      reviewRubricVersion:
+        "gate13-brief-review-v1",
       attemptStatus,
       briefDisposition,
       reviewedBy:
@@ -737,6 +741,70 @@ describe(
         ).toThrow(
           "selection universe source date must not be after sample freeze"
         );
+      }
+    );
+
+    it(
+      "derives brief disposition from the frozen correction-severity rubric",
+      () => {
+        const accepted =
+          outcome({
+            sampleId:
+              "sample.acceptance",
+            targetIndex: 1
+          });
+
+        expect(
+          accepted.briefDisposition
+        ).toBe("accepted");
+
+        expect(() =>
+          ProspectResearchSampleOutcomeSchema
+            .parse({
+              ...accepted,
+              briefDisposition:
+                "minor_edit",
+              corrections: {
+                minor: 0,
+                major: 1,
+                critical: 0
+              }
+            })
+        ).toThrow(
+          "brief disposition must match the frozen Gate 13 review rubric"
+        );
+
+        expect(() =>
+          ProspectResearchSampleOutcomeSchema
+            .parse({
+              ...accepted,
+              briefDisposition:
+                "minor_edit",
+              unsupportedMaterialClaims:
+                1,
+              corrections: {
+                minor: 1,
+                major: 0,
+                critical: 0
+              }
+            })
+        ).toThrow(
+          "brief disposition must match the frozen Gate 13 review rubric"
+        );
+
+        const rejected =
+          ProspectResearchSampleOutcomeSchema
+            .parse({
+              ...accepted,
+              briefDisposition:
+                "rejected",
+              unsupportedMaterialClaims:
+                1
+            });
+
+        expect(
+          rejected.briefDisposition
+        ).toBe("rejected");
       }
     );
 

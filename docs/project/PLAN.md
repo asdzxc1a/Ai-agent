@@ -391,6 +391,7 @@ Build:
 - compare against the existing human researcher using normal tools; scope-matched human restrictions are calibration-only;
 - require a durable server-timestamped measured human baseline record for each acceptance target before its Astra attempt can start; fixed-cap baseline estimates are calibration-only;
 - record whether review was blind or unblinded and prefer blind review where practical;
+- freeze `gate13-brief-review-v1` before results and derive accepted/minor/major/rejected disposition from correction severity + unsupported-claim state rather than free reviewer labeling;
 - freeze a rationale-backed cost ceiling before results and record every attempt, the full Astra-side human-time breakdown (target setup, evidence mapping/source audit, corrections/finalization, failure triage, other measured work), correction count/severity, unsupported material claims, requested-field coverage, duration, and complete provider/browser cost.
 
 Non-goals:
@@ -417,6 +418,7 @@ Acceptance:
 - the first Gate 13 acceptance cohort contains exactly the complete 43-member frozen U.S. transportation universe; sample target IDs must equal the frozen universe membership, inaccessible members remain failures rather than exclusions, incomplete cohorts return no verdict, and exactly one outcome per frozen target is required;
 - acceptance sample metadata is `SINGLE_MARKET`, `NORMAL_TOOLS`, and carries v5 candidate-universe provenance; cross-market, scope-matched, or ad-hoc complete-universe membership is rejected;
 - acceptance state order is approval → sample freeze → durable `MEASURED_HUMAN` baseline → Astra attempt → reviewed outcome; the later outcome must reference and exactly match the stored baseline record; baseline source and review mode remain durable evidence;
+- sample and outcome use the same frozen review-rubric version; disposition mismatches are rejected, and any unsupported material claim or critical correction makes the brief `rejected`;
 - every material observed fact in the measured sample is manually checked against its claimed source;
 - unsupported hypotheses are never represented as observed facts and unknowns remain explicit;
 - live-site failures remain `LIVE_RESEARCH_FAILURE` and do not change the frozen Gate 11 deterministic release result;

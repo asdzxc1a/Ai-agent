@@ -275,6 +275,7 @@ Before the first measured sample:
 - durably freeze decision thresholds and a cost-ceiling rationale before results; the quality/time minimums cannot be weakened;
 - for acceptance targets, persist a measured human baseline as separate server-timestamped durable state before the Astra attempt is allowed to start; fixed-cap estimates are calibration-only;
 - record blind versus unblinded review and use blind review where practical;
+- freeze the brief-review rubric before results; reviewers record correction severities, while the schema derives the allowed brief disposition;
 - do not report an acceptance pass/fail verdict until every frozen target has exactly one recorded outcome.
 
 For every research attempt record:
@@ -283,7 +284,7 @@ For every research attempt record:
 - durable human-baseline ID, mode/provenance/server timestamp, preparation minutes/tooling description, and blind/unblinded review mode;
 - material source/evidence receipts and manual audit result;
 - requested-field coverage and explicit unknowns;
-- unsupported-claim/correction count and severity;
+- frozen review-rubric version plus unsupported-claim/correction count and severity;
 - total Astra-side human preparation minutes, broken down into target setup, evidence mapping/source audit, corrections/finalization, failure triage, and other measured operator work;
 - end-to-end duration;
 - complete model/token/browser/provider delivery cost, including failed attempts;
@@ -356,6 +357,7 @@ A gate is `PASSED` only if:
 - Optional diagnostics and each cleanup operation require independent bounded deadlines; browser/provider cleanup must still be attempted when agent cleanup times out or fails.
 - Buyer-visible prohibited commercial prose must be checked independently of structured claim arrays; an empty `claims` list is never a factuality bypass.
 - Gate 13 human-time savings must use the full Astra-side labor total; excluding target setup, evidence audit, corrections/finalization, or failure triage is an invalid value claim.
+- Gate 13 usability may not be assigned by free reviewer label; disposition must match the frozen rubric and correction/unsupported-claim evidence.
 - Do not use an LLM judge as the sole factuality/security validator.
 - Evaluate speaking transport separately from hidden sales policy when possible.
 
