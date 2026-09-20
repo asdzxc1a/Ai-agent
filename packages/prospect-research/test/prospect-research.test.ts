@@ -345,6 +345,30 @@ describe(
       ).toBe(false);
     });
 
+    it.each([
+      ["127.0.0.1", "http://127.0.0.1/"],
+      ["::1", "http://[::1]/"],
+      ["service.local", "https://service.local/"],
+      ["metadata.internal", "https://metadata.internal/"],
+      ["host.localhost", "http://host.localhost/"]
+    ])(
+      "rejects non-public approved domain %s before network policy creation",
+      (domain, startUrl) => {
+        expect(() =>
+          ApprovedResearchTargetSchema.parse({
+            ...target(),
+            domain,
+            startUrl,
+            approvedDomains: [
+              domain
+            ]
+          })
+        ).toThrow(
+          "research domain must be a public DNS-style domain name"
+        );
+      }
+    );
+
     it("rejects an approved target whose start URL is outside the frozen domain set", () => {
       expect(() =>
         ApprovedResearchTargetSchema.parse({
