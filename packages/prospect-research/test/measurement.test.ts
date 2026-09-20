@@ -667,6 +667,53 @@ describe(
     );
 
     it(
+      "rejects complete-universe acceptance when frozen membership is altered",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              selectionUniverse: {
+                ...acceptance
+                  .selectionUniverse!,
+                sourceDeclaredCount:
+                  31,
+                candidateTargetIds: [
+                  ...acceptance
+                    .selectionUniverse!
+                    .candidateTargetIds,
+                  "target.31"
+                ]
+              }
+            })
+        ).toThrow(
+          "complete-universe selection requires the frozen sample to contain every candidate exactly once"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              selectionUniverse: {
+                ...acceptance
+                  .selectionUniverse!,
+                sourceAsOfDate:
+                  "2026-09-21"
+              }
+            })
+        ).toThrow(
+          "selection universe source date must not be after sample freeze"
+        );
+      }
+    );
+
+    it(
       "rejects undersized acceptance samples, oversized calibration samples, and weakened audit thresholds",
       () => {
         expect(() =>
