@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   describe,
   expect,
@@ -30,6 +32,42 @@ const timestamp =
   "2026-09-19T12:00:00.000Z";
 const runId =
   "run_example";
+
+const pageContentSha256 =
+  "a".repeat(64);
+
+function sourceUrlFor(
+  kind:
+    | "industry"
+    | "workflow"
+    | "hiring"
+): string {
+  switch (kind) {
+    case "industry":
+      return "https://www.example.com/about";
+    case "workflow":
+      return "https://operations.example.com/workflows";
+    case "hiring":
+      return "https://www.example.com/careers";
+  }
+}
+
+function captureReceipt(
+  artifactId: string,
+  pageUrl: string
+) {
+  return {
+    artifactId,
+    captureVersion:
+      "page-evidence-v1" as const,
+    pageUrl,
+    capturedAt:
+      timestamp,
+    pageContentSha256,
+    screenshotSha256:
+      "b".repeat(64)
+  };
+}
 
 function target():
   ApprovedResearchTarget {
@@ -157,6 +195,14 @@ function completedAttempt(
             null,
           artifactIds: [
             artifactIds.industry
+          ],
+          captureReceipts: [
+            captureReceipt(
+              artifactIds.industry,
+              sourceUrlFor(
+                "industry"
+              )
+            )
           ]
         },
         {
@@ -174,6 +220,14 @@ function completedAttempt(
             "The page does not quantify frequency or cost.",
           artifactIds: [
             artifactIds.workflow
+          ],
+          captureReceipts: [
+            captureReceipt(
+              artifactIds.workflow,
+              sourceUrlFor(
+                "workflow"
+              )
+            )
           ]
         },
         {
@@ -191,6 +245,14 @@ function completedAttempt(
             null,
           artifactIds: [
             artifactIds.hiring
+          ],
+          captureReceipts: [
+            captureReceipt(
+              artifactIds.hiring,
+              sourceUrlFor(
+                "hiring"
+              )
+            )
           ]
         }
       ]
@@ -272,6 +334,29 @@ async function screenshot(
   artifactRunId: string =
     runId
 ): Promise<string> {
+  const data =
+    new Uint8Array([
+      0xff,
+      0xd8,
+      0xff,
+      0xd9
+    ]);
+  const pageUrl =
+    name.includes(
+      "workflow"
+    )
+      ? sourceUrlFor(
+          "workflow"
+        )
+      : name.includes(
+          "hiring"
+        )
+        ? sourceUrlFor(
+            "hiring"
+          )
+        : sourceUrlFor(
+            "industry"
+          );
   const record =
     await artifacts.putArtifact({
       runId:
@@ -280,13 +365,23 @@ async function screenshot(
       name,
       mediaType:
         "image/jpeg",
-      data:
-        new Uint8Array([
-          0xff,
-          0xd8,
-          0xff,
-          0xd9
-        ])
+      data,
+      metadata: {
+        captureVersion:
+          "page-evidence-v1",
+        pageUrl,
+        pageTitle:
+          "Example Systems",
+        pageContentSha256,
+        pageContentBytes:
+          42,
+        screenshotSha256:
+          createHash(
+            "sha256"
+          )
+            .update(data)
+            .digest("hex")
+      }
     });
 
   return record.id;
@@ -518,19 +613,40 @@ describe(
           (item) =>
             item.id ===
             "e.industry"
-        )?.kind
-      ).toBe(
-        "observed_fact"
-      );
+        )
+      ).toMatchObject({
+        kind:
+          "observed_fact",
+        uncertainty:
+          "none",
+        uncertaintyNote:
+          null,
+        artifactIds: [
+          "artifact.1"
+        ],
+        captureReceipts: [
+          {
+            artifactId:
+              "artifact.1",
+            pageUrl:
+              "https://www.example.com/about",
+            pageContentSha256:
+              pageContentSha256
+          }
+        ]
+      });
       expect(
         evidence.find(
           (item) =>
             item.id ===
             "h.workflow"
-        )?.kind
-      ).toBe(
-        "inferred_hypothesis"
-      );
+        )
+      ).toMatchObject({
+        kind:
+          "inferred_hypothesis",
+        uncertainty:
+          "The public site describes manual coordination but does not quantify the operational impact."
+      });
       expect(
         evidence.find(
           (item) =>
