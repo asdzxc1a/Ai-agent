@@ -11,6 +11,7 @@ import type {
 import {
   ApprovedResearchTargetSchema,
   FailedProspectResearchAttemptSchema,
+  ProspectResearchHumanBaselineInputSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   type ApprovedResearchTarget,
@@ -18,6 +19,7 @@ import {
   type FailedProspectResearchAttempt,
   type LiveResearchFailureCode,
   type ProspectResearchCaptureReceipt,
+  type ProspectResearchHumanBaseline,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome
 } from "./schema.js";
@@ -311,6 +313,43 @@ export class ProspectResearchService {
     }
 
     return sample;
+  }
+
+  public async recordHumanBaseline(
+    input: unknown
+  ): Promise<
+    ProspectResearchHumanBaseline
+  > {
+    const parsed =
+      ProspectResearchHumanBaselineInputSchema
+        .parse(input);
+
+    try {
+      return await this.#repository
+        .saveHumanBaseline(
+          parsed
+        );
+    } catch (error) {
+      throw new ProspectResearchValidationError([
+        error instanceof Error
+          ? error.message
+          : "human baseline could not be recorded"
+      ]);
+    }
+  }
+
+  public async getHumanBaselineForTarget(
+    sampleId: string,
+    targetId: string
+  ): Promise<
+    ProspectResearchHumanBaseline |
+    undefined
+  > {
+    return this.#repository
+      .getHumanBaselineForTarget(
+        sampleId,
+        targetId
+      );
   }
 
   public async recordSampleOutcome(
