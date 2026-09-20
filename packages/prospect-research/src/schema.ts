@@ -562,6 +562,307 @@ export const ProspectResearchAttemptSchema =
     ]
   );
 
+export const PROSPECT_RESEARCH_BRIEF_DISPOSITIONS =
+  [
+    "accepted",
+    "minor_edit",
+    "major_edit",
+    "rejected",
+    "not_produced"
+  ] as const;
+
+export const ProspectResearchSampleCriteriaSchema =
+  z.object({
+    maxUnsupportedMaterialClaims:
+      z.literal(0),
+    minUsableBriefRate:
+      z.number()
+        .min(0.9)
+        .max(1),
+    minMedianHumanTimeReductionFraction:
+      z.number()
+        .min(0.5)
+        .max(1),
+    requireNoUnauthorizedActions:
+      z.literal(true),
+    maxDeliveryCostUsdPerBrief:
+      z.number()
+        .finite()
+        .positive()
+  }).strict();
+
+export const ProspectResearchSampleSchema =
+  z.object({
+    id: IdentifierSchema,
+    status:
+      z.literal("FROZEN"),
+    protocolVersion:
+      z.literal(
+        "gate13-measured-research-v1"
+      ),
+    targets:
+      z.array(
+        ApprovedResearchTargetSchema
+      ).min(1).max(50),
+    criteria:
+      ProspectResearchSampleCriteriaSchema,
+    humanBaselineDescription:
+      TextSchema.max(4000),
+    comparisonBaselineDescription:
+      z.string()
+        .trim()
+        .min(1)
+        .max(4000)
+        .nullable(),
+    frozenBy:
+      TextSchema.max(240),
+    frozenAt:
+      z.string().datetime({
+        offset: true
+      })
+  }).strict()
+    .superRefine(
+      (sample, context) => {
+        const targetIds =
+          sample.targets.map(
+            (target) =>
+              target.id
+          );
+
+        if (
+          new Set(targetIds).size !==
+            targetIds.length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["targets"],
+            message:
+              "frozen research sample target IDs must be unique"
+          });
+        }
+
+        for (
+          const [
+            index,
+            target
+          ] of sample.targets
+            .entries()
+        ) {
+          if (
+            Date.parse(
+              target.approval
+                .approvedAt
+            ) >
+            Date.parse(
+              sample.frozenAt
+            )
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: [
+                "targets",
+                index,
+                "approval",
+                "approvedAt"
+              ],
+              message:
+                "target approval must exist before the research sample is frozen"
+            });
+          }
+        }
+      }
+    );
+
+export const ProspectResearchSampleOutcomeSchema =
+  z.object({
+    id: IdentifierSchema,
+    sampleId: IdentifierSchema,
+    targetId: IdentifierSchema,
+    attemptId: IdentifierSchema,
+    attemptStatus:
+      z.enum([
+        "COMPLETED",
+        "FAILED"
+      ]),
+    briefDisposition:
+      z.enum(
+        PROSPECT_RESEARCH_BRIEF_DISPOSITIONS
+      ),
+    reviewedBy:
+      TextSchema.max(240),
+    reviewedAt:
+      z.string().datetime({
+        offset: true
+      }),
+    materialClaimsReviewed:
+      z.number()
+        .int()
+        .nonnegative(),
+    unsupportedMaterialClaims:
+      z.number()
+        .int()
+        .nonnegative(),
+    corrections:
+      z.object({
+        minor:
+          z.number()
+            .int()
+            .nonnegative(),
+        major:
+          z.number()
+            .int()
+            .nonnegative(),
+        critical:
+          z.number()
+            .int()
+            .nonnegative()
+      }).strict(),
+    requestedFieldsTotal:
+      z.number()
+        .int()
+        .positive(),
+    requestedFieldsCovered:
+      z.number()
+        .int()
+        .nonnegative(),
+    baselineHumanPreparationMinutes:
+      z.number()
+        .finite()
+        .positive(),
+    astraHumanReviewMinutes:
+      z.number()
+        .finite()
+        .nonnegative(),
+    endToEndDurationMs:
+      z.number()
+        .int()
+        .positive(),
+    deliveryCostUsd:
+      z.number()
+        .finite()
+        .nonnegative(),
+    unauthorizedActions:
+      z.number()
+        .int()
+        .nonnegative(),
+    notes:
+      z.string()
+        .trim()
+        .min(1)
+        .max(4000)
+        .nullable()
+  }).strict()
+    .superRefine(
+      (outcome, context) => {
+        if (
+          outcome
+            .unsupportedMaterialClaims >
+          outcome
+            .materialClaimsReviewed
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "unsupportedMaterialClaims"
+            ],
+            message:
+              "unsupported material claims cannot exceed reviewed material claims"
+          });
+        }
+
+        if (
+          outcome
+            .requestedFieldsCovered >
+          outcome
+            .requestedFieldsTotal
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "requestedFieldsCovered"
+            ],
+            message:
+              "covered fields cannot exceed requested fields"
+          });
+        }
+
+        if (
+          outcome.attemptStatus ===
+            "FAILED" &&
+          outcome.briefDisposition !==
+            "not_produced"
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "briefDisposition"
+            ],
+            message:
+              "failed research attempts must use not_produced disposition"
+          });
+        }
+
+        if (
+          outcome.attemptStatus ===
+            "COMPLETED" &&
+          outcome.briefDisposition ===
+            "not_produced"
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "briefDisposition"
+            ],
+            message:
+              "completed research attempts must record a reviewed brief disposition"
+          });
+        }
+
+        if (
+          outcome.briefDisposition ===
+            "not_produced" &&
+          (
+            outcome
+              .materialClaimsReviewed !==
+              0 ||
+            outcome
+              .unsupportedMaterialClaims !==
+              0 ||
+            outcome
+              .requestedFieldsCovered !==
+              0 ||
+            outcome.corrections
+              .minor !== 0 ||
+            outcome.corrections
+              .major !== 0 ||
+            outcome.corrections
+              .critical !== 0
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "briefDisposition"
+            ],
+            message:
+              "not_produced outcomes cannot report brief claims, coverage, or corrections"
+          });
+        }
+      }
+    );
+
+export type ProspectResearchSampleCriteria =
+  z.infer<
+    typeof ProspectResearchSampleCriteriaSchema
+  >;
+export type ProspectResearchSample =
+  z.infer<
+    typeof ProspectResearchSampleSchema
+  >;
+export type ProspectResearchSampleOutcome =
+  z.infer<
+    typeof ProspectResearchSampleOutcomeSchema
+  >;
 export type ApprovedResearchTarget =
   z.infer<
     typeof ApprovedResearchTargetSchema

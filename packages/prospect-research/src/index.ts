@@ -14,7 +14,11 @@ export {
   ProspectResearchFailureSchema,
   ProspectResearchReportSchema,
   ProspectResearchResultSchema,
+  ProspectResearchSampleCriteriaSchema,
+  ProspectResearchSampleOutcomeSchema,
+  ProspectResearchSampleSchema,
   ProspectResearchUnknownSchema,
+  PROSPECT_RESEARCH_BRIEF_DISPOSITIONS,
   RESEARCH_UNCERTAINTY,
   ResearchApprovalSchema,
   ResearchDomainSchema
@@ -36,8 +40,22 @@ export type {
   ProspectResearchFailure,
   ProspectResearchReport,
   ProspectResearchResult,
+  ProspectResearchSample,
+  ProspectResearchSampleCriteria,
+  ProspectResearchSampleOutcome,
   ProspectResearchUnknown
 } from "./schema.js";
+
+
+export {
+  evaluateProspectResearchSample,
+  validateProspectResearchSampleOutcomeContext
+} from "./measurement.js";
+
+export type {
+  ProspectResearchSampleEvaluation,
+  ProspectResearchSampleMetrics
+} from "./measurement.js";
 
 export {
   InMemoryProspectResearchRepository

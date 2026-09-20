@@ -30,6 +30,7 @@ import {
 import {
   ApprovedResearchTargetSchema,
   InMemoryProspectResearchRepository,
+  ProspectResearchSampleSchema,
   ProspectResearchWorkflow,
   ProspectResearchValidationError,
   type ProspectResearchResult
@@ -62,6 +63,56 @@ function target() {
           "operator",
         approvedAt:
           timestamp
+      }
+    });
+}
+
+const sampleId =
+  "sample.workflow";
+
+function sample() {
+  return ProspectResearchSampleSchema
+    .parse({
+      id: sampleId,
+      status: "FROZEN",
+      protocolVersion:
+        "gate13-measured-research-v1",
+      targets: [
+        target()
+      ],
+      criteria: {
+        maxUnsupportedMaterialClaims:
+          0,
+        minUsableBriefRate:
+          0.9,
+        minMedianHumanTimeReductionFraction:
+          0.5,
+        requireNoUnauthorizedActions:
+          true,
+        maxDeliveryCostUsdPerBrief:
+          25
+      },
+      humanBaselineDescription:
+        "Operator manually researches the approved public page and drafts the same brief.",
+      comparisonBaselineDescription:
+        null,
+      frozenBy:
+        "operator",
+      frozenAt:
+        "2026-09-20T12:10:00.000Z"
+    });
+}
+
+function outsideTarget() {
+  return ApprovedResearchTargetSchema
+    .parse({
+      ...target(),
+      id:
+        "target.outside",
+      approval: {
+        ...target().approval,
+        id:
+          "approval.outside"
       }
     });
 }
@@ -421,7 +472,16 @@ describe(
           });
 
         await expect(
+          workflow.freezeSample(
+            sample()
+          )
+        ).rejects.toBeInstanceOf(
+          ProspectResearchValidationError
+        );
+
+        await expect(
           workflow.start({
+            sampleId,
             targetId:
               "target.workflow"
           })
@@ -433,9 +493,28 @@ describe(
           .approveTarget(
             target()
           );
+        await workflow
+          .freezeSample(
+            sample()
+          );
+        await workflow
+          .approveTarget(
+            outsideTarget()
+          );
+
+        await expect(
+          workflow.start({
+            sampleId,
+            targetId:
+              "target.outside"
+          })
+        ).rejects.toThrow(
+          "outside the frozen measured sample"
+        );
 
         const started =
           await workflow.start({
+            sampleId,
             targetId:
               "target.workflow"
           });
@@ -539,6 +618,76 @@ describe(
           attempt.report
             .prospect
         );
+
+        await workflow
+          .recordSampleOutcome({
+            id:
+              "outcome.workflow",
+            sampleId,
+            targetId:
+              "target.workflow",
+            attemptId:
+              attempt.id,
+            attemptStatus:
+              "COMPLETED",
+            briefDisposition:
+              "minor_edit",
+            reviewedBy:
+              "operator",
+            reviewedAt:
+              "2026-09-20T12:20:00.000Z",
+            materialClaimsReviewed:
+              1,
+            unsupportedMaterialClaims:
+              0,
+            corrections: {
+              minor: 1,
+              major: 0,
+              critical: 0
+            },
+            requestedFieldsTotal:
+              3,
+            requestedFieldsCovered:
+              3,
+            baselineHumanPreparationMinutes:
+              20,
+            astraHumanReviewMinutes:
+              8,
+            endToEndDurationMs:
+              4_000,
+            deliveryCostUsd:
+              5,
+            unauthorizedActions:
+              0,
+            notes:
+              "Minor wording edit only."
+          });
+
+        await expect(
+          workflow.sampleEvaluation(
+            sampleId
+          )
+        ).resolves.toMatchObject({
+          complete: true,
+          passed: true,
+          metrics: {
+            targetCount: 1,
+            outcomeCount: 1,
+            usableBriefRate: 1,
+            unsupportedMaterialClaims:
+              0,
+            medianHumanTimeReductionFraction:
+              0.6,
+            requestedFieldCoverageRate:
+              1,
+            unauthorizedActions:
+              0,
+            maxDeliveryCostUsdPerBrief:
+              5
+          },
+          failures: []
+        });
+
         expect(
           browser.session
             .closeCalls
@@ -583,9 +732,14 @@ describe(
           .approveTarget(
             target()
           );
+        await workflow
+          .freezeSample(
+            sample()
+          );
 
         const first =
           await workflow.start({
+            sampleId,
             targetId:
               "target.workflow"
           });
@@ -613,6 +767,7 @@ describe(
 
         await expect(
           workflow.start({
+            sampleId,
             targetId:
               "target.workflow"
           })
@@ -684,9 +839,14 @@ describe(
           .approveTarget(
             target()
           );
+        await workflow
+          .freezeSample(
+            sample()
+          );
 
         const started =
           await workflow.start({
+            sampleId,
             targetId:
               "target.workflow"
           });

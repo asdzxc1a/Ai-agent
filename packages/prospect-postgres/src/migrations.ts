@@ -40,6 +40,33 @@ CREATE INDEX prospect_research_attempt_target
   ON prospect_research_attempts(target_id, created_at, id);
 `;
 
+const MIGRATION_TWO = `
+CREATE TABLE prospect_research_samples (
+  id TEXT PRIMARY KEY,
+  sample JSONB NOT NULL,
+  frozen_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE prospect_research_sample_outcomes (
+  id TEXT PRIMARY KEY,
+  sample_id TEXT NOT NULL
+    REFERENCES prospect_research_samples(id),
+  target_id TEXT NOT NULL
+    REFERENCES approved_research_targets(id),
+  attempt_id TEXT NOT NULL
+    REFERENCES prospect_research_attempts(id),
+  outcome JSONB NOT NULL,
+  reviewed_at TIMESTAMPTZ NOT NULL,
+  CONSTRAINT prospect_research_sample_target_once
+    UNIQUE (sample_id, target_id),
+  CONSTRAINT prospect_research_sample_attempt_once
+    UNIQUE (sample_id, attempt_id)
+);
+
+CREATE INDEX prospect_research_sample_outcome_order
+  ON prospect_research_sample_outcomes(sample_id, reviewed_at, id);
+`;
+
 async function applyMigration(
   client: PoolClient,
   version: number,
@@ -85,6 +112,11 @@ export async function runProspectPostgresMigrations(
       client,
       1,
       MIGRATION_ONE
+    );
+    await applyMigration(
+      client,
+      2,
+      MIGRATION_TWO
     );
 
     await client.query("COMMIT");
