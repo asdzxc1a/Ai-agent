@@ -71,7 +71,7 @@ The first acceptance experiment is **single-market U.S. transportation operation
 
 The acceptance experiment must:
 
-- enrich and approve **all 43 frozen U.S. transportation universe members**, then freeze exactly that complete universe before browsing; no member may be dropped because it looks hard or inaccessible;
+- enrich all 43 frozen U.S. transportation members, then approve them through one manifest-hash-bound atomic batch before freezing exactly that complete universe; no member may be dropped because it looks hard or inaccessible;
 - compare against the existing human researcher using their **normal tools**, not an artificially one-page-restricted baseline;
 - persist an actually measured human baseline as durable server-timestamped state for each acceptance target **before** Astra is allowed to start that target;
 - freeze the cost ceiling and rationale before results;
