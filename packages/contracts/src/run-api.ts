@@ -35,6 +35,8 @@ export interface CreateRunAccepted {
 export type RunFailureCode =
   | "NO_ACTION_FOUND"
   | "ACTION_FAILED"
+  | "AGENT_BLOCKED"
+  | "AGENT_LOOP_FAILED"
   | "EXECUTION_FAILED"
   | "CLEANUP_FAILED";
 

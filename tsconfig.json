@@ -15,6 +15,9 @@
       "@astra/agent-runtime": [
         "./packages/agent-runtime/src/index.ts"
       ],
+      "@astra/agent-loop": [
+        "./packages/agent-loop/src/index.ts"
+      ],
       "@astra/agent-stagehand": [
         "./packages/agent-stagehand/src/index.ts"
       ],

@@ -7,6 +7,7 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "packages/agent-stagehand/**"
+      - "packages/agent-loop/**"
       - "packages/artifact-store/**"
       - "packages/browser-runtime/**"
       - "packages/browser-steel/**"
@@ -18,6 +19,7 @@ on:
       - "infra/steel-image.txt"
       - "infra/postgres-image.txt"
       - "vitest.stagehand.config.ts"
+      - "vitest.run-loop.config.ts"
       - "vitest.postgres.config.ts"
       - "vitest.api-restart.config.ts"
       - "vitest.api-sse.config.ts"
@@ -31,6 +33,7 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "packages/agent-stagehand/**"
+      - "packages/agent-loop/**"
       - "packages/browser-steel/**"
       - "packages/run-engine/**"
       - "apps/api/**"
@@ -38,6 +41,7 @@ on:
       - "infra/steel-image.txt"
       - "infra/postgres-image.txt"
       - "vitest.stagehand.config.ts"
+      - "vitest.run-loop.config.ts"
       - "vitest.postgres.config.ts"
       - "vitest.api-restart.config.ts"
       - ".github/workflows/stagehand-steel-integration.yml"
@@ -91,6 +95,24 @@ jobs:
 
           cat /tmp/astra-fixture.log || true
           echo "Fixture failed to become healthy." >&2
+          exit 1
+
+      - name: Start deterministic research fixture
+        shell: bash
+        run: |
+          RESEARCH_FIXTURE_PORT=4174 node test-sites/research-flow/server.mjs > /tmp/astra-research-fixture.log 2>&1 &
+          echo $! > /tmp/astra-research-fixture.pid
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4174/health >/dev/null; then
+              echo "Research fixture is healthy."
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat /tmp/astra-research-fixture.log || true
+          echo "Research fixture failed to become healthy." >&2
           exit 1
 
       - name: Start pinned Steel
@@ -156,6 +178,12 @@ jobs:
           STEEL_FIXTURE_URL: http://host.docker.internal:4173
         run: pnpm test:stagehand
 
+      - name: Run owned multi-step loop acceptance test
+        env:
+          STEEL_BASE_URL: http://127.0.0.1:3000
+          RESEARCH_FIXTURE_URL: http://host.docker.internal:4174
+        run: pnpm test:run-loop
+
       - name: Run HTTP API browser acceptance test
         env:
           STEEL_BASE_URL: http://127.0.0.1:3000
@@ -187,6 +215,8 @@ jobs:
           docker logs astra-steel-stagehand || true
           echo "=== Fixture logs ==="
           cat /tmp/astra-fixture.log || true
+          echo "=== Research fixture logs ==="
+          cat /tmp/astra-research-fixture.log || true
           echo "=== PostgreSQL logs ==="
           docker logs astra-postgres || true
 
@@ -199,4 +229,8 @@ jobs:
 
           if [[ -f /tmp/astra-fixture.pid ]]; then
             kill "$(cat /tmp/astra-fixture.pid)" >/dev/null 2>&1 || true
+          fi
+
+          if [[ -f /tmp/astra-research-fixture.pid ]]; then
+            kill "$(cat /tmp/astra-research-fixture.pid)" >/dev/null 2>&1 || true
           fi
