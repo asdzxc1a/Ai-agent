@@ -747,7 +747,7 @@ export const ProspectResearchSampleSchema =
       z.literal("FROZEN"),
     protocolVersion:
       z.literal(
-        "gate13-measured-research-v6"
+        "gate13-measured-research-v7"
       ),
     purpose:
       z.enum(
@@ -1029,6 +1029,8 @@ export const ProspectResearchHumanBaselineInputSchema =
         .positive(),
     toolingDescription:
       TextSchema.max(4000),
+    brief:
+      ProspectResearchResultSchema,
     notes:
       z.string()
         .trim()
@@ -1142,6 +1144,29 @@ export const ProspectResearchSampleOutcomeSchema =
       z.string().datetime({
         offset: true
       }),
+    humanBriefDisposition:
+      z.enum([
+        "accepted",
+        "minor_edit",
+        "major_edit",
+        "rejected"
+      ]),
+    humanMaterialClaimsReviewed:
+      z.number()
+        .int()
+        .nonnegative(),
+    humanUnsupportedMaterialClaims:
+      z.number()
+        .int()
+        .nonnegative(),
+    humanRequestedFieldsTotal:
+      z.number()
+        .int()
+        .positive(),
+    humanRequestedFieldsCovered:
+      z.number()
+        .int()
+        .nonnegative(),
     materialClaimsReviewed:
       z.number()
         .int()
@@ -1227,6 +1252,38 @@ export const ProspectResearchSampleOutcomeSchema =
             ],
             message:
               "human baseline measurement must predate outcome review"
+          });
+        }
+
+        if (
+          outcome
+            .humanUnsupportedMaterialClaims >
+          outcome
+            .humanMaterialClaimsReviewed
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "humanUnsupportedMaterialClaims"
+            ],
+            message:
+              "human unsupported material claims cannot exceed reviewed human material claims"
+          });
+        }
+
+        if (
+          outcome
+            .humanRequestedFieldsCovered >
+          outcome
+            .humanRequestedFieldsTotal
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "humanRequestedFieldsCovered"
+            ],
+            message:
+              "human covered fields cannot exceed requested human fields"
           });
         }
 
