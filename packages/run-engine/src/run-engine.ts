@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import type {
   AgentAction,
@@ -169,6 +169,14 @@ function errorMessage(
   return error instanceof Error
     ? error.message
     : "unknown artifact error";
+}
+
+function sha256(
+  value: string | Uint8Array
+): string {
+  return createHash("sha256")
+    .update(value)
+    .digest("hex");
 }
 
 function actionSummary(
@@ -625,6 +633,7 @@ export class RunEngine implements RunService {
   async #captureScreenshot(
     runId: string,
     browser: BrowserSession | undefined,
+    agent: AgentSession | undefined,
     name: string,
     artifactErrors: string[]
   ): Promise<void> {
@@ -635,18 +644,70 @@ export class RunEngine implements RunService {
       return;
     }
 
+    let pageEvidence:
+      Awaited<
+        ReturnType<
+          NonNullable<
+            AgentSession[
+              "capturePageEvidence"
+            ]
+          >
+        >
+      > | undefined;
+
+    if (
+      agent?.capturePageEvidence !==
+      undefined
+    ) {
+      try {
+        pageEvidence =
+          await agent
+            .capturePageEvidence();
+      } catch (error) {
+        artifactErrors.push(
+          `${name}: page-evidence: ${errorMessage(error)}`
+        );
+      }
+    }
+
     try {
       const data =
         await browser.captureScreenshot({
           fullPage: true
         });
+      const screenshotSha256 =
+        sha256(data);
+      const metadata =
+        pageEvidence === undefined
+          ? {
+              screenshotSha256
+            }
+          : {
+              captureVersion:
+                "page-evidence-v1",
+              pageUrl:
+                pageEvidence.url,
+              pageTitle:
+                pageEvidence.title,
+              pageContentSha256:
+                sha256(
+                  pageEvidence.text
+                ),
+              pageContentBytes:
+                Buffer.byteLength(
+                  pageEvidence.text,
+                  "utf8"
+                ),
+              screenshotSha256
+            };
 
       await this.#artifactStore.putArtifact({
         runId,
         kind: "SCREENSHOT",
         name,
         mediaType: "image/jpeg",
-        data
+        data,
+        metadata
       });
     } catch (error) {
       artifactErrors.push(
@@ -1018,6 +1079,7 @@ export class RunEngine implements RunService {
       await this.#captureScreenshot(
         runId,
         browser,
+        agent,
         "after-navigation.jpg",
         artifactErrors
       );
@@ -1064,6 +1126,7 @@ export class RunEngine implements RunService {
                   await this.#captureScreenshot(
                     runId,
                     browser,
+                    agent,
                     "loop-" +
                       String(
                         pendingLoopScreenshotIteration
@@ -1093,6 +1156,7 @@ export class RunEngine implements RunService {
           await this.#captureScreenshot(
             runId,
             browser,
+            agent,
             "loop-" +
               String(
                 pendingLoopScreenshotIteration
@@ -1234,6 +1298,7 @@ export class RunEngine implements RunService {
           await this.#captureScreenshot(
             runId,
             browser,
+            agent,
             "after-action.jpg",
             artifactErrors
           );
@@ -1427,6 +1492,7 @@ export class RunEngine implements RunService {
         await this.#captureScreenshot(
           runId,
           browser,
+          agent,
           "failure.jpg",
           artifactErrors
         );
