@@ -193,3 +193,75 @@ test(
     );
   }
 );
+
+test(
+  "pending run may fail before execution starts but may not complete",
+  () => {
+    const now =
+      new Date().toISOString();
+    const pending:
+      RunSnapshot = {
+        id:
+          "00000000-0000-4000-8000-000000000002",
+        status: "PENDING",
+        goalState:
+          "IN_PROGRESS",
+        createdAt: now,
+        updatedAt: now
+      };
+
+    const failed =
+      applyRunUpdate(
+        pending,
+        {
+          status: "FAILED",
+          goalState:
+            "FAILED",
+          terminalReason: {
+            code:
+              "EXECUTION_FAILED",
+            message:
+              "startup failed"
+          },
+          error: {
+            code:
+              "EXECUTION_FAILED",
+            message:
+              "startup failed"
+          }
+        }
+      );
+
+    expect(failed).toMatchObject({
+      status: "FAILED",
+      goalState: "FAILED",
+      terminalReason: {
+        code:
+          "EXECUTION_FAILED"
+      }
+    });
+
+    expect(() => {
+      applyRunUpdate(
+        pending,
+        {
+          status:
+            "COMPLETED",
+          goalState:
+            "COMPLETED",
+          terminalReason: {
+            code:
+              "GOAL_VERIFIED",
+            message:
+              "impossible"
+          },
+          result: {
+            ok: true
+          }
+        }
+      );
+    }).toThrow(
+      /PENDING -> COMPLETED/
+    );
+  }
+);

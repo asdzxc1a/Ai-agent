@@ -201,6 +201,7 @@ export function applyRunUpdate(
       "PENDING" &&
     next.status !== "PENDING" &&
     next.status !== "RUNNING" &&
+    next.status !== "FAILED" &&
     next.status !== "CANCELLED"
   ) {
     throw new Error(
