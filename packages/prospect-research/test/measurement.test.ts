@@ -70,7 +70,7 @@ function sample(
       status:
         "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v3",
+        "gate13-measured-research-v4",
       purpose,
       cohortDefinition:
         purpose ===
@@ -117,9 +117,13 @@ function sample(
           0.5,
         requireNoUnauthorizedActions:
           true,
-        maxDeliveryCostUsdPerBrief:
-          10
+        maxInfrastructureCostUsdPerAttempt:
+          5,
+        maxTotalDeliveryCostUsdPerUsableBrief:
+          25
       },
+      reviewLaborRateUsdPerHour:
+        60,
       costCeilingRationale:
         "Pre-registered engineering/business ceiling for this sample.",
       humanBaselineDescription:
@@ -149,7 +153,8 @@ function outcome(input: {
     | "MEASURED_HUMAN";
   baselineMinutes?: number;
   reviewMinutes?: number;
-  costUsd?: number;
+  infrastructureCostUsd?: number;
+  otherDeliveryCostUsd?: number;
 }) {
   const targetId =
     "target." +
@@ -229,12 +234,19 @@ function outcome(input: {
         20,
       astraHumanReviewMinutes:
         input.reviewMinutes ??
-        8,
+        (
+          notProduced
+            ? 2
+            : 8
+        ),
       endToEndDurationMs:
         5_000,
-      deliveryCostUsd:
-        input.costUsd ??
-        4,
+      infrastructureCostUsd:
+        input.infrastructureCostUsd ??
+        1,
+      otherDeliveryCostUsd:
+        input.otherDeliveryCostUsd ??
+        0.25,
       unauthorizedActions:
         0,
       notes: null
@@ -352,6 +364,7 @@ describe(
             metrics: {
               targetCount: 30,
               outcomeCount: 30,
+              usableBriefCount: 30,
               usableBriefRate: 1,
               unsupportedMaterialClaims:
                 0,
@@ -361,8 +374,18 @@ describe(
                 1,
               unauthorizedActions:
                 0,
-              maxDeliveryCostUsdPerBrief:
-                4
+              totalInfrastructureCostUsd:
+                30,
+              maxInfrastructureCostUsdPerAttempt:
+                1,
+              totalHumanReviewLaborCostUsd:
+                240,
+              totalOtherDeliveryCostUsd:
+                7.5,
+              totalDeliveryCostUsd:
+                277.5,
+              totalDeliveryCostUsdPerUsableBrief:
+                9.25
             },
             failures: []
           });
@@ -420,6 +443,116 @@ describe(
           evaluation.failures
         ).toContain(
           "usable brief rate is below the frozen threshold"
+        );
+        expect(
+          evaluation.metrics
+            .totalDeliveryCostUsd
+        ).toBe(253.5);
+        expect(
+          evaluation.metrics
+            .totalDeliveryCostUsdPerUsableBrief
+        ).toBe(9.75);
+      }
+    );
+
+    it(
+      "fails acceptance when infrastructure spend exceeds the per-attempt ceiling",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const outcomes =
+          acceptance.targets.map(
+            (_target, index) =>
+              outcome({
+                sampleId:
+                  acceptance.id,
+                targetIndex:
+                  index + 1,
+                ...(index === 0
+                  ? {
+                      infrastructureCostUsd:
+                        6
+                    }
+                  : {})
+              })
+          );
+        const evaluation =
+          evaluateProspectResearchSample(
+            acceptance,
+            outcomes
+          );
+
+        expect(
+          evaluation.passed
+        ).toBe(false);
+        expect(
+          evaluation.metrics
+            .maxInfrastructureCostUsdPerAttempt
+        ).toBe(6);
+        expect(
+          evaluation.failures
+        ).toContain(
+          "infrastructure cost exceeds the frozen per-attempt threshold"
+        );
+      }
+    );
+
+    it(
+      "includes human review labor and failed-attempt spend in total cost per usable brief",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const expensive =
+          acceptance.targets.map(
+            (_target, index) =>
+              outcome({
+                sampleId:
+                  acceptance.id,
+                targetIndex:
+                  index + 1,
+                reviewMinutes:
+                  30
+              })
+          );
+        const evaluation =
+          evaluateProspectResearchSample(
+            acceptance,
+            expensive
+          );
+
+        expect(
+          evaluation.metrics
+            .totalInfrastructureCostUsd
+        ).toBe(30);
+        expect(
+          evaluation.metrics
+            .totalHumanReviewLaborCostUsd
+        ).toBe(900);
+        expect(
+          evaluation.metrics
+            .totalOtherDeliveryCostUsd
+        ).toBe(7.5);
+        expect(
+          evaluation.metrics
+            .totalDeliveryCostUsd
+        ).toBe(937.5);
+        expect(
+          evaluation.metrics
+            .totalDeliveryCostUsdPerUsableBrief
+        ).toBe(31.25);
+        expect(
+          evaluation.passed
+        ).toBe(false);
+        expect(
+          evaluation.failures
+        ).toContain(
+          "total delivery cost per usable brief exceeds the frozen threshold"
         );
       }
     );
