@@ -25,5 +25,6 @@ export type {
   RunEventRecord,
   RunRepository,
   RunStepRecord,
+  RunTerminalUpdate,
   RunUpdate
 } from "./repository.js";
