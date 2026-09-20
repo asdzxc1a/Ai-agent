@@ -484,10 +484,7 @@ class StagehandAgentSession implements AgentSession {
           await Promise.all([
             page.title(),
             page.evaluate<string>(
-              () =>
-                document.body
-                  ?.innerText ??
-                ""
+              "document.body?.innerText ?? ''"
             )
           ]);
         const url =
