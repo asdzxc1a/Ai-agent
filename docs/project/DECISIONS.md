@@ -1041,3 +1041,38 @@ The research workflow deliberately requires human evidence review, so that labor
 
 If later UI/system instrumentation can capture operator labor directly, it may replace stopwatch input with system-timed components while preserving the same total-labor definition.
 
+---
+
+## D-035 — Human comparator evidence includes the actual brief, not only elapsed time
+
+**Date:** 2026-09-20
+**Status:** Accepted
+
+**Decision**
+
+Gate 13 acceptance human baselines persist the actual structured research brief and its cited evidence before Astra starts the corresponding target.
+
+The human brief uses the same core research shape as Astra: company summary, transformation hypotheses, buying signals, explicit unknowns, and evidence references. Because the acceptance comparator uses normal human tools, its evidence may come from public sources outside Astra's target-domain browser allowlist. The human brief still requires unique evidence/claim identifiers, valid claim-to-evidence references, exact grounding for observed facts, explicit uncertainty, and safe public HTTP(S) source URLs.
+
+The later reviewed outcome scores both outputs. It records human brief disposition, human material-claim review/unsupported-claim counts, and human requested-field coverage alongside the existing Astra metrics and full Astra-side human-labor accounting.
+
+**Why**
+
+A stopwatch-only baseline is insufficient evidence for the product claim that Astra reduces preparation effort without increasing factual risk. A faster Astra brief is not commercially meaningful if the human comparator produced materially better or more complete work.
+
+Persisting the human output before Astra also prevents the human baseline from being reconstructed after seeing Astra's answer.
+
+**Consequences**
+
+- protocol advances to `gate13-measured-research-v7`;
+- the durable pre-run baseline contains both timing/tooling provenance and the human's structured brief/evidence;
+- outcome evaluation reports human usable-brief rate, human unsupported material claims, human field coverage, and Astra's usable-rate delta versus human;
+- Gate 13's pass criteria remain the existing pre-frozen absolute thresholds; paired human metrics are comparison evidence, not a new post-hoc threshold;
+- protocol v6 total Astra-side human-labor accounting remains unchanged;
+- blind review remains preferred where practical;
+- human normal-tools evidence is not constrained to Astra's approved company domain, but it remains structurally grounded and public-source-only.
+
+**Revisit when**
+
+If a later comparator uses another baseline artifact format, version the protocol again. Existing v7 evidence is never backfilled from narrative notes.
+
