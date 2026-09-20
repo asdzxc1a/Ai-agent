@@ -133,6 +133,24 @@ function completedAttempt():
           uncertaintyNote: null,
           artifactIds: [
             "artifact.pg"
+          ],
+          captureReceipts: [
+            {
+              artifactId:
+                "artifact.pg",
+              captureVersion:
+                "page-evidence-v1",
+              semanticSettled:
+                true,
+              pageUrl:
+                "https://example.com/about",
+              capturedAt:
+                timestamp,
+              pageContentSha256:
+                "a".repeat(64),
+              screenshotSha256:
+                "b".repeat(64)
+            }
           ]
         }
       ]

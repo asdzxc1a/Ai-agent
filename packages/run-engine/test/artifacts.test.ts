@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type {
   AgentAction,
   AgentActionResult,
@@ -328,6 +330,16 @@ test("configured artifact store captures successful lifecycle evidence", async (
             void instruction;
             return schema.parse({});
           },
+          async capturePageEvidence() {
+            return {
+              url:
+                "https://fixture.test/evidence",
+              title:
+                "Fixture evidence",
+              text:
+                "Visible page evidence that should only be hashed."
+            };
+          },
           async close() {}
         };
       }
@@ -373,6 +385,56 @@ test("configured artifact store captures successful lifecycle evidence", async (
     "browser-diagnostics.json"
   );
   expect(names).toContain("run-summary.json");
+
+  const navigationScreenshot =
+    artifacts.find(
+      (artifact) =>
+        artifact.name ===
+        "after-navigation.jpg"
+    );
+
+  expect(
+    navigationScreenshot
+      ?.metadata
+  ).toMatchObject({
+    captureVersion:
+      "page-evidence-v1",
+    semanticSettled:
+      false,
+    pageUrl:
+      "https://fixture.test/evidence",
+    pageTitle:
+      "Fixture evidence",
+    pageContentSha256:
+      createHash(
+        "sha256"
+      )
+        .update(
+          "Visible page evidence that should only be hashed."
+        )
+        .digest("hex"),
+    screenshotSha256:
+      createHash(
+        "sha256"
+      )
+        .update(
+          new Uint8Array([
+            0xff,
+            0xd8,
+            0xff,
+            0xd9
+          ])
+        )
+        .digest("hex")
+  });
+  expect(
+    JSON.stringify(
+      navigationScreenshot
+        ?.metadata
+    )
+  ).not.toContain(
+    "Visible page evidence"
+  );
 
   const summaryRecord = artifacts.find(
     (artifact) =>

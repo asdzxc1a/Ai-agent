@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   describe,
   expect,
@@ -30,6 +32,44 @@ const timestamp =
   "2026-09-19T12:00:00.000Z";
 const runId =
   "run_example";
+
+const pageContentSha256 =
+  "a".repeat(64);
+
+function sourceUrlFor(
+  kind:
+    | "industry"
+    | "workflow"
+    | "hiring"
+): string {
+  switch (kind) {
+    case "industry":
+      return "https://www.example.com/about";
+    case "workflow":
+      return "https://operations.example.com/workflows";
+    case "hiring":
+      return "https://www.example.com/careers";
+  }
+}
+
+function captureReceipt(
+  artifactId: string,
+  pageUrl: string
+) {
+  return {
+    artifactId,
+    captureVersion:
+      "page-evidence-v1" as const,
+    semanticSettled:
+      true as const,
+    pageUrl,
+    capturedAt:
+      timestamp,
+    pageContentSha256,
+    screenshotSha256:
+      "b".repeat(64)
+  };
+}
 
 function target():
   ApprovedResearchTarget {
@@ -157,6 +197,14 @@ function completedAttempt(
             null,
           artifactIds: [
             artifactIds.industry
+          ],
+          captureReceipts: [
+            captureReceipt(
+              artifactIds.industry,
+              sourceUrlFor(
+                "industry"
+              )
+            )
           ]
         },
         {
@@ -174,6 +222,14 @@ function completedAttempt(
             "The page does not quantify frequency or cost.",
           artifactIds: [
             artifactIds.workflow
+          ],
+          captureReceipts: [
+            captureReceipt(
+              artifactIds.workflow,
+              sourceUrlFor(
+                "workflow"
+              )
+            )
           ]
         },
         {
@@ -191,6 +247,14 @@ function completedAttempt(
             null,
           artifactIds: [
             artifactIds.hiring
+          ],
+          captureReceipts: [
+            captureReceipt(
+              artifactIds.hiring,
+              sourceUrlFor(
+                "hiring"
+              )
+            )
           ]
         }
       ]
@@ -270,8 +334,32 @@ async function screenshot(
     InMemoryArtifactStore,
   name: string,
   artifactRunId: string =
-    runId
+    runId,
+  semanticSettled = true
 ): Promise<string> {
+  const data =
+    new Uint8Array([
+      0xff,
+      0xd8,
+      0xff,
+      0xd9
+    ]);
+  const pageUrl =
+    name.includes(
+      "workflow"
+    )
+      ? sourceUrlFor(
+          "workflow"
+        )
+      : name.includes(
+          "hiring"
+        )
+        ? sourceUrlFor(
+            "hiring"
+          )
+        : sourceUrlFor(
+            "industry"
+          );
   const record =
     await artifacts.putArtifact({
       runId:
@@ -280,13 +368,24 @@ async function screenshot(
       name,
       mediaType:
         "image/jpeg",
-      data:
-        new Uint8Array([
-          0xff,
-          0xd8,
-          0xff,
-          0xd9
-        ])
+      data,
+      metadata: {
+        captureVersion:
+          "page-evidence-v1",
+        semanticSettled,
+        pageUrl,
+        pageTitle:
+          "Example Systems",
+        pageContentSha256,
+        pageContentBytes:
+          42,
+        screenshotSha256:
+          createHash(
+            "sha256"
+          )
+            .update(data)
+            .digest("hex")
+      }
     });
 
   return record.id;
@@ -518,19 +617,40 @@ describe(
           (item) =>
             item.id ===
             "e.industry"
-        )?.kind
-      ).toBe(
-        "observed_fact"
-      );
+        )
+      ).toMatchObject({
+        kind:
+          "observed_fact",
+        uncertainty:
+          "none",
+        uncertaintyNote:
+          null,
+        artifactIds: [
+          "artifact.1"
+        ],
+        captureReceipts: [
+          {
+            artifactId:
+              "artifact.1",
+            pageUrl:
+              "https://www.example.com/about",
+            pageContentSha256:
+              pageContentSha256
+          }
+        ]
+      });
       expect(
         evidence.find(
           (item) =>
             item.id ===
             "h.workflow"
-        )?.kind
-      ).toBe(
-        "inferred_hypothesis"
-      );
+        )
+      ).toMatchObject({
+        kind:
+          "inferred_hypothesis",
+        uncertainty:
+          "The public site describes manual coordination but does not quantify the operational impact."
+      });
       expect(
         evidence.find(
           (item) =>
@@ -1008,6 +1128,36 @@ describe(
           screenshotRecord
             ?.createdAt
         );
+        expect(
+          evidence.captureReceipts
+        ).toHaveLength(1);
+        expect(
+          evidence.captureReceipts[0]
+        ).toMatchObject({
+          artifactId:
+            evidence.artifactIds[0],
+          captureVersion:
+            "page-evidence-v1",
+          pageUrl:
+            evidence.sourceUrl,
+          capturedAt:
+            screenshotRecord
+              ?.createdAt,
+          pageContentSha256,
+          screenshotSha256:
+            createHash(
+              "sha256"
+            )
+              .update(
+                new Uint8Array([
+                  0xff,
+                  0xd8,
+                  0xff,
+                  0xd9
+                ])
+              )
+              .digest("hex")
+        });
       }
     });
 
@@ -1092,6 +1242,123 @@ describe(
       ).rejects.toThrow(
         "research evidence requires a screenshot artifact"
       );
+    });
+
+    it("rejects an immediate screenshot that was not captured after semantic settle", async () => {
+      const artifacts =
+        new InMemoryArtifactStore();
+      const repository =
+        new InMemoryProspectResearchRepository();
+      const artifactIds = {
+        industry:
+          await screenshot(
+            artifacts,
+            "industry.jpg",
+            runId,
+            false
+          ),
+        workflow:
+          await screenshot(
+            artifacts,
+            "workflow.jpg"
+          ),
+        hiring:
+          await screenshot(
+            artifacts,
+            "hiring.jpg"
+          )
+      };
+      const result =
+        researchResult(
+          artifactIds
+        );
+      const research =
+        service(
+          repository,
+          artifacts,
+          completedRun(result)
+        );
+
+      await research.approveTarget(
+        target()
+      );
+
+      await expect(
+        research.recordCompleted({
+          targetId:
+            "target.example",
+          runId,
+          artifactIdsByEvidenceId:
+            artifactMapping(
+              artifactIds
+            )
+        })
+      ).rejects.toThrow(
+        "research screenshot is missing a server-owned page capture receipt"
+      );
+    });
+
+    it("rejects a screenshot whose captured page URL does not match the claimed source", async () => {
+      const artifacts =
+        new InMemoryArtifactStore();
+      const repository =
+        new InMemoryProspectResearchRepository();
+      const artifactIds = {
+        industry:
+          await screenshot(
+            artifacts,
+            "industry.jpg"
+          ),
+        workflow:
+          await screenshot(
+            artifacts,
+            "workflow.jpg"
+          ),
+        hiring:
+          await screenshot(
+            artifacts,
+            "hiring.jpg"
+          )
+      };
+      const result =
+        researchResult(
+          artifactIds
+        );
+      const research =
+        service(
+          repository,
+          artifacts,
+          completedRun(result)
+        );
+
+      await research.approveTarget(
+        target()
+      );
+
+      await expect(
+        research.recordCompleted({
+          targetId:
+            "target.example",
+          runId,
+          artifactIdsByEvidenceId: {
+            ...artifactMapping(
+              artifactIds
+            ),
+            "e.workflow": [
+              artifactIds.industry
+            ]
+          }
+        })
+      ).rejects.toThrow(
+        "research screenshot page URL must match evidence source URL"
+      );
+
+      expect(
+        await repository
+          .getProspect(
+            "target.example"
+          )
+      ).toBeUndefined();
     });
 
     it("fails closed when evidence references a real screenshot from another run", async () => {

@@ -10,6 +10,7 @@ import type {
   AgentAction,
   AgentActionResult,
   AgentOperationOptions,
+  AgentPageEvidenceSnapshot,
   AgentRuntime,
   AgentSession,
   OpenAgentSessionOptions,
@@ -457,6 +458,50 @@ class StagehandAgentSession implements AgentSession {
 
     this.#rememberCurrentOrigins();
     return parse(value);
+  }
+
+  public async capturePageEvidence(
+    options: AgentOperationOptions = {}
+  ): Promise<AgentPageEvidenceSnapshot> {
+    const page =
+      this.#stagehand.context
+        .activePage() ??
+      this.#stagehand.context
+        .pages()[0];
+
+    if (page === undefined) {
+      throw new Error(
+        "Stagehand session has no active page for evidence capture."
+      );
+    }
+
+    return abortable(
+      async () => {
+        const [
+          title,
+          text
+        ] =
+          await Promise.all([
+            page.title(),
+            page.evaluate<string>(
+              "document.body?.innerText ?? ''"
+            )
+          ]);
+        const url =
+          page.url();
+
+        this.#rememberOrigin(
+          url
+        );
+
+        return {
+          url,
+          title,
+          text
+        };
+      },
+      options.signal
+    );
   }
 
   public close(): Promise<void> {

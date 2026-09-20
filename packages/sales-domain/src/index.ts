@@ -3,6 +3,8 @@ export {
   BuyerSchema,
   DecisionClaimSchema,
   EVIDENCE_KINDS,
+  EVIDENCE_UNCERTAINTY,
+  EvidenceCaptureReceiptSchema,
   EvidenceSchema,
   HypothesisEvidenceSchema,
   NEXT_ACTION_KINDS,
