@@ -156,7 +156,10 @@ test(
       );
     const originalHandler =
       vi.fn(
-        async () => undefined
+        async (
+          _session: unknown,
+          _event: unknown
+        ) => undefined
       );
     const setDomainPolicy =
       vi.fn(
