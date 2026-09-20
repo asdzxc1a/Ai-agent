@@ -19,6 +19,7 @@ export {
   ProspectResearchSampleCriteriaSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
+  ProspectResearchSelectionUniverseSchema,
   ProspectResearchUnknownSchema,
   PROSPECT_RESEARCH_BASELINE_SOURCES,
   PROSPECT_RESEARCH_BRIEF_DISPOSITIONS,
@@ -26,6 +27,7 @@ export {
   PROSPECT_RESEARCH_MARKET_SCOPES,
   PROSPECT_RESEARCH_REVIEW_MODES,
   PROSPECT_RESEARCH_SAMPLE_PURPOSES,
+  PROSPECT_RESEARCH_SELECTION_STRATEGIES,
   RESEARCH_UNCERTAINTY,
   ResearchApprovalSchema,
   ResearchDomainSchema
@@ -51,6 +53,7 @@ export type {
   ProspectResearchResult,
   ProspectResearchSample,
   ProspectResearchSampleCriteria,
+  ProspectResearchSelectionUniverse,
   ProspectResearchSampleOutcome,
   ProspectResearchUnknown
 } from "./schema.js";
