@@ -59,7 +59,7 @@ const timestamp =
 function completedAttempt():
   CompletedProspectResearchAttempt {
   return {
-    id: "attempt.pg.complete",
+    id: "run_pg",
     target: {
       id: "target.pg",
       domain: "example.com",
@@ -83,16 +83,16 @@ function completedAttempt():
     createdAt: timestamp,
     status: "COMPLETED",
     report: {
-      id: "report.pg",
+      id: "run_pg",
       runId: "run_pg",
       targetId: "target.pg",
       researchedAt: timestamp,
       prospect: {
-        id: "prospect.pg",
+        id: "target.pg",
         domain: "example.com",
         companyName:
-          "Example Systems",
-        fit: "medium",
+          null,
+        fit: "unknown",
         disqualifiers: [],
         evidenceIds: [
           "e.pg"
@@ -143,7 +143,7 @@ function completedAttempt():
 function failedAttempt():
   FailedProspectResearchAttempt {
   return {
-    id: "attempt.pg.failed",
+    id: "run_pg_failed",
     target: {
       id: "target.pg",
       domain: "example.com",
@@ -230,7 +230,7 @@ test(
     ).toEqual(failed);
     expect(
       await second.getProspect(
-        "prospect.pg"
+        "target.pg"
       )
     ).toEqual(
       completed.report.prospect
