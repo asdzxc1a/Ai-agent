@@ -168,7 +168,7 @@ function frozenSample():
     id: "sample.pg",
     status: "FROZEN",
     protocolVersion:
-      "gate13-measured-research-v5",
+      "gate13-measured-research-v6",
     purpose:
       "CALIBRATION",
     cohortDefinition:
@@ -276,8 +276,18 @@ function measuredOutcome(
     baselineHumanPreparationMinutes:
       baseline
         .humanPreparationMinutes,
-    astraHumanReviewMinutes:
-      8,
+    astraHumanTime: {
+      targetSetupMinutes: 1,
+      evidenceMappingAndAuditMinutes:
+        4,
+      correctionAndFinalizationMinutes:
+        3,
+      failureTriageMinutes: 0,
+      otherMinutes: 0,
+      measurementMethod:
+        "STOPWATCH",
+      otherDescription: null
+    },
     endToEndDurationMs:
       5_000,
     deliveryCostUsd: 5,

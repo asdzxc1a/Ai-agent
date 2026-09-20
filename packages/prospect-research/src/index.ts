@@ -7,6 +7,7 @@ export {
   LIVE_RESEARCH_FAILURE_CODES,
   ObservedResearchClaimSchema,
   ProspectResearchAttemptSchema,
+  ProspectResearchAstraHumanTimeSchema,
   ProspectResearchClaimSchema,
   ProspectResearchCaptureReceiptSchema,
   ProspectResearchEvidenceResultSchema,
@@ -23,6 +24,7 @@ export {
   ProspectResearchUnknownSchema,
   PROSPECT_RESEARCH_BASELINE_SOURCES,
   PROSPECT_RESEARCH_BRIEF_DISPOSITIONS,
+  PROSPECT_RESEARCH_HUMAN_TIME_METHODS,
   PROSPECT_RESEARCH_HUMAN_BASELINE_MODES,
   PROSPECT_RESEARCH_MARKET_SCOPES,
   PROSPECT_RESEARCH_REVIEW_MODES,
@@ -41,6 +43,7 @@ export type {
   HypothesisResearchClaim,
   LiveResearchFailureCode,
   ObservedResearchClaim,
+  ProspectResearchAstraHumanTime,
   ProspectResearchAttempt,
   ProspectResearchClaim,
   ProspectResearchCaptureReceipt,
@@ -61,6 +64,7 @@ export type {
 
 export {
   evaluateProspectResearchSample,
+  totalAstraHumanPreparationMinutes,
   validateProspectResearchSampleOutcomeContext
 } from "./measurement.js";
 

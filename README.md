@@ -79,7 +79,7 @@ The acceptance experiment must:
 - run only frozen sample members through the bounded read-only research path;
 - manually audit every material observed fact against its source page/screenshot;
 - produce an accepted or corrected brief without contacting the prospect;
-- measure review time, corrections, coverage, duration, failures, and complete delivery cost against the existing human workflow.
+- measure **total Astra-side human preparation time** (setup + evidence audit + corrections/finalization + failure triage + other operator work), coverage, duration, failures, and complete delivery cost against the existing human workflow.
 
 See [STATE.md](./docs/project/STATE.md) for the current verified truth. `pnpm check:memory` enforces that this README gate matches it.
 

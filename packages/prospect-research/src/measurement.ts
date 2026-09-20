@@ -1,6 +1,7 @@
 import {
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
+  type ProspectResearchAstraHumanTime,
   type ProspectResearchAttempt,
   type ProspectResearchHumanBaseline,
   type ProspectResearchSample,
@@ -16,6 +17,8 @@ export interface ProspectResearchSampleMetrics {
   usableBriefRate: number;
   unsupportedMaterialClaims: number;
   medianHumanTimeReductionFraction:
+    number | null;
+  medianAstraHumanPreparationMinutes:
     number | null;
   requestedFieldCoverageRate:
     number;
@@ -60,6 +63,21 @@ function median(
       sorted[middle - 1]! +
       sorted[middle]!
     ) / 2
+  );
+}
+
+export function totalAstraHumanPreparationMinutes(
+  time:
+    ProspectResearchAstraHumanTime
+): number {
+  return (
+    time.targetSetupMinutes +
+    time
+      .evidenceMappingAndAuditMinutes +
+    time
+      .correctionAndFinalizationMinutes +
+    time.failureTriageMinutes +
+    time.otherMinutes
   );
 }
 
@@ -291,14 +309,20 @@ export function evaluateProspectResearchSample(
           .requestedFieldsCovered,
       0
     );
-  const timeReductions =
+  const astraHumanMinutes =
     outcomes.map(
       (outcome) =>
+        totalAstraHumanPreparationMinutes(
+          outcome.astraHumanTime
+        )
+    );
+  const timeReductions =
+    outcomes.map(
+      (outcome, index) =>
         (
           outcome
             .baselineHumanPreparationMinutes -
-          outcome
-            .astraHumanReviewMinutes
+          astraHumanMinutes[index]!
         ) /
         outcome
           .baselineHumanPreparationMinutes
@@ -329,6 +353,10 @@ export function evaluateProspectResearchSample(
       medianHumanTimeReductionFraction:
         median(
           timeReductions
+        ),
+      medianAstraHumanPreparationMinutes:
+        median(
+          astraHumanMinutes
         ),
       requestedFieldCoverageRate:
         totalRequested === 0

@@ -391,7 +391,7 @@ Build:
 - compare against the existing human researcher using normal tools; scope-matched human restrictions are calibration-only;
 - require a durable server-timestamped measured human baseline record for each acceptance target before its Astra attempt can start; fixed-cap baseline estimates are calibration-only;
 - record whether review was blind or unblinded and prefer blind review where practical;
-- freeze a rationale-backed cost ceiling before results and record every attempt, review minutes, correction count/severity, unsupported material claims, requested-field coverage, duration, and complete provider/browser cost.
+- freeze a rationale-backed cost ceiling before results and record every attempt, the full Astra-side human-time breakdown (target setup, evidence mapping/source audit, corrections/finalization, failure triage, other measured work), correction count/severity, unsupported material claims, requested-field coverage, duration, and complete provider/browser cost.
 
 Non-goals:
 
@@ -420,7 +420,7 @@ Acceptance:
 - every material observed fact in the measured sample is manually checked against its claimed source;
 - unsupported hypotheses are never represented as observed facts and unknowns remain explicit;
 - live-site failures remain `LIVE_RESEARCH_FAILURE` and do not change the frozen Gate 11 deterministic release result;
-- experiment thresholds are frozen durably before results: zero observed unsupported material claims, at least 90% of briefs usable with only a minor edit, at least 50% reduction in median total human preparation time including review, zero unauthorized actions, and an operator-supplied positive maximum delivery cost per brief;
+- experiment thresholds are frozen durably before results: zero observed unsupported material claims, at least 90% of briefs usable with only a minor edit, at least 50% reduction in median **total Astra-side human preparation time** versus the measured human baseline, zero unauthorized actions, and an operator-supplied positive maximum delivery cost per brief;
 - deterministic Gate 11 remains the release gate and Gate 12 sandbox/network regressions remain green.
 
 ### Ordering after Gate 13
