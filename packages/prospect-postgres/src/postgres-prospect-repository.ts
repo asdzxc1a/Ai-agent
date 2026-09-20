@@ -11,6 +11,8 @@ import {
   ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
+  ProspectResearchTargetEnrichmentProposalInputSchema,
+  ProspectResearchTargetEnrichmentProposalSchema,
   sameApprovedResearchTarget,
   validateProspectResearchAttemptForPersistence,
   validateProspectResearchSampleOutcomeContext,
@@ -20,7 +22,9 @@ import {
   type ProspectResearchHumanBaselineInput,
   type ProspectResearchRepository,
   type ProspectResearchSample,
-  type ProspectResearchSampleOutcome
+  type ProspectResearchSampleOutcome,
+  type ProspectResearchTargetEnrichmentProposal,
+  type ProspectResearchTargetEnrichmentProposalInput
 } from "@astra/prospect-research";
 import {
   ProspectSchema,
@@ -53,6 +57,12 @@ interface HumanBaselineRow {
     Date | string;
 }
 
+interface TargetEnrichmentProposalRow {
+  proposal: unknown;
+  proposed_at:
+    Date | string;
+}
+
 export function createProspectPostgresPool(
   config: PoolConfig
 ): Pool {
@@ -65,6 +75,146 @@ export class PostgresProspectResearchRepository
 
   public constructor(pool: Pool) {
     this.#pool = pool;
+  }
+
+  public async saveTargetEnrichmentProposal(
+    input:
+      ProspectResearchTargetEnrichmentProposalInput
+  ): Promise<
+    ProspectResearchTargetEnrichmentProposal
+  > {
+    const parsed =
+      ProspectResearchTargetEnrichmentProposalInputSchema
+        .parse(input);
+    const result =
+      await this.#pool.query(
+        `
+          INSERT INTO prospect_research_target_enrichment_proposals (
+            id,
+            target_id,
+            proposal
+          )
+          VALUES ($1, $2, $3::jsonb)
+          RETURNING proposed_at
+        `,
+        [
+          parsed.id,
+          parsed.targetId,
+          JSON.stringify(
+            parsed
+          )
+        ]
+      );
+    const proposedAt =
+      (
+        result.rows[0] as
+          {
+            proposed_at:
+              Date | string;
+          }
+      ).proposed_at;
+
+    return ProspectResearchTargetEnrichmentProposalSchema
+      .parse({
+        ...parsed,
+        proposedAt:
+          proposedAt instanceof Date
+            ? proposedAt
+                .toISOString()
+            : new Date(
+                proposedAt
+              ).toISOString()
+      });
+  }
+
+  public async getTargetEnrichmentProposal(
+    proposalId: string
+  ): Promise<
+    ProspectResearchTargetEnrichmentProposal |
+    undefined
+  > {
+    const result =
+      await this.#pool.query(
+        `
+          SELECT
+            proposal,
+            proposed_at
+          FROM prospect_research_target_enrichment_proposals
+          WHERE id = $1
+        `,
+        [proposalId]
+      );
+    const row =
+      result.rows[0] as
+        | TargetEnrichmentProposalRow
+        | undefined;
+
+    if (row === undefined) {
+      return undefined;
+    }
+
+    return ProspectResearchTargetEnrichmentProposalSchema
+      .parse({
+        ...(
+          row.proposal as
+            Record<
+              string,
+              unknown
+            >
+        ),
+        proposedAt:
+          row.proposed_at instanceof Date
+            ? row.proposed_at
+                .toISOString()
+            : new Date(
+                row.proposed_at
+              ).toISOString()
+      });
+  }
+
+  public async listTargetEnrichmentProposals(
+    targetId: string
+  ): Promise<
+    ProspectResearchTargetEnrichmentProposal[]
+  > {
+    const result =
+      await this.#pool.query(
+        `
+          SELECT
+            proposal,
+            proposed_at
+          FROM prospect_research_target_enrichment_proposals
+          WHERE target_id = $1
+          ORDER BY proposed_at ASC, id ASC
+        `,
+        [targetId]
+      );
+
+    return result.rows.map(
+      (rawRow) => {
+        const row =
+          rawRow as
+            TargetEnrichmentProposalRow;
+
+        return ProspectResearchTargetEnrichmentProposalSchema
+          .parse({
+            ...(
+              row.proposal as
+                Record<
+                  string,
+                  unknown
+                >
+            ),
+            proposedAt:
+              row.proposed_at instanceof Date
+                ? row.proposed_at
+                    .toISOString()
+                : new Date(
+                    row.proposed_at
+                  ).toISOString()
+          });
+      }
+    );
   }
 
   public async saveTarget(
