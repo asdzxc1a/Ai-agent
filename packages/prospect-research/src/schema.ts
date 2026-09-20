@@ -1,3 +1,7 @@
+import {
+  isIP
+} from "node:net";
+
 import { z } from "zod";
 
 import {
@@ -21,7 +25,17 @@ function validDomainName(
 ): boolean {
   if (
     value.length > 253 ||
+    isIP(value) !== 0 ||
     value === "localhost" ||
+    value.endsWith(
+      ".localhost"
+    ) ||
+    value.endsWith(
+      ".local"
+    ) ||
+    value.endsWith(
+      ".internal"
+    ) ||
     value.includes(":")
   ) {
     return false;
