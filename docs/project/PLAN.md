@@ -228,7 +228,7 @@ Acceptance:
 
 ## Gate 9 — Owned multi-step sales-agent loop
 
-**Status:** NOT_STARTED
+**Status:** IN_PROGRESS
 
 Purpose:
 

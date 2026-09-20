@@ -4,7 +4,7 @@
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Sales domain/evaluation foundation → multi-step sales-agent orchestration  
 **Current gate:** Gate 9 — Owned multi-step sales-agent loop  
-**Overall status:** Gates 0–8 are PASSED. Gate 8 adds Astra's first owned sales-domain truth layer, AI-native company/workforce transformation ontology V1, 40-scenario SalesBench V1, and an honest deterministic Baseline 0 of 32/40 (80%). Gate 9 is next; issue #53 is the active working-memory anchor.
+**Overall status:** Gates 0–8 are PASSED. Gate 8 adds Astra's first owned sales-domain truth layer, AI-native company/workforce transformation ontology V1, 40-scenario SalesBench V1, and an honest deterministic Baseline 0 of 32/40 (80%). Gate 9 is IN_PROGRESS in issue #53 on branch `gate-9-owned-multistep-loop-v2`.
 
 ## North star
 
@@ -206,7 +206,7 @@ pnpm check:memory
 
 ## Next action
 
-**Gate 9 — Owned multi-step sales-agent loop (issue #53):** implement owned repeated observe → decide → act orchestration with explicit `ACTION | COMPLETE | FAIL | BLOCKED` outcomes, persisted multi-step progress, and recoverable failure handling.
+**Gate 9 — Owned multi-step sales-agent loop (issue #53):** verify the owned `@astra/agent-loop` executor, optional RunEngine loop path, persisted sanitized progress, recoverable failure behavior, and the deterministic three-action Stagehand→Steel research fixture.
 
 Do not start live prospect research, outreach, voice, E2B, or external actions in Gate 9.
 
