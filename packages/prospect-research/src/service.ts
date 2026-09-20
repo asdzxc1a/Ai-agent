@@ -1,7 +1,3 @@
-import {
-  randomUUID
-} from "node:crypto";
-
 import type {
   ArtifactStore
 } from "@astra/artifact-store";
@@ -533,8 +529,7 @@ export class ProspectResearchService {
       FailedProspectResearchAttemptSchema
         .parse({
           id:
-            run.id ??
-            randomUUID(),
+            run.id,
           target,
           createdAt:
             run.updatedAt,
