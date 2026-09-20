@@ -4,6 +4,7 @@ import {
 } from "node:fs/promises";
 
 const REQUIRED_FILES = [
+  "README.md",
   "AGENTS.md",
   "docs/project/PROJECT_MEMORY_SYSTEM.md",
   "docs/project/STATE.md",
@@ -82,6 +83,7 @@ async function main() {
   }
 
   const [
+    readme,
     agents,
     state,
     plan,
@@ -89,6 +91,7 @@ async function main() {
     lessons,
     handoff
   ] = await Promise.all([
+    read("README.md"),
     read("AGENTS.md"),
     read("docs/project/STATE.md"),
     read("docs/project/PLAN.md"),
@@ -100,6 +103,10 @@ async function main() {
   const currentGate = state.match(
     /^\*\*Current gate:\*\* Gate (\d+) — (.+)$/m
   );
+  const readmeCurrentGate =
+    readme.match(
+      /^## Current gate\s*\r?\n\r?\n\*\*Gate (\d+) — (.+)\*\*$/m
+    );
 
   if (currentGate === null) {
     errors.push(
@@ -109,6 +116,30 @@ async function main() {
 
   if (!/^## Next action\s*$/m.test(state)) {
     errors.push("STATE.md must contain a '## Next action' section.");
+  }
+
+  if (readmeCurrentGate === null) {
+    errors.push(
+      "README.md must declare its current gate as '**Gate N — <title>**'."
+    );
+  } else if (currentGate !== null) {
+    const stateNumber =
+      Number(currentGate[1]);
+    const stateTitle =
+      currentGate[2].trim();
+    const readmeNumber =
+      Number(readmeCurrentGate[1]);
+    const readmeTitle =
+      readmeCurrentGate[2].trim();
+
+    if (
+      readmeNumber !== stateNumber ||
+      readmeTitle !== stateTitle
+    ) {
+      errors.push(
+        `README.md current Gate ${readmeNumber} — ${readmeTitle} does not match STATE.md Gate ${stateNumber} — ${stateTitle}.`
+      );
+    }
   }
 
   const gates = parsePlanGates(plan);
