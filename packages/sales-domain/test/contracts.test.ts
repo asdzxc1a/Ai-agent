@@ -46,6 +46,8 @@ describe("sales-domain contracts", () => {
             "artifact.capture",
           captureVersion:
             "page-evidence-v1",
+          semanticSettled:
+            true,
           pageUrl:
             "https://example.test/about",
           capturedAt:
