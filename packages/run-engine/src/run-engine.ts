@@ -55,6 +55,7 @@ export interface StartRunInput {
 }
 
 export interface RunService {
+  reconcileInterruptedRuns(): Promise<RunSnapshot[]>;
   createRun(input: StartRunInput): Promise<RunSnapshot>;
   getRun(runId: string): Promise<RunSnapshot | undefined>;
   cancelRun(runId: string): Promise<RunSnapshot | undefined>;
