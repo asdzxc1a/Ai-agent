@@ -521,13 +521,15 @@ test(
 test(
   "step-limit termination persists BLOCKED goal state",
   async () => {
+    const browserRuntime =
+      new ControlBrowserRuntime();
+    const agentRuntime =
+      new ControlAgentRuntime();
     const engine = new RunEngine({
       repository:
         new InMemoryRunRepository(),
-      browserRuntime:
-        new ControlBrowserRuntime(),
-      agentRuntime:
-        new ControlAgentRuntime(),
+      browserRuntime,
+      agentRuntime,
       agentLoop:
         new AgentLoopExecutor({
           policy:
@@ -572,12 +574,22 @@ test(
     ).toBe(
       "STEP_LIMIT_EXCEEDED"
     );
+    expect(
+      browserRuntime.session
+        .closeCalls
+    ).toBe(1);
+    expect(
+      agentRuntime.session
+        .closeCalls
+    ).toBe(1);
   }
 );
 
 test(
   "cost-budget termination persists BLOCKED goal state",
   async () => {
+    const browserRuntime =
+      new ControlBrowserRuntime();
     const agentRuntime =
       new ControlAgentRuntime();
     agentRuntime.session
@@ -586,8 +598,7 @@ test(
     const engine = new RunEngine({
       repository:
         new InMemoryRunRepository(),
-      browserRuntime:
-        new ControlBrowserRuntime(),
+      browserRuntime,
       agentRuntime,
       agentLoop:
         new AgentLoopExecutor({
@@ -645,12 +656,22 @@ test(
     ).toBe(
       "MODEL_COST_BUDGET_EXCEEDED"
     );
+    expect(
+      browserRuntime.session
+        .closeCalls
+    ).toBe(1);
+    expect(
+      agentRuntime.session
+        .closeCalls
+    ).toBe(1);
   }
 );
 
 test(
   "unknown effect after failed action blocks retry durably",
   async () => {
+    const browserRuntime =
+      new ControlBrowserRuntime();
     const agentRuntime =
       new ControlAgentRuntime();
     agentRuntime.session
@@ -659,8 +680,7 @@ test(
     const engine = new RunEngine({
       repository:
         new InMemoryRunRepository(),
-      browserRuntime:
-        new ControlBrowserRuntime(),
+      browserRuntime,
       agentRuntime,
       agentLoop:
         new AgentLoopExecutor({
@@ -712,6 +732,14 @@ test(
     ).toBe(
       "ACTION_EFFECT_UNKNOWN"
     );
+    expect(
+      browserRuntime.session
+        .closeCalls
+    ).toBe(1);
+    expect(
+      agentRuntime.session
+        .closeCalls
+    ).toBe(1);
   }
 );
 
@@ -1327,6 +1355,80 @@ test(
     expect(
       cancelled?.kind
     ).toBe("CANCELLED");
+    expect(
+      browserRuntime.session
+        .closeCalls
+    ).toBe(1);
+    expect(
+      agentRuntime.session
+        .closeCalls
+    ).toBe(1);
+  }
+);
+
+test(
+  "loop detection persists BLOCKED state and cleans resources",
+  async () => {
+    const browserRuntime =
+      new ControlBrowserRuntime();
+    const agentRuntime =
+      new ControlAgentRuntime();
+
+    const engine = new RunEngine({
+      repository:
+        new InMemoryRunRepository(),
+      browserRuntime,
+      agentRuntime,
+      agentLoop:
+        new AgentLoopExecutor({
+          policy:
+            repeatPolicy,
+          budget: {
+            maxRepeatedActionSelections:
+              1
+          }
+        }),
+      completionVerifier: {
+        async verify() {
+          return {
+            verified: true
+          };
+        }
+      }
+    });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Detect deterministic action loop."
+        }
+      });
+
+    const terminal =
+      await waitForTerminal(
+        engine,
+        started.id
+      );
+
+    expect(terminal.status).toBe(
+      "FAILED"
+    );
+    expect(
+      terminal.goalState
+    ).toBe("BLOCKED");
+    expect(
+      terminal.terminalReason
+        ?.code
+    ).toBe(
+      "LOOP_DETECTED"
+    );
+    expect(
+      agentRuntime.session
+        .actCalls
+    ).toBe(1);
     expect(
       browserRuntime.session
         .closeCalls
