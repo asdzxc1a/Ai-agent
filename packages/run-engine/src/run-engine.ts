@@ -360,6 +360,98 @@ export class RunEngine implements RunService {
     return this.#repository.getRun(runId);
   }
 
+  public async reconcileInterruptedRuns():
+    Promise<RunSnapshot[]> {
+    const active =
+      await this.#repository
+        .listActiveRuns();
+    const reconciled:
+      RunSnapshot[] = [];
+
+    for (const run of active) {
+      if (
+        this.#controllers.has(
+          run.id
+        ) ||
+        this.#executions.has(
+          run.id
+        )
+      ) {
+        continue;
+      }
+
+      const failure:
+        RunFailure = {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "Run execution was interrupted before reaching a terminal state."
+        };
+      const terminalReason:
+        RunTerminalReason = {
+          code:
+            failure.code,
+          message:
+            failure.message
+        };
+
+      try {
+        const terminal =
+          await this.#repository
+            .finalizeRun(
+              run.id,
+              {
+                status:
+                  "FAILED",
+                goalStatus:
+                  "FAILED",
+                error:
+                  failure,
+                terminalReason
+              },
+              {
+                goalStatus:
+                  "FAILED",
+                error:
+                  failure,
+                terminalReason,
+                reconciled:
+                  true,
+                previousStatus:
+                  run.status
+              }
+            );
+
+        reconciled.push(
+          terminal
+        );
+      } catch (error) {
+        const current =
+          await this.#repository
+            .getRun(run.id);
+
+        if (
+          current !==
+            undefined &&
+          (
+            current.status ===
+              "COMPLETED" ||
+            current.status ===
+              "FAILED" ||
+            current.status ===
+              "CANCELLED"
+          )
+        ) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    return reconciled;
+  }
+
   public async cancelRun(
     runId: string
   ): Promise<RunSnapshot | undefined> {
