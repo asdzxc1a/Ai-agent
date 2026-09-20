@@ -927,3 +927,41 @@ The China source stack is not interchangeable with the U.S. stack. Mainland Link
 
 A region-specific multi-source research capability has deterministic and live evidence strong enough to justify a new cross-market protocol version or separately accepted regional cohorts.
 
+---
+
+## D-032 — Gate 13 unit economics include human review and failed attempts
+
+**Date:** 2026-09-20
+**Status:** Accepted
+
+**Decision**
+
+Gate 13 separates incremental infrastructure spend from total delivery cost.
+
+Every measured outcome records infrastructure cost and any other attributable delivery cost. Human review labor is derived from the frozen loaded review-labor rate and the recorded Astra review minutes. Sample evaluation sums infrastructure, review labor, and other delivery cost across **all** outcomes, including failed attempts, then divides by the number of usable briefs.
+
+The frozen criteria therefore use two distinct ceilings:
+
+1. maximum infrastructure cost per attempt;
+2. maximum total delivery cost per usable brief.
+
+For the first U.S. acceptance experiment, the planning assumptions are a $60/hour loaded review-labor rate, a $5 infrastructure ceiling per attempt, and a $25 total delivery-cost ceiling per usable brief. These are pre-registered internal hypotheses, not product pricing or established unit economics.
+
+**Why**
+
+The September audit explicitly required total delivery cost to include failed attempts and human correction/review. Calling model/browser spend alone "delivery cost" would systematically understate the cost of a human-supervised product and could make a commercially weak workflow appear viable.
+
+The $60/hour planning rate is a rounded loaded-cost assumption informed by current U.S. wage data for research/sales roles; it is intentionally separate from customer price. The $5 infrastructure cap remains useful as an engineering control but is not a full commercial cost.
+
+**Consequences**
+
+- protocol v4 replaces the ambiguous single delivery-cost field;
+- failed-attempt spend remains in the numerator even though failed attempts do not create usable briefs;
+- infrastructure overspend and total delivery-cost overspend fail independently;
+- human review labor cannot disappear from the commercial metric;
+- later design-partner pricing/margin evidence may tighten the total-cost ceiling, but the current frozen sample cannot be changed after results.
+
+**Revisit when**
+
+Actual internal loaded labor cost or intended product pricing/margin is established, or when additional support/onboarding costs need a more detailed cost model. Historical samples keep their original frozen cost assumptions.
+
