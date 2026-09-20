@@ -8,6 +8,7 @@ import {
   ApprovedResearchTargetSchema,
   ProspectResearchAttemptSchema,
   sameApprovedResearchTarget,
+  validateProspectResearchAttemptForPersistence,
   type ApprovedResearchTarget,
   type ProspectResearchAttempt,
   type ProspectResearchRepository
@@ -124,8 +125,9 @@ export class PostgresProspectResearchRepository
       ProspectResearchAttempt
   ): Promise<void> {
     const attempt =
-      ProspectResearchAttemptSchema
-        .parse(input);
+      validateProspectResearchAttemptForPersistence(
+        input
+      );
     const client =
       await this.#pool.connect();
 
