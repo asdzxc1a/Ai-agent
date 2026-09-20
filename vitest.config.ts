@@ -15,6 +15,15 @@ export default defineConfig({
       "@astra/agent-loop": workspaceSource(
         "./packages/agent-loop/src/index.ts"
       ),
+      "@astra/artifact-store": workspaceSource(
+        "./packages/artifact-store/src/index.ts"
+      ),
+      "@astra/browser-runtime": workspaceSource(
+        "./packages/browser-runtime/src/index.ts"
+      ),
+      "@astra/contracts": workspaceSource(
+        "./packages/contracts/src/index.ts"
+      ),
       "@astra/sales-domain": workspaceSource(
         "./packages/sales-domain/src/index.ts"
       ),
@@ -32,6 +41,9 @@ export default defineConfig({
       ),
       "@astra/prospect-postgres": workspaceSource(
         "./packages/prospect-postgres/src/index.ts"
+      ),
+      "@astra/run-engine": workspaceSource(
+        "./packages/run-engine/src/index.ts"
       )
     }
   }
