@@ -7,6 +7,8 @@ import {
 import {
   ApprovedResearchTargetSchema,
   ProspectResearchAttemptSchema,
+  ProspectResearchHumanBaselineInputSchema,
+  ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   sameApprovedResearchTarget,
@@ -14,6 +16,8 @@ import {
   validateProspectResearchSampleOutcomeContext,
   type ApprovedResearchTarget,
   type ProspectResearchAttempt,
+  type ProspectResearchHumanBaseline,
+  type ProspectResearchHumanBaselineInput,
   type ProspectResearchRepository,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome
@@ -41,6 +45,12 @@ interface SampleRow {
 
 interface SampleOutcomeRow {
   outcome: unknown;
+}
+
+interface HumanBaselineRow {
+  baseline: unknown;
+  recorded_at:
+    Date | string;
 }
 
 export function createProspectPostgresPool(
@@ -492,6 +502,222 @@ export class PostgresProspectResearchRepository
           .parse(row.sample);
   }
 
+  public async saveHumanBaseline(
+    input:
+      ProspectResearchHumanBaselineInput
+  ): Promise<
+    ProspectResearchHumanBaseline
+  > {
+    const parsed =
+      ProspectResearchHumanBaselineInputSchema
+        .parse(input);
+    const client =
+      await this.#pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const sampleResult =
+        await client.query(
+          `
+            SELECT sample
+            FROM prospect_research_samples
+            WHERE id = $1
+            FOR SHARE
+          `,
+          [parsed.sampleId]
+        );
+      const sampleRow =
+        sampleResult.rows[0] as
+          | SampleRow
+          | undefined;
+
+      if (sampleRow === undefined) {
+        throw new Error(
+          "Measured research sample does not exist: " +
+            parsed.sampleId
+        );
+      }
+
+      const sample =
+        ProspectResearchSampleSchema
+          .parse(
+            sampleRow.sample
+          );
+
+      if (
+        !sample.targets.some(
+          (target) =>
+            target.id ===
+            parsed.targetId
+        )
+      ) {
+        throw new Error(
+          "Human baseline target is outside the frozen sample."
+        );
+      }
+
+      if (
+        sample.purpose ===
+          "ACCEPTANCE" &&
+        parsed.source !==
+          "MEASURED_HUMAN"
+      ) {
+        throw new Error(
+          "Gate 13 acceptance requires a measured human baseline."
+        );
+      }
+
+      const insert =
+        await client.query(
+          `
+            INSERT INTO prospect_research_human_baselines (
+              id,
+              sample_id,
+              target_id,
+              baseline
+            )
+            VALUES ($1, $2, $3, $4::jsonb)
+            RETURNING recorded_at
+          `,
+          [
+            parsed.id,
+            parsed.sampleId,
+            parsed.targetId,
+            JSON.stringify(
+              parsed
+            )
+          ]
+        );
+      const recordedAt =
+        (
+          insert.rows[0] as
+            {
+              recorded_at:
+                Date | string;
+            }
+        ).recorded_at;
+      const baseline =
+        ProspectResearchHumanBaselineSchema
+          .parse({
+            ...parsed,
+            recordedAt:
+              recordedAt instanceof Date
+                ? recordedAt.toISOString()
+                : new Date(
+                    recordedAt
+                  ).toISOString()
+          });
+
+      await client.query("COMMIT");
+      return baseline;
+    } catch (error) {
+      await client.query(
+        "ROLLBACK"
+      ).catch(
+        () => undefined
+      );
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async getHumanBaseline(
+    baselineId: string
+  ): Promise<
+    ProspectResearchHumanBaseline |
+    undefined
+  > {
+    const result =
+      await this.#pool.query(
+        `
+          SELECT
+            baseline,
+            recorded_at
+          FROM prospect_research_human_baselines
+          WHERE id = $1
+        `,
+        [baselineId]
+      );
+    const row =
+      result.rows[0] as
+        | HumanBaselineRow
+        | undefined;
+
+    if (row === undefined) {
+      return undefined;
+    }
+
+    return ProspectResearchHumanBaselineSchema
+      .parse({
+        ...(
+          row.baseline as
+            Record<
+              string,
+              unknown
+            >
+        ),
+        recordedAt:
+          row.recorded_at instanceof Date
+            ? row.recorded_at
+                .toISOString()
+            : new Date(
+                row.recorded_at
+              ).toISOString()
+      });
+  }
+
+  public async getHumanBaselineForTarget(
+    sampleId: string,
+    targetId: string
+  ): Promise<
+    ProspectResearchHumanBaseline |
+    undefined
+  > {
+    const result =
+      await this.#pool.query(
+        `
+          SELECT
+            baseline,
+            recorded_at
+          FROM prospect_research_human_baselines
+          WHERE sample_id = $1
+            AND target_id = $2
+        `,
+        [
+          sampleId,
+          targetId
+        ]
+      );
+    const row =
+      result.rows[0] as
+        | HumanBaselineRow
+        | undefined;
+
+    if (row === undefined) {
+      return undefined;
+    }
+
+    return ProspectResearchHumanBaselineSchema
+      .parse({
+        ...(
+          row.baseline as
+            Record<
+              string,
+              unknown
+            >
+        ),
+        recordedAt:
+          row.recorded_at instanceof Date
+            ? row.recorded_at
+                .toISOString()
+            : new Date(
+                row.recorded_at
+              ).toISOString()
+      });
+  }
+
   public async saveSampleOutcome(
     input:
       ProspectResearchSampleOutcome
@@ -549,6 +775,51 @@ export class PostgresProspectResearchRepository
         );
       }
 
+      const baselineResult =
+        await client.query(
+          `
+            SELECT
+              baseline,
+              recorded_at
+            FROM prospect_research_human_baselines
+            WHERE id = $1
+            FOR SHARE
+          `,
+          [outcome.baselineId]
+        );
+      const baselineRow =
+        baselineResult.rows[0] as
+          | HumanBaselineRow
+          | undefined;
+
+      if (baselineRow === undefined) {
+        throw new Error(
+          "Measured research outcome human baseline does not exist: " +
+            outcome.baselineId
+        );
+      }
+
+      const baseline =
+        ProspectResearchHumanBaselineSchema
+          .parse({
+            ...(
+              baselineRow.baseline as
+                Record<
+                  string,
+                  unknown
+                >
+            ),
+            recordedAt:
+              baselineRow.recorded_at instanceof Date
+                ? baselineRow
+                    .recorded_at
+                    .toISOString()
+                : new Date(
+                    baselineRow
+                      .recorded_at
+                  ).toISOString()
+          });
+
       validateProspectResearchSampleOutcomeContext(
         ProspectResearchSampleSchema
           .parse(
@@ -558,6 +829,7 @@ export class PostgresProspectResearchRepository
           .parse(
             attemptRow.attempt
           ),
+        baseline,
         outcome
       );
 

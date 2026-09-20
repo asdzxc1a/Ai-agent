@@ -76,7 +76,7 @@ function sample() {
       id: sampleId,
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v3",
+        "gate13-measured-research-v4",
       purpose:
         "CALIBRATION",
       cohortDefinition:
@@ -108,6 +108,86 @@ function sample() {
         "Fixture ceiling used only for workflow calibration.",
       humanBaselineDescription:
         "Operator manually researches the approved public page and drafts the same brief.",
+      comparisonBaselineDescription:
+        null,
+      frozenBy:
+        "operator",
+      frozenAt:
+        "2026-09-20T12:10:00.000Z"
+    });
+}
+
+function acceptanceTarget(
+  index: number
+) {
+  const suffix =
+    String(index)
+      .padStart(2, "0");
+
+  return ApprovedResearchTargetSchema
+    .parse({
+      ...target(),
+      id:
+        "target.acceptance." +
+        suffix,
+      companyNameHint:
+        "Acceptance Company " +
+        suffix,
+      approval: {
+        ...target().approval,
+        id:
+          "approval.acceptance." +
+          suffix
+      }
+    });
+}
+
+function acceptanceSample() {
+  return ProspectResearchSampleSchema
+    .parse({
+      id:
+        "sample.acceptance.workflow",
+      status: "FROZEN",
+      protocolVersion:
+        "gate13-measured-research-v4",
+      purpose:
+        "ACCEPTANCE",
+      cohortDefinition:
+        "Thirty deterministic U.S. industrial/logistics fixture targets.",
+      selectionMethod:
+        "Deterministic fixture selection.",
+      marketScope:
+        "SINGLE_MARKET",
+      marketDescription:
+        "United States",
+      humanBaselineMode:
+        "NORMAL_TOOLS",
+      targets:
+        Array.from(
+          {
+            length: 30
+          },
+          (_value, index) =>
+            acceptanceTarget(
+              index + 1
+            )
+        ),
+      criteria: {
+        maxUnsupportedMaterialClaims:
+          0,
+        minUsableBriefRate:
+          0.9,
+        minMedianHumanTimeReductionFraction:
+          0.5,
+        requireNoUnauthorizedActions:
+          true,
+        maxDeliveryCostUsdPerBrief:
+          25
+      },
+      costCeilingRationale:
+        "Fixture acceptance ceiling.",
+      humanBaselineDescription:
+        "Human researcher uses normal research tools before Astra.",
       comparisonBaselineDescription:
         null,
       frozenBy:
@@ -439,7 +519,10 @@ describe(
       "starts only from stored approval, never acts, and persists the operator-reviewed evidence mapping",
       async () => {
         const repository =
-          new InMemoryProspectResearchRepository();
+          new InMemoryProspectResearchRepository(
+            () =>
+              "2026-09-20T12:15:00.000Z"
+          );
         const runRepository =
           new InMemoryRunRepository();
         const artifacts =
@@ -511,6 +594,24 @@ describe(
           .freezeSample(
             sample()
           );
+        const humanBaseline =
+          await workflow
+            .recordHumanBaseline({
+              id:
+                "baseline.workflow",
+              sampleId,
+              targetId:
+                "target.workflow",
+              source:
+                "FIXED_CAP",
+              preparedBy:
+                "operator",
+              humanPreparationMinutes:
+                20,
+              toolingDescription:
+                "Scope-matched calibration fixture tools.",
+              notes: null
+            });
         await workflow
           .approveTarget(
             outsideTarget()
@@ -642,6 +743,8 @@ describe(
               "target.workflow",
             attemptId:
               attempt.id,
+            baselineId:
+              humanBaseline.id,
             attemptStatus:
               "COMPLETED",
             briefDisposition:
@@ -653,9 +756,9 @@ describe(
             reviewMode:
               "UNBLINDED",
             baselineSource:
-              "FIXED_CAP",
+              humanBaseline.source,
             baselineMeasuredAt:
-              "2026-09-20T11:55:00.000Z",
+              humanBaseline.recordedAt,
             materialClaimsReviewed:
               1,
             unsupportedMaterialClaims:
@@ -670,7 +773,8 @@ describe(
             requestedFieldsCovered:
               3,
             baselineHumanPreparationMinutes:
-              20,
+              humanBaseline
+                .humanPreparationMinutes,
             astraHumanReviewMinutes:
               8,
             endToEndDurationMs:
@@ -712,6 +816,125 @@ describe(
           browser.session
             .closeCalls
         ).toBe(1);
+      }
+    );
+
+    it(
+      "requires a durable human baseline before an acceptance target can start",
+      async () => {
+        const repository =
+          new InMemoryProspectResearchRepository(
+            () =>
+              "2026-09-20T12:15:00.000Z"
+          );
+        const agent =
+          new BlockingResearchRuntime();
+        const workflow =
+          new ProspectResearchWorkflow({
+            repository,
+            runRepository:
+              new InMemoryRunRepository(),
+            artifactStore:
+              new InMemoryArtifactStore(),
+            browserRuntime:
+              new ReadOnlyBrowserRuntime(),
+            agentRuntime:
+              agent,
+            sandboxRuntimeFactory(
+              policy
+            ) {
+              return new LocalSandboxRuntime({
+                ...policy,
+                resolver: {
+                  async resolve() {
+                    return [
+                      "93.184.216.34"
+                    ];
+                  }
+                }
+              });
+            }
+          });
+        const acceptance =
+          acceptanceSample();
+
+        for (
+          const approved of
+          acceptance.targets
+        ) {
+          await workflow
+            .approveTarget(
+              approved
+            );
+        }
+
+        await workflow
+          .freezeSample(
+            acceptance
+          );
+
+        await expect(
+          workflow.start({
+            sampleId:
+              acceptance.id,
+            targetId:
+              acceptance.targets[0]!
+                .id
+          })
+        ).rejects.toThrow(
+          "requires a durable human baseline before Astra starts"
+        );
+
+        const baseline =
+          await workflow
+            .recordHumanBaseline({
+              id:
+                "baseline.acceptance.01",
+              sampleId:
+                acceptance.id,
+              targetId:
+                acceptance.targets[0]!
+                  .id,
+              source:
+                "MEASURED_HUMAN",
+              preparedBy:
+                "human.researcher",
+              humanPreparationMinutes:
+                18,
+              toolingDescription:
+                "Normal human research tools.",
+              notes: null
+            });
+
+        expect(
+          baseline.recordedAt
+        ).toBe(
+          "2026-09-20T12:15:00.000Z"
+        );
+
+        const started =
+          await workflow.start({
+            sampleId:
+              acceptance.id,
+            targetId:
+              acceptance.targets[0]!
+                .id
+          });
+
+        await workflow
+          .cancelRun(
+            started.id
+          );
+
+        await expect(
+          waitForTerminal(
+            workflow,
+            started.id
+          )
+        ).resolves.toMatchObject({
+          status:
+            "CANCELLED"
+        });
       }
     );
 

@@ -279,6 +279,15 @@ export class ProspectResearchWorkflow {
       .getSample(sampleId);
   }
 
+  public recordHumanBaseline(
+    input: unknown
+  ) {
+    return this.#research
+      .recordHumanBaseline(
+        input
+      );
+  }
+
   public recordSampleOutcome(
     input: unknown
   ) {
@@ -356,6 +365,25 @@ export class ProspectResearchWorkflow {
         "research target is outside the frozen measured sample: " +
           input.targetId
       ]);
+    }
+
+    if (
+      sample.purpose ===
+      "ACCEPTANCE"
+    ) {
+      const baseline =
+        await this.#research
+          .getHumanBaselineForTarget(
+            sample.id,
+            input.targetId
+          );
+
+      if (baseline === undefined) {
+        throw new ProspectResearchValidationError([
+          "Gate 13 acceptance requires a durable human baseline before Astra starts: " +
+            input.targetId
+        ]);
+      }
     }
 
     const target =

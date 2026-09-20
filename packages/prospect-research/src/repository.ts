@@ -4,10 +4,14 @@ import type {
 
 import {
   ApprovedResearchTargetSchema,
+  ProspectResearchHumanBaselineInputSchema,
+  ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   type ApprovedResearchTarget,
   type ProspectResearchAttempt,
+  type ProspectResearchHumanBaseline,
+  type ProspectResearchHumanBaselineInput,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome
 } from "./schema.js";
@@ -72,6 +76,28 @@ export interface ProspectResearchRepository {
     undefined
   >;
 
+  saveHumanBaseline(
+    baseline:
+      ProspectResearchHumanBaselineInput
+  ): Promise<
+    ProspectResearchHumanBaseline
+  >;
+
+  getHumanBaseline(
+    baselineId: string
+  ): Promise<
+    ProspectResearchHumanBaseline |
+    undefined
+  >;
+
+  getHumanBaselineForTarget(
+    sampleId: string,
+    targetId: string
+  ): Promise<
+    ProspectResearchHumanBaseline |
+    undefined
+  >;
+
   saveSampleOutcome(
     outcome:
       ProspectResearchSampleOutcome
@@ -86,6 +112,8 @@ export interface ProspectResearchRepository {
 
 export class InMemoryProspectResearchRepository
   implements ProspectResearchRepository {
+  readonly #now:
+    () => string;
   readonly #targets =
     new Map<
       string,
@@ -103,11 +131,24 @@ export class InMemoryProspectResearchRepository
       string,
       ProspectResearchSample
     >();
+  readonly #humanBaselines =
+    new Map<
+      string,
+      ProspectResearchHumanBaseline
+    >();
   readonly #sampleOutcomes =
     new Map<
       string,
       ProspectResearchSampleOutcome
     >();
+
+  public constructor(
+    now: () => string =
+      () =>
+        new Date().toISOString()
+  ) {
+    this.#now = now;
+  }
 
   public async saveTarget(
     input:
@@ -374,6 +415,134 @@ export class InMemoryProspectResearchRepository
       : structuredClone(sample);
   }
 
+  public async saveHumanBaseline(
+    input:
+      ProspectResearchHumanBaselineInput
+  ): Promise<
+    ProspectResearchHumanBaseline
+  > {
+    const parsed =
+      ProspectResearchHumanBaselineInputSchema
+        .parse(input);
+    const sample =
+      this.#samples.get(
+        parsed.sampleId
+      );
+
+    if (sample === undefined) {
+      throw new Error(
+        "Measured research sample does not exist: " +
+          parsed.sampleId
+      );
+    }
+
+    if (
+      !sample.targets.some(
+        (target) =>
+          target.id ===
+          parsed.targetId
+      )
+    ) {
+      throw new Error(
+        "Human baseline target is outside the frozen sample."
+      );
+    }
+
+    if (
+      sample.purpose ===
+        "ACCEPTANCE" &&
+      parsed.source !==
+        "MEASURED_HUMAN"
+    ) {
+      throw new Error(
+        "Gate 13 acceptance requires a measured human baseline."
+      );
+    }
+
+    if (
+      this.#humanBaselines.has(
+        parsed.id
+      ) ||
+      [
+        ...this.#humanBaselines
+          .values()
+      ].some(
+        (baseline) =>
+          baseline.sampleId ===
+            parsed.sampleId &&
+          baseline.targetId ===
+            parsed.targetId
+      )
+    ) {
+      throw new Error(
+        "Frozen research sample already has a human baseline for this target."
+      );
+    }
+
+    const baseline =
+      ProspectResearchHumanBaselineSchema
+        .parse({
+          ...parsed,
+          recordedAt:
+            this.#now()
+        });
+
+    this.#humanBaselines.set(
+      baseline.id,
+      structuredClone(
+        baseline
+      )
+    );
+
+    return structuredClone(
+      baseline
+    );
+  }
+
+  public async getHumanBaseline(
+    baselineId: string
+  ): Promise<
+    ProspectResearchHumanBaseline |
+    undefined
+  > {
+    const baseline =
+      this.#humanBaselines.get(
+        baselineId
+      );
+
+    return baseline === undefined
+      ? undefined
+      : structuredClone(
+          baseline
+        );
+  }
+
+  public async getHumanBaselineForTarget(
+    sampleId: string,
+    targetId: string
+  ): Promise<
+    ProspectResearchHumanBaseline |
+    undefined
+  > {
+    const baseline =
+      [
+        ...this.#humanBaselines
+          .values()
+      ].find(
+        (candidate) =>
+          candidate.sampleId ===
+            sampleId &&
+          candidate.targetId ===
+            targetId
+      );
+
+    return baseline === undefined
+      ? undefined
+      : structuredClone(
+          baseline
+        );
+  }
+
   public async saveSampleOutcome(
     input:
       ProspectResearchSampleOutcome
@@ -388,6 +557,10 @@ export class InMemoryProspectResearchRepository
     const attempt =
       this.#attempts.get(
         outcome.attemptId
+      );
+    const baseline =
+      this.#humanBaselines.get(
+        outcome.baselineId
       );
 
     if (sample === undefined) {
@@ -404,9 +577,17 @@ export class InMemoryProspectResearchRepository
       );
     }
 
+    if (baseline === undefined) {
+      throw new Error(
+        "Measured research outcome human baseline does not exist: " +
+          outcome.baselineId
+      );
+    }
+
     validateProspectResearchSampleOutcomeContext(
       sample,
       attempt,
+      baseline,
       outcome
     );
 

@@ -73,7 +73,7 @@ The acceptance experiment must:
 
 - freeze **30–50 approved U.S. companies from the explicit industrial/logistics niche** before browsing, with the selection method recorded before results;
 - compare against the existing human researcher using their **normal tools**, not an artificially one-page-restricted baseline;
-- use an actually measured human baseline for each acceptance target, recorded before Astra starts that target;
+- persist an actually measured human baseline as durable server-timestamped state for each acceptance target **before** Astra is allowed to start that target;
 - freeze the cost ceiling and rationale before results;
 - record blind versus unblinded review;
 - run only frozen sample members through the bounded read-only research path;

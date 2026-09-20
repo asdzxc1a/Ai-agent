@@ -927,3 +927,36 @@ The China source stack is not interchangeable with the U.S. stack. Mainland Link
 
 A region-specific multi-source research capability has deterministic and live evidence strong enough to justify a new cross-market protocol version or separately accepted regional cohorts.
 
+---
+
+## D-032 — Acceptance human baselines are durable pre-run state
+
+**Date:** 2026-09-20
+**Status:** Accepted
+
+**Decision**
+
+Gate 13 acceptance no longer treats human-baseline timing as a field supplied later with the reviewed outcome.
+
+For every acceptance target, the human baseline must be persisted as its own durable record after the sample is frozen and before Astra starts that target. The record owns sample/target identity, baseline source, researcher identity, preparation minutes, tooling description, notes, and a server-owned `recordedAt` timestamp.
+
+The acceptance workflow fails closed when that baseline is missing. The later measured outcome references the baseline by ID and must exactly reproduce its source, server timestamp, and preparation minutes. Repository validation rejects mismatches.
+
+**Why**
+
+An operator-supplied timestamp stored only with the post-run outcome can be backdated accidentally or intentionally. That proves little about whether the human baseline was genuinely measured before Astra. The commercial experiment needs a stronger temporal boundary because the primary value metric is preparation-time reduction.
+
+**Consequences**
+
+- protocol advances to `gate13-measured-research-v4`;
+- acceptance state order is: approval → sample freeze → durable human baseline → Astra run → review outcome;
+- PostgreSQL owns the baseline record timestamp and enforces one baseline per sample/target;
+- in-memory tests use an injected server clock for deterministic evidence;
+- outcome persistence locks/rechecks sample, attempt, and durable baseline;
+- calibration may still use fixed-cap baselines, but acceptance baseline records must be `MEASURED_HUMAN`;
+- direct outcome entry cannot substitute different baseline minutes or timing.
+
+**Revisit when**
+
+Only if a later experiment replaces the human baseline with another independently persisted comparator protocol. Existing v4 acceptance evidence is never reconstructed from post-hoc timestamps.
+

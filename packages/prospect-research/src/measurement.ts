@@ -2,6 +2,7 @@ import {
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   type ProspectResearchAttempt,
+  type ProspectResearchHumanBaseline,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome
 } from "./schema.js";
@@ -67,6 +68,8 @@ export function validateProspectResearchSampleOutcomeContext(
     ProspectResearchSample,
   attempt:
     ProspectResearchAttempt,
+  baseline:
+    ProspectResearchHumanBaseline,
   outcomeInput:
     ProspectResearchSampleOutcome
 ): ProspectResearchSampleOutcome {
@@ -82,6 +85,32 @@ export function validateProspectResearchSampleOutcomeContext(
         target.id ===
         outcome.targetId
     );
+
+  if (
+    baseline.id !==
+      outcome.baselineId ||
+    baseline.sampleId !==
+      sample.id ||
+    baseline.targetId !==
+      outcome.targetId
+  ) {
+    throw new Error(
+      "Measured research outcome does not match the durable human baseline."
+    );
+  }
+
+  if (
+    baseline.source !==
+      outcome.baselineSource ||
+    baseline.recordedAt !==
+      outcome.baselineMeasuredAt ||
+    baseline.humanPreparationMinutes !==
+      outcome.baselineHumanPreparationMinutes
+  ) {
+    throw new Error(
+      "Measured research outcome human-baseline snapshot differs from durable baseline truth."
+    );
+  }
 
   if (
     outcome.sampleId !==
@@ -127,7 +156,7 @@ export function validateProspectResearchSampleOutcomeContext(
   if (
     sample.purpose ===
       "ACCEPTANCE" &&
-    outcome.baselineSource !==
+    baseline.source !==
       "MEASURED_HUMAN"
   ) {
     throw new Error(
@@ -139,7 +168,7 @@ export function validateProspectResearchSampleOutcomeContext(
     sample.purpose ===
       "ACCEPTANCE" &&
     Date.parse(
-      outcome.baselineMeasuredAt
+      baseline.recordedAt
     ) >
       Date.parse(
         attempt.startedAt

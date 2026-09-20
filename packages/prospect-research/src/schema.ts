@@ -632,7 +632,7 @@ export const ProspectResearchSampleSchema =
       z.literal("FROZEN"),
     protocolVersion:
       z.literal(
-        "gate13-measured-research-v3"
+        "gate13-measured-research-v4"
       ),
     purpose:
       z.enum(
@@ -788,12 +788,48 @@ export const ProspectResearchSampleSchema =
       }
     );
 
+export const ProspectResearchHumanBaselineInputSchema =
+  z.object({
+    id: IdentifierSchema,
+    sampleId: IdentifierSchema,
+    targetId: IdentifierSchema,
+    source:
+      z.enum(
+        PROSPECT_RESEARCH_BASELINE_SOURCES
+      ),
+    preparedBy:
+      TextSchema.max(240),
+    humanPreparationMinutes:
+      z.number()
+        .finite()
+        .positive(),
+    toolingDescription:
+      TextSchema.max(4000),
+    notes:
+      z.string()
+        .trim()
+        .min(1)
+        .max(4000)
+        .nullable()
+  }).strict();
+
+export const ProspectResearchHumanBaselineSchema =
+  ProspectResearchHumanBaselineInputSchema
+    .extend({
+      recordedAt:
+        z.string().datetime({
+          offset: true
+        })
+    })
+    .strict();
+
 export const ProspectResearchSampleOutcomeSchema =
   z.object({
     id: IdentifierSchema,
     sampleId: IdentifierSchema,
     targetId: IdentifierSchema,
     attemptId: IdentifierSchema,
+    baselineId: IdentifierSchema,
     attemptStatus:
       z.enum([
         "COMPLETED",
@@ -996,6 +1032,14 @@ export const ProspectResearchSampleOutcomeSchema =
       }
     );
 
+export type ProspectResearchHumanBaselineInput =
+  z.infer<
+    typeof ProspectResearchHumanBaselineInputSchema
+  >;
+export type ProspectResearchHumanBaseline =
+  z.infer<
+    typeof ProspectResearchHumanBaselineSchema
+  >;
 export type ProspectResearchSampleCriteria =
   z.infer<
     typeof ProspectResearchSampleCriteriaSchema
