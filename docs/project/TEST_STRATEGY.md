@@ -284,7 +284,7 @@ For every research attempt record:
 - material source/evidence receipts and manual audit result;
 - requested-field coverage and explicit unknowns;
 - unsupported-claim/correction count and severity;
-- total human preparation/review minutes;
+- total Astra-side human preparation minutes, broken down into target setup, evidence mapping/source audit, corrections/finalization, failure triage, and other measured operator work;
 - end-to-end duration;
 - complete model/token/browser/provider delivery cost, including failed attempts;
 - unauthorized-action count, which must remain zero.
@@ -355,6 +355,7 @@ A gate is `PASSED` only if:
 - A screenshot's existence is not source provenance. Evidence must carry a server-owned semantically settled capture receipt binding final page URL, capture time, page-content hash, screenshot hash, and artifact identity; material live claims still require human source review until automated semantic-support judgment is separately qualified.
 - Optional diagnostics and each cleanup operation require independent bounded deadlines; browser/provider cleanup must still be attempted when agent cleanup times out or fails.
 - Buyer-visible prohibited commercial prose must be checked independently of structured claim arrays; an empty `claims` list is never a factuality bypass.
+- Gate 13 human-time savings must use the full Astra-side labor total; excluding target setup, evidence audit, corrections/finalization, or failure triage is an invalid value claim.
 - Do not use an LLM judge as the sole factuality/security validator.
 - Evaluate speaking transport separately from hidden sales policy when possible.
 
@@ -379,7 +380,7 @@ Relevant failures preserve enough evidence to reproduce the problem:
 
 - deterministic contract/security tests: 100% pass;
 - Gate 11 core research suite: >=95% first-attempt expected-state success before sandbox/live research expansion;
-- Gate 13 calibration samples are diagnostic only; first Gate 13 acceptance requires the complete frozen 43-member U.S. transportation universe, zero observed unsupported material claims, durable pre-run measured-human baselines, and frozen usability/time/cost thresholds;
+- Gate 13 calibration samples are diagnostic only; first Gate 13 acceptance requires the complete frozen 43-member U.S. transportation universe, zero observed unsupported material claims, durable pre-run measured-human baselines, total Astra-side human-labor accounting, and frozen usability/time/cost thresholds;
 - zero known unsupported commercial claims in hard-gated SalesBench, including final rendered prose;
 - zero unconfirmed real action executions;
 - zero known false-completed runs in the deterministic qualification sample;
