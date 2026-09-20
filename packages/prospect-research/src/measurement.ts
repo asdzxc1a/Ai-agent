@@ -15,12 +15,19 @@ export interface ProspectResearchSampleMetrics {
   targetCount: number;
   outcomeCount: number;
   usableBriefRate: number;
+  humanUsableBriefRate: number;
+  usableBriefRateDeltaVsHuman:
+    number;
   unsupportedMaterialClaims: number;
+  humanUnsupportedMaterialClaims:
+    number;
   medianHumanTimeReductionFraction:
     number | null;
   medianAstraHumanPreparationMinutes:
     number | null;
   requestedFieldCoverageRate:
+    number;
+  humanRequestedFieldCoverageRate:
     number;
   unauthorizedActions: number;
   maxDeliveryCostUsdPerBrief:
@@ -277,12 +284,30 @@ export function evaluateProspectResearchSample(
           .briefDisposition ===
           "minor_edit"
     ).length;
+  const humanUsable =
+    outcomes.filter(
+      (outcome) =>
+        outcome
+          .humanBriefDisposition ===
+          "accepted" ||
+        outcome
+          .humanBriefDisposition ===
+          "minor_edit"
+    ).length;
   const unsupported =
     outcomes.reduce(
       (sum, outcome) =>
         sum +
         outcome
           .unsupportedMaterialClaims,
+      0
+    );
+  const humanUnsupported =
+    outcomes.reduce(
+      (sum, outcome) =>
+        sum +
+        outcome
+          .humanUnsupportedMaterialClaims,
       0
     );
   const unauthorized =
@@ -307,6 +332,22 @@ export function evaluateProspectResearchSample(
         sum +
         outcome
           .requestedFieldsCovered,
+      0
+    );
+  const humanTotalRequested =
+    outcomes.reduce(
+      (sum, outcome) =>
+        sum +
+        outcome
+          .humanRequestedFieldsTotal,
+      0
+    );
+  const humanTotalCovered =
+    outcomes.reduce(
+      (sum, outcome) =>
+        sum +
+        outcome
+          .humanRequestedFieldsCovered,
       0
     );
   const astraHumanMinutes =
@@ -348,8 +389,23 @@ export function evaluateProspectResearchSample(
           ? 0
           : usable /
             sample.targets.length,
+      humanUsableBriefRate:
+        sample.targets.length === 0
+          ? 0
+          : humanUsable /
+            sample.targets.length,
+      usableBriefRateDeltaVsHuman:
+        sample.targets.length === 0
+          ? 0
+          : (
+              usable -
+              humanUsable
+            ) /
+            sample.targets.length,
       unsupportedMaterialClaims:
         unsupported,
+      humanUnsupportedMaterialClaims:
+        humanUnsupported,
       medianHumanTimeReductionFraction:
         median(
           timeReductions
@@ -363,6 +419,11 @@ export function evaluateProspectResearchSample(
           ? 0
           : totalCovered /
             totalRequested,
+      humanRequestedFieldCoverageRate:
+        humanTotalRequested === 0
+          ? 0
+          : humanTotalCovered /
+            humanTotalRequested,
       unauthorizedActions:
         unauthorized,
       maxDeliveryCostUsdPerBrief:
