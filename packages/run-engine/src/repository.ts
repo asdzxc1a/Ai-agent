@@ -15,6 +15,22 @@ export interface RunUpdate {
   terminalReason?: RunTerminalReason;
 }
 
+export interface RunTerminalUpdate {
+  status:
+    | "COMPLETED"
+    | "FAILED"
+    | "CANCELLED";
+  goalStatus:
+    Exclude<
+      GoalStatus,
+      "IN_PROGRESS"
+    >;
+  result?: unknown;
+  error?: RunFailure;
+  terminalReason:
+    RunTerminalReason;
+}
+
 export interface RunStepRecord {
   runId: string;
   sequenceNumber: number;
@@ -46,6 +62,12 @@ export interface RunRepository {
   updateRun(
     runId: string,
     update: RunUpdate
+  ): Promise<RunSnapshot>;
+
+  finalizeRun(
+    runId: string,
+    update: RunTerminalUpdate,
+    eventPayload: unknown
   ): Promise<RunSnapshot>;
 
   appendStep(
