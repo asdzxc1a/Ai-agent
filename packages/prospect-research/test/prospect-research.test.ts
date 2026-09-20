@@ -7,6 +7,9 @@ import {
 import {
   InMemoryArtifactStore
 } from "../../artifact-store/src/index.js";
+import type {
+  RunSnapshot
+} from "../../contracts/src/index.js";
 
 import {
   ApprovedResearchTargetSchema,
@@ -287,16 +290,97 @@ async function diagnosticsArtifact(
   return record.id;
 }
 
+function completedRun(
+  result: unknown,
+  id: string =
+    runId
+): RunSnapshot {
+  return {
+    id,
+    status: "COMPLETED",
+    goalStatus:
+      "COMPLETED",
+    createdAt:
+      "2026-09-19T11:59:00.000Z",
+    updatedAt:
+      timestamp,
+    result,
+    terminalReason: {
+      code:
+        "GOAL_COMPLETED",
+      message:
+        "Completion verifier accepted the run result."
+    }
+  };
+}
+
+function failedRun(
+  id: string,
+  code:
+    RunSnapshot["terminalReason"] extends
+      { code: infer T }
+        ? T
+        : never,
+  message: string
+): RunSnapshot {
+  return {
+    id,
+    status:
+      code === "RUN_CANCELLED"
+        ? "CANCELLED"
+        : "FAILED",
+    goalStatus:
+      code === "RUN_CANCELLED"
+        ? "FAILED"
+        : "FAILED",
+    createdAt:
+      "2026-09-19T11:59:00.000Z",
+    updatedAt:
+      timestamp,
+    ...(code ===
+      "RUN_CANCELLED"
+      ? {}
+      : {
+          error: {
+            code:
+              code ===
+                "GOAL_COMPLETED" ||
+              code ===
+                "RUN_CANCELLED"
+                ? "EXECUTION_FAILED"
+                : code,
+            message
+          }
+        }),
+    terminalReason: {
+      code,
+      message
+    }
+  };
+}
+
 function service(
   repository:
     InMemoryProspectResearchRepository,
   artifacts:
-    InMemoryArtifactStore
+    InMemoryArtifactStore,
+  run?: RunSnapshot
 ): ProspectResearchService {
   return new ProspectResearchService(
     repository,
     artifacts,
-    () => new Date(timestamp)
+    {
+      async getRun(id) {
+        return (
+          run !== undefined &&
+          run.id === id
+        )
+          ? structuredClone(
+              run
+            )
+          : undefined;
+      }
+    }
   );
 }
 
