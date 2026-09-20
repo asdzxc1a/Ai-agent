@@ -299,11 +299,7 @@ export const ProspectResearchEvidenceResultSchema =
         .trim()
         .min(1)
         .max(1000)
-        .nullable(),
-    artifactIds:
-      z.array(
-        IdentifierSchema
-      ).min(1).max(32)
+        .nullable()
   }).strict()
     .superRefine(
       (evidence, context) => {
