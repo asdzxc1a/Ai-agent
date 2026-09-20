@@ -505,8 +505,20 @@ export class RunEngine implements RunService {
       };
     }
 
+    if (
+      cancelled.status ===
+        "COMPLETED" ||
+      cancelled.status ===
+        "FAILED"
+    ) {
+      return {
+        kind: "TERMINAL",
+        run: cancelled
+      };
+    }
+
     return {
-      kind: "TERMINAL",
+      kind: "NOT_ACTIVE",
       run: cancelled
     };
   }

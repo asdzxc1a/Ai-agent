@@ -1439,3 +1439,76 @@ test(
     ).toBe(1);
   }
 );
+
+class StartEventFailingRepository
+  extends InMemoryRunRepository {
+  public override async appendEvent(
+    runId: string,
+    eventType: string,
+    payload: unknown
+  ) {
+    if (
+      eventType ===
+      "RUN_STARTED"
+    ) {
+      throw new Error(
+        "start event persistence failed"
+      );
+    }
+
+    return super.appendEvent(
+      runId,
+      eventType,
+      payload
+    );
+  }
+}
+
+test(
+  "cancelRun reports NOT_ACTIVE if execution exits before durable terminalization",
+  async () => {
+    const repository =
+      new StartEventFailingRepository();
+    const engine = new RunEngine({
+      repository,
+      browserRuntime:
+        new ControlBrowserRuntime(),
+      agentRuntime:
+        new ControlAgentRuntime(),
+      completionVerifier: {
+        async verify() {
+          return {
+            verified: true
+          };
+        }
+      }
+    });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Expose startup persistence failure truthfully."
+        }
+      });
+
+    const cancelled =
+      await engine.cancelRun(
+        started.id
+      );
+
+    expect(
+      cancelled?.kind
+    ).toBe("NOT_ACTIVE");
+    expect(
+      cancelled?.run.status
+    ).toBe("RUNNING");
+    expect(
+      cancelled?.run.goalState
+    ).toBe(
+      "IN_PROGRESS"
+    );
+  }
+);
