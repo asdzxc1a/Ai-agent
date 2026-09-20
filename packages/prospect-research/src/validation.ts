@@ -75,6 +75,10 @@ export function sameApprovedResearchTarget(
       right.approval.approvedBy &&
     left.approval.approvedAt ===
       right.approval.approvedAt &&
+    left.approval
+      .enrichmentProposalId ===
+      right.approval
+        .enrichmentProposalId &&
     leftDomains.length ===
       rightDomains.length &&
     leftDomains.every(
