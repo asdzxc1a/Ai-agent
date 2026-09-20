@@ -32,6 +32,7 @@ export {
   PROSPECT_RESEARCH_SAMPLE_PURPOSES,
   PROSPECT_RESEARCH_SELECTION_STRATEGIES,
   RESEARCH_UNCERTAINTY,
+  ResearchApprovalBatchSchema,
   ResearchApprovalSchema,
   ResearchDomainSchema
 } from "./schema.js";
@@ -59,7 +60,8 @@ export type {
   ProspectResearchSampleCriteria,
   ProspectResearchSelectionUniverse,
   ProspectResearchSampleOutcome,
-  ProspectResearchUnknown
+  ProspectResearchUnknown,
+  ResearchApprovalBatch
 } from "./schema.js";
 
 
