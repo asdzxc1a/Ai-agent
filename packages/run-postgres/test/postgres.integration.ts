@@ -379,6 +379,92 @@ test(
 );
 
 test(
+  "PostgresRunRepository cannot overwrite a terminal run with a stale non-terminal update",
+  async () => {
+    const runId =
+      randomUUID();
+
+    await repository.createRun(
+      pendingRun(runId),
+      request
+    );
+    await repository.updateRun(
+      runId,
+      {
+        status: "RUNNING"
+      }
+    );
+    await repository.finalizeRun(
+      runId,
+      {
+        status: "FAILED",
+        goalStatus: "FAILED",
+        error: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "terminal fixture"
+        },
+        terminalReason: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "terminal fixture"
+        }
+      },
+      {
+        goalStatus: "FAILED",
+        error: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "terminal fixture"
+        },
+        terminalReason: {
+          code:
+            "EXECUTION_FAILED",
+          message:
+            "terminal fixture"
+        }
+      }
+    );
+
+    await expect(
+      repository.updateRun(
+        runId,
+        {
+          status: "RUNNING",
+          goalStatus:
+            "IN_PROGRESS"
+        }
+      )
+    ).rejects.toThrow(
+      `Run ${runId} is already terminal.`
+    );
+
+    await expect(
+      repository.getRun(
+        runId
+      )
+    ).resolves.toMatchObject({
+      status: "FAILED",
+      goalStatus: "FAILED"
+    });
+    expect(
+      (
+        await repository
+          .listEvents(runId)
+      ).map(
+        (event) =>
+          event.eventType
+      )
+    ).toEqual([
+      "RUN_FAILED"
+    ]);
+  }
+);
+
+test(
   "PostgresRunRepository rolls back terminal state, event, and sequence together",
   async () => {
     const runId =
