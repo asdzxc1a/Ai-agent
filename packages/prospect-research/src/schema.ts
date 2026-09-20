@@ -99,7 +99,11 @@ export const ResearchApprovalSchema =
     approvedAt:
       z.string().datetime({
         offset: true
-      })
+      }),
+    enrichmentProposalId:
+      IdentifierSchema
+        .nullable()
+        .optional()
   }).strict();
 
 export const ApprovedResearchTargetSchema =
@@ -213,6 +217,290 @@ export const ApprovedResearchTargetSchema =
         }
       }
     );
+
+export const PROSPECT_RESEARCH_ENRICHMENT_EVIDENCE_KINDS =
+  [
+    "OFFICIAL_COMPANY",
+    "OFFICIAL_INVESTOR_RELATIONS",
+    "OFFICIAL_REGULATORY",
+    "OTHER_PUBLIC"
+  ] as const;
+
+export const PROSPECT_RESEARCH_ENRICHMENT_EVIDENCE_CLAIMS =
+  [
+    "COMPANY_IDENTITY",
+    "CANONICAL_DOMAIN",
+    "START_PAGE"
+  ] as const;
+
+export const ProspectResearchTargetEnrichmentEvidenceSchema =
+  z.object({
+    kind:
+      z.enum(
+        PROSPECT_RESEARCH_ENRICHMENT_EVIDENCE_KINDS
+      ),
+    sourceUrl:
+      z.string().url(),
+    supports:
+      z.array(
+        z.enum(
+          PROSPECT_RESEARCH_ENRICHMENT_EVIDENCE_CLAIMS
+        )
+      ).min(1).max(3),
+    note:
+      TextSchema.max(1000)
+  }).strict()
+    .superRefine(
+      (evidence, context) => {
+        const unique =
+          new Set(
+            evidence.supports
+          );
+
+        if (
+          unique.size !==
+          evidence.supports.length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["supports"],
+            message:
+              "enrichment evidence supports must not contain duplicates"
+          });
+        }
+
+        let url:
+          URL | undefined;
+
+        try {
+          url =
+            new URL(
+              evidence.sourceUrl
+            );
+        } catch {
+          url = undefined;
+        }
+
+        if (
+          url === undefined ||
+          (
+            url.protocol !==
+              "http:" &&
+            url.protocol !==
+              "https:"
+          ) ||
+          url.username.length >
+            0 ||
+          url.password.length >
+            0 ||
+          (
+            url.port.length > 0 &&
+            url.port !== "80" &&
+            url.port !== "443"
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["sourceUrl"],
+            message:
+              "enrichment evidence must use a public HTTP(S) URL without credentials or nonstandard ports"
+          });
+        }
+      }
+    );
+
+export const ProspectResearchTargetEnrichmentProposalInputSchema =
+  z.object({
+    id: IdentifierSchema,
+    targetId:
+      IdentifierSchema,
+    companyNameHint:
+      TextSchema.max(240),
+    proposedDomain:
+      ResearchDomainSchema,
+    proposedStartUrl:
+      z.string().url(),
+    proposedDomains:
+      z.array(
+        ResearchDomainSchema
+      ).min(1).max(16),
+    icpContext:
+      z.string()
+        .trim()
+        .min(1)
+        .max(4000)
+        .nullable(),
+    evidence:
+      z.array(
+        ProspectResearchTargetEnrichmentEvidenceSchema
+      ).min(1).max(32),
+    proposedBy:
+      TextSchema.max(240)
+  }).strict()
+    .superRefine(
+      (proposal, context) => {
+        if (
+          !proposal.proposedDomains
+            .includes(
+              proposal.proposedDomain
+            )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "proposedDomains"
+            ],
+            message:
+              "proposedDomains must include the proposed canonical domain"
+          });
+        }
+
+        if (
+          new Set(
+            proposal.proposedDomains
+          ).size !==
+            proposal
+              .proposedDomains
+              .length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "proposedDomains"
+            ],
+            message:
+              "proposedDomains must not contain duplicates"
+          });
+        }
+
+        let startUrl:
+          URL | undefined;
+
+        try {
+          startUrl =
+            new URL(
+              proposal
+                .proposedStartUrl
+            );
+        } catch {
+          startUrl = undefined;
+        }
+
+        if (
+          startUrl === undefined ||
+          (
+            startUrl.protocol !==
+              "http:" &&
+            startUrl.protocol !==
+              "https:"
+          ) ||
+          startUrl.username.length >
+            0 ||
+          startUrl.password.length >
+            0 ||
+          (
+            startUrl.port.length > 0 &&
+            startUrl.port !==
+              "80" &&
+            startUrl.port !==
+              "443"
+          ) ||
+          !proposal.proposedDomains
+            .some(
+              (domain) =>
+                hostnameWithinDomain(
+                  startUrl!.hostname,
+                  domain
+                )
+            )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "proposedStartUrl"
+            ],
+            message:
+              "proposedStartUrl must be an HTTP(S) URL within proposedDomains"
+          });
+        }
+
+        const supportedClaims =
+          new Set(
+            proposal.evidence
+              .flatMap(
+                (item) =>
+                  item.supports
+              )
+          );
+
+        for (
+          const requiredClaim of
+          PROSPECT_RESEARCH_ENRICHMENT_EVIDENCE_CLAIMS
+        ) {
+          if (
+            !supportedClaims.has(
+              requiredClaim
+            )
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: ["evidence"],
+              message:
+                "enrichment proposal evidence must support " +
+                requiredClaim
+            });
+          }
+        }
+
+        for (
+          const [
+            index,
+            evidence
+          ] of proposal.evidence
+            .entries()
+        ) {
+          if (
+            (
+              evidence.kind ===
+                "OFFICIAL_COMPANY" ||
+              evidence.kind ===
+                "OFFICIAL_INVESTOR_RELATIONS"
+            ) &&
+            !proposal.proposedDomains
+              .some(
+                (domain) =>
+                  hostnameWithinDomain(
+                    new URL(
+                      evidence.sourceUrl
+                    ).hostname,
+                    domain
+                  )
+              )
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: [
+                "evidence",
+                index,
+                "sourceUrl"
+              ],
+              message:
+                "official company/IR evidence must be within proposedDomains"
+            });
+          }
+        }
+      }
+    );
+
+export const ProspectResearchTargetEnrichmentProposalSchema =
+  ProspectResearchTargetEnrichmentProposalInputSchema
+    .extend({
+      proposedAt:
+        z.string().datetime({
+          offset: true
+        })
+    })
+    .strict();
 
 export const RESEARCH_UNCERTAINTY =
   [
@@ -1372,6 +1660,18 @@ export const ProspectResearchSampleOutcomeSchema =
       }
     );
 
+export type ProspectResearchTargetEnrichmentEvidence =
+  z.infer<
+    typeof ProspectResearchTargetEnrichmentEvidenceSchema
+  >;
+export type ProspectResearchTargetEnrichmentProposalInput =
+  z.infer<
+    typeof ProspectResearchTargetEnrichmentProposalInputSchema
+  >;
+export type ProspectResearchTargetEnrichmentProposal =
+  z.infer<
+    typeof ProspectResearchTargetEnrichmentProposalSchema
+  >;
 export type ProspectResearchAstraHumanTime =
   z.infer<
     typeof ProspectResearchAstraHumanTimeSchema
