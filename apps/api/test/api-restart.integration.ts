@@ -322,28 +322,6 @@ test("fresh RunEngine reconciles an interrupted durable run before serving recov
           )
       });
 
-    const reconciled =
-      await engineB
-        .reconcileInterruptedRuns();
-
-    expect(
-      reconciled
-    ).toHaveLength(1);
-    expect(
-      reconciled[0]
-    ).toMatchObject({
-      id: runId,
-      status: "FAILED",
-      goalStatus:
-        "FAILED",
-      error: {
-        code:
-          "EXECUTION_FAILED",
-        message:
-          "Run execution was interrupted before reaching a terminal state."
-      }
-    });
-
     const serverB =
       createApiServer(
         engineB
@@ -368,6 +346,14 @@ test("fresh RunEngine reconciles an interrupted durable run before serving recov
       expect(
         persisted.status
       ).toBe("FAILED");
+      expect(
+        persisted.error
+      ).toEqual({
+        code:
+          "EXECUTION_FAILED",
+        message:
+          "Run execution was interrupted before reaching a terminal state."
+      });
       expect(
         persisted
           .terminalReason
