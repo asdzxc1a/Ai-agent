@@ -635,6 +635,7 @@ export class RunEngine implements RunService {
     browser: BrowserSession | undefined,
     agent: AgentSession | undefined,
     name: string,
+    semanticSettled: boolean,
     artifactErrors: string[]
   ): Promise<void> {
     if (
@@ -685,6 +686,7 @@ export class RunEngine implements RunService {
           : {
               captureVersion:
                 "page-evidence-v1",
+              semanticSettled,
               pageUrl:
                 pageEvidence.url,
               pageTitle:
@@ -1081,6 +1083,7 @@ export class RunEngine implements RunService {
         browser,
         agent,
         "after-navigation.jpg",
+        false,
         artifactErrors
       );
 
@@ -1135,6 +1138,7 @@ export class RunEngine implements RunService {
                         "0"
                       ) +
                       "-after-action.jpg",
+                    true,
                     artifactErrors
                   );
                   pendingLoopScreenshotIteration =
@@ -1162,6 +1166,7 @@ export class RunEngine implements RunService {
                 pendingLoopScreenshotIteration
               ).padStart(2, "0") +
               "-after-action.jpg",
+            false,
             artifactErrors
           );
           pendingLoopScreenshotIteration =
@@ -1300,6 +1305,7 @@ export class RunEngine implements RunService {
             browser,
             agent,
             "after-action.jpg",
+            false,
             artifactErrors
           );
 
@@ -1494,6 +1500,7 @@ export class RunEngine implements RunService {
           browser,
           agent,
           "failure.jpg",
+          false,
           artifactErrors
         );
       }
