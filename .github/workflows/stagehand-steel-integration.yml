@@ -7,6 +7,7 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "packages/agent-stagehand/**"
+      - "packages/evals/**"
       - "packages/artifact-store/**"
       - "packages/browser-runtime/**"
       - "packages/browser-steel/**"
@@ -18,6 +19,7 @@ on:
       - "infra/steel-image.txt"
       - "infra/postgres-image.txt"
       - "vitest.stagehand.config.ts"
+      - "vitest.evals.config.ts"
       - "vitest.postgres.config.ts"
       - "vitest.api-restart.config.ts"
       - "vitest.api-sse.config.ts"
@@ -31,6 +33,7 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "packages/agent-stagehand/**"
+      - "packages/evals/**"
       - "packages/browser-steel/**"
       - "packages/run-engine/**"
       - "apps/api/**"
@@ -38,6 +41,7 @@ on:
       - "infra/steel-image.txt"
       - "infra/postgres-image.txt"
       - "vitest.stagehand.config.ts"
+      - "vitest.evals.config.ts"
       - "vitest.postgres.config.ts"
       - "vitest.api-restart.config.ts"
       - ".github/workflows/stagehand-steel-integration.yml"
@@ -91,6 +95,24 @@ jobs:
 
           cat /tmp/astra-fixture.log || true
           echo "Fixture failed to become healthy." >&2
+          exit 1
+
+      - name: Start Gate 8 eval fixture
+        shell: bash
+        run: |
+          EVAL_FIXTURE_PORT=4174 node test-sites/eval-fixtures/server.mjs > /tmp/astra-eval-fixture.log 2>&1 &
+          echo $! > /tmp/astra-eval-fixture.pid
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4174/health >/dev/null; then
+              echo "Gate 8 eval fixture is healthy."
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat /tmp/astra-eval-fixture.log || true
+          echo "Gate 8 eval fixture failed to become healthy." >&2
           exit 1
 
       - name: Start pinned Steel
@@ -156,6 +178,21 @@ jobs:
           STEEL_FIXTURE_URL: http://host.docker.internal:4173
         run: pnpm test:stagehand
 
+      - name: Run Gate 8 contract baseline
+        env:
+          STEEL_BASE_URL: http://127.0.0.1:3000
+          EVAL_FIXTURE_URL: http://host.docker.internal:4174
+          EVAL_REPORT_PATH: artifacts/gate8/baseline-0.json
+        run: pnpm test:evals
+
+      - name: Upload Gate 8 baseline report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate8-baseline-0
+          path: artifacts/gate8/baseline-0.json
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Run HTTP API browser acceptance test
         env:
           STEEL_BASE_URL: http://127.0.0.1:3000
@@ -187,6 +224,8 @@ jobs:
           docker logs astra-steel-stagehand || true
           echo "=== Fixture logs ==="
           cat /tmp/astra-fixture.log || true
+          echo "=== Gate 8 eval fixture logs ==="
+          cat /tmp/astra-eval-fixture.log || true
           echo "=== PostgreSQL logs ==="
           docker logs astra-postgres || true
 
@@ -199,4 +238,8 @@ jobs:
 
           if [[ -f /tmp/astra-fixture.pid ]]; then
             kill "$(cat /tmp/astra-fixture.pid)" >/dev/null 2>&1 || true
+          fi
+
+          if [[ -f /tmp/astra-eval-fixture.pid ]]; then
+            kill "$(cat /tmp/astra-eval-fixture.pid)" >/dev/null 2>&1 || true
           fi

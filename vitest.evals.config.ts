@@ -1,0 +1,56 @@
+import { fileURLToPath } from "node:url";
+
+import {
+  defineConfig
+} from "vitest/config";
+
+function workspaceSource(
+  path: string
+): string {
+  return fileURLToPath(
+    new URL(path, import.meta.url)
+  );
+}
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@astra/evals":
+        workspaceSource(
+          "./packages/evals/src/index.ts"
+        ),
+      "@astra/agent-runtime":
+        workspaceSource(
+          "./packages/agent-runtime/src/index.ts"
+        ),
+      "@astra/artifact-store":
+        workspaceSource(
+          "./packages/artifact-store/src/index.ts"
+        ),
+      "@astra/browser-runtime":
+        workspaceSource(
+          "./packages/browser-runtime/src/index.ts"
+        ),
+      "@astra/browser-steel":
+        workspaceSource(
+          "./packages/browser-steel/src/index.ts"
+        ),
+      "@astra/contracts":
+        workspaceSource(
+          "./packages/contracts/src/index.ts"
+        ),
+      "@astra/run-engine":
+        workspaceSource(
+          "./packages/run-engine/src/index.ts"
+        )
+    }
+  },
+  test: {
+    include: [
+      "packages/evals/test/**/*.integration.ts"
+    ],
+    maxWorkers: 1,
+    testTimeout: 300_000,
+    hookTimeout: 30_000
+  }
+});

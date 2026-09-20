@@ -29,6 +29,9 @@
       ],
       "@astra/artifact-store": [
         "./packages/artifact-store/src/index.ts"
+      ],
+      "@astra/evals": [
+        "./packages/evals/src/index.ts"
       ]
     }
   },

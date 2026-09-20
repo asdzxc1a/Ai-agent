@@ -88,6 +88,27 @@ importers:
 
   packages/contracts: {}
 
+  packages/evals:
+    devDependencies:
+      '@astra/agent-runtime':
+        specifier: workspace:*
+        version: link:../agent-runtime
+      '@astra/artifact-store':
+        specifier: workspace:*
+        version: link:../artifact-store
+      '@astra/browser-runtime':
+        specifier: workspace:*
+        version: link:../browser-runtime
+      '@astra/browser-steel':
+        specifier: workspace:*
+        version: link:../browser-steel
+      '@astra/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@astra/run-engine':
+        specifier: workspace:*
+        version: link:../run-engine
+
   packages/run-engine:
     dependencies:
       '@astra/agent-runtime':

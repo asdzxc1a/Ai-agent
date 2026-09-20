@@ -1,0 +1,26 @@
+{
+  "name": "@astra/evals",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@astra/agent-runtime": "workspace:*",
+    "@astra/artifact-store": "workspace:*",
+    "@astra/browser-runtime": "workspace:*",
+    "@astra/browser-steel": "workspace:*",
+    "@astra/contracts": "workspace:*",
+    "@astra/run-engine": "workspace:*"
+  }
+}
