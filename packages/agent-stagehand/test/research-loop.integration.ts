@@ -96,9 +96,13 @@ class ResearchLoopPolicy
 
 async function waitForTerminal(
   engine: RunEngine,
-  runId: string
+  runId: string,
+  timeoutMs = 40_000
 ) {
-  for (;;) {
+  const deadline =
+    Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
     const run =
       await engine.getRun(runId);
 
@@ -116,6 +120,20 @@ async function waitForTerminal(
       }
     );
   }
+
+  const last =
+    await engine.getRun(runId);
+
+  throw new Error(
+    "Multi-step research run did not reach a terminal state within " +
+      String(timeoutMs) +
+      "ms; last status=" +
+      String(
+        last?.status ??
+          "missing"
+      ) +
+      "."
+  );
 }
 
 test(
@@ -141,6 +159,8 @@ test(
               new ResearchFixtureLLMClient()
           ),
         artifactStore,
+        executionTimeoutMs:
+          30_000,
         completionVerifier: {
           async verify(input) {
             const parsed =
