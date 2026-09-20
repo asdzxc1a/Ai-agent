@@ -73,3 +73,13 @@ export {
 export type {
   BuildCompletedProspectResearchAttemptInput
 } from "./validation.js";
+
+export {
+  ProspectResearchWorkflow
+} from "./workflow.js";
+
+export type {
+  ProspectResearchSandboxRuntimeFactory,
+  ProspectResearchWorkflowOptions,
+  StartApprovedProspectResearchInput
+} from "./workflow.js";
