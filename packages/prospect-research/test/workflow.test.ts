@@ -76,7 +76,7 @@ function sample() {
       id: sampleId,
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v1",
+        "gate13-measured-research-v2",
       purpose:
         "CALIBRATION",
       cohortDefinition:
