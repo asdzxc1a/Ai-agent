@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 
@@ -225,3 +226,185 @@ test("completed HTTP run survives a fresh Postgres pool and API instance", async
     await poolB.end();
   }
 });
+
+test("fresh RunEngine reconciles an interrupted durable run before serving recovery reads", async () => {
+  const poolA =
+    createPostgresPool({
+      connectionString,
+      max: 2
+    });
+
+  await runPostgresMigrations(
+    poolA
+  );
+  await poolA.query(
+    "TRUNCATE run_events, run_steps, runs RESTART IDENTITY CASCADE"
+  );
+
+  const repositoryA =
+    new PostgresRunRepository(
+      poolA
+    );
+  const runId =
+    randomUUID();
+  const now =
+    new Date().toISOString();
+
+  await repositoryA.createRun(
+    {
+      id: runId,
+      status: "PENDING",
+      goalStatus:
+        "IN_PROGRESS",
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      url:
+        "http://fixture.test/interrupted",
+      goal:
+        "Recover this interrupted run."
+    }
+  );
+  await repositoryA.appendEvent(
+    runId,
+    "RUN_CREATED",
+    {
+      status: "PENDING"
+    }
+  );
+  await repositoryA.updateRun(
+    runId,
+    {
+      status: "RUNNING"
+    }
+  );
+  await repositoryA.appendEvent(
+    runId,
+    "RUN_STARTED",
+    {
+      status: "RUNNING"
+    }
+  );
+
+  await poolA.end();
+
+  const poolB =
+    createPostgresPool({
+      connectionString,
+      max: 2
+    });
+
+  try {
+    await runPostgresMigrations(
+      poolB
+    );
+
+    const repositoryB =
+      new PostgresRunRepository(
+        poolB
+      );
+    const engineB =
+      new RunEngine({
+        repository:
+          repositoryB,
+        browserRuntime:
+          new SteelBrowserRuntime({
+            baseUrl:
+              steelBaseUrl,
+            skipFingerprintInjection:
+              true
+          }),
+        agentRuntime:
+          createStagehandAgentRuntimeForTesting(
+            () =>
+              new FixtureLLMClient()
+          )
+      });
+
+    const reconciled =
+      await engineB
+        .reconcileInterruptedRuns();
+
+    expect(
+      reconciled
+    ).toHaveLength(1);
+    expect(
+      reconciled[0]
+    ).toMatchObject({
+      id: runId,
+      status: "FAILED",
+      goalStatus:
+        "FAILED",
+      error: {
+        code:
+          "EXECUTION_FAILED",
+        message:
+          "Run execution was interrupted before reaching a terminal state."
+      }
+    });
+
+    const serverB =
+      createApiServer(
+        engineB
+      );
+    const baseUrlB =
+      await listen(serverB);
+
+    try {
+      const response =
+        await fetch(
+          `${baseUrlB}/v1/runs/${runId}`
+        );
+
+      expect(
+        response.status
+      ).toBe(200);
+
+      const persisted =
+        await response.json() as
+          RunSnapshot;
+
+      expect(
+        persisted.status
+      ).toBe("FAILED");
+      expect(
+        persisted
+          .terminalReason
+          ?.code
+      ).toBe(
+        "EXECUTION_FAILED"
+      );
+
+      const events =
+        await repositoryB
+          .listEvents(runId);
+
+      expect(
+        events.map(
+          (event) =>
+            event.eventType
+        )
+      ).toEqual([
+        "RUN_CREATED",
+        "RUN_STARTED",
+        "RUN_FAILED"
+      ]);
+      expect(
+        events.at(-1)
+          ?.payload
+      ).toMatchObject({
+        reconciled: true,
+        previousStatus:
+          "RUNNING"
+      });
+    } finally {
+      await closeServer(
+        serverB
+      );
+    }
+  } finally {
+    await poolB.end();
+  }
+});
+
