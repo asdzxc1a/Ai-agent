@@ -1,0 +1,360 @@
+import {
+  ProspectResearchSampleOutcomeSchema,
+  ProspectResearchSampleSchema,
+  type ProspectResearchAttempt,
+  type ProspectResearchSample,
+  type ProspectResearchSampleOutcome
+} from "./schema.js";
+import {
+  sameApprovedResearchTarget
+} from "./validation.js";
+
+export interface ProspectResearchSampleMetrics {
+  targetCount: number;
+  outcomeCount: number;
+  usableBriefRate: number;
+  unsupportedMaterialClaims: number;
+  medianHumanTimeReductionFraction:
+    number | null;
+  requestedFieldCoverageRate:
+    number;
+  unauthorizedActions: number;
+  maxDeliveryCostUsdPerBrief:
+    number | null;
+}
+
+export interface ProspectResearchSampleEvaluation {
+  complete: boolean;
+  passed: boolean | null;
+  metrics:
+    ProspectResearchSampleMetrics;
+  failures: string[];
+}
+
+function median(
+  values: readonly number[]
+): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sorted =
+    [...values].sort(
+      (left, right) =>
+        left - right
+    );
+  const middle =
+    Math.floor(
+      sorted.length / 2
+    );
+
+  if (
+    sorted.length % 2 === 1
+  ) {
+    return sorted[middle]!;
+  }
+
+  return (
+    (
+      sorted[middle - 1]! +
+      sorted[middle]!
+    ) / 2
+  );
+}
+
+export function validateProspectResearchSampleOutcomeContext(
+  sampleInput:
+    ProspectResearchSample,
+  attempt:
+    ProspectResearchAttempt,
+  outcomeInput:
+    ProspectResearchSampleOutcome
+): ProspectResearchSampleOutcome {
+  const sample =
+    ProspectResearchSampleSchema
+      .parse(sampleInput);
+  const outcome =
+    ProspectResearchSampleOutcomeSchema
+      .parse(outcomeInput);
+  const frozenTarget =
+    sample.targets.find(
+      (target) =>
+        target.id ===
+        outcome.targetId
+    );
+
+  if (
+    outcome.sampleId !==
+    sample.id
+  ) {
+    throw new Error(
+      "Measured research outcome references the wrong frozen sample."
+    );
+  }
+
+  if (
+    frozenTarget === undefined
+  ) {
+    throw new Error(
+      "Measured research outcome target is outside the frozen sample."
+    );
+  }
+
+  if (
+    attempt.id !==
+    outcome.attemptId ||
+    attempt.status !==
+    outcome.attemptStatus
+  ) {
+    throw new Error(
+      "Measured research outcome does not match the durable research attempt."
+    );
+  }
+
+  if (
+    attempt.target.id !==
+      outcome.targetId ||
+    !sameApprovedResearchTarget(
+      frozenTarget,
+      attempt.target
+    )
+  ) {
+    throw new Error(
+      "Measured research outcome attempt target differs from the frozen sample."
+    );
+  }
+
+  return outcome;
+}
+
+export function evaluateProspectResearchSample(
+  sampleInput:
+    ProspectResearchSample,
+  outcomeInputs:
+    readonly ProspectResearchSampleOutcome[]
+): ProspectResearchSampleEvaluation {
+  const sample =
+    ProspectResearchSampleSchema
+      .parse(sampleInput);
+  const outcomes =
+    outcomeInputs.map(
+      (outcome) =>
+        ProspectResearchSampleOutcomeSchema
+          .parse(outcome)
+    );
+  const targetIds =
+    new Set(
+      sample.targets.map(
+        (target) => target.id
+      )
+    );
+  const outcomeTargetIds =
+    outcomes.map(
+      (outcome) =>
+        outcome.targetId
+    );
+  const failures: string[] = [];
+
+  if (
+    new Set(
+      outcomeTargetIds
+    ).size !==
+      outcomeTargetIds.length
+  ) {
+    failures.push(
+      "sample contains multiple outcomes for one frozen target"
+    );
+  }
+
+  const outside =
+    outcomes.find(
+      (outcome) =>
+        outcome.sampleId !==
+          sample.id ||
+        !targetIds.has(
+          outcome.targetId
+        )
+    );
+
+  if (outside !== undefined) {
+    failures.push(
+      "sample outcome references a different sample or target outside the frozen cohort"
+    );
+  }
+
+  const complete =
+    failures.length === 0 &&
+    outcomes.length ===
+      sample.targets.length &&
+    sample.targets.every(
+      (target) =>
+        outcomes.some(
+          (outcome) =>
+            outcome.targetId ===
+            target.id
+        )
+    );
+  const usable =
+    outcomes.filter(
+      (outcome) =>
+        outcome
+          .briefDisposition ===
+          "accepted" ||
+        outcome
+          .briefDisposition ===
+          "minor_edit"
+    ).length;
+  const unsupported =
+    outcomes.reduce(
+      (sum, outcome) =>
+        sum +
+        outcome
+          .unsupportedMaterialClaims,
+      0
+    );
+  const unauthorized =
+    outcomes.reduce(
+      (sum, outcome) =>
+        sum +
+        outcome
+          .unauthorizedActions,
+      0
+    );
+  const totalRequested =
+    outcomes.reduce(
+      (sum, outcome) =>
+        sum +
+        outcome
+          .requestedFieldsTotal,
+      0
+    );
+  const totalCovered =
+    outcomes.reduce(
+      (sum, outcome) =>
+        sum +
+        outcome
+          .requestedFieldsCovered,
+      0
+    );
+  const timeReductions =
+    outcomes.map(
+      (outcome) =>
+        (
+          outcome
+            .baselineHumanPreparationMinutes -
+          outcome
+            .astraHumanReviewMinutes
+        ) /
+        outcome
+          .baselineHumanPreparationMinutes
+    );
+  const maxCost =
+    outcomes.length === 0
+      ? null
+      : Math.max(
+          ...outcomes.map(
+            (outcome) =>
+              outcome
+                .deliveryCostUsd
+          )
+        );
+  const metrics:
+    ProspectResearchSampleMetrics = {
+      targetCount:
+        sample.targets.length,
+      outcomeCount:
+        outcomes.length,
+      usableBriefRate:
+        sample.targets.length === 0
+          ? 0
+          : usable /
+            sample.targets.length,
+      unsupportedMaterialClaims:
+        unsupported,
+      medianHumanTimeReductionFraction:
+        median(
+          timeReductions
+        ),
+      requestedFieldCoverageRate:
+        totalRequested === 0
+          ? 0
+          : totalCovered /
+            totalRequested,
+      unauthorizedActions:
+        unauthorized,
+      maxDeliveryCostUsdPerBrief:
+        maxCost
+    };
+
+  if (!complete) {
+    return {
+      complete: false,
+      passed: null,
+      metrics,
+      failures
+    };
+  }
+
+  if (
+    unsupported >
+    sample.criteria
+      .maxUnsupportedMaterialClaims
+  ) {
+    failures.push(
+      "unsupported material claim threshold exceeded"
+    );
+  }
+
+  if (
+    metrics.usableBriefRate <
+    sample.criteria
+      .minUsableBriefRate
+  ) {
+    failures.push(
+      "usable brief rate is below the frozen threshold"
+    );
+  }
+
+  if (
+    metrics
+      .medianHumanTimeReductionFraction ===
+      null ||
+    metrics
+      .medianHumanTimeReductionFraction <
+      sample.criteria
+        .minMedianHumanTimeReductionFraction
+  ) {
+    failures.push(
+      "median human time reduction is below the frozen threshold"
+    );
+  }
+
+  if (
+    sample.criteria
+      .requireNoUnauthorizedActions &&
+    unauthorized !== 0
+  ) {
+    failures.push(
+      "unauthorized action count is non-zero"
+    );
+  }
+
+  if (
+    maxCost === null ||
+    maxCost >
+      sample.criteria
+        .maxDeliveryCostUsdPerBrief
+  ) {
+    failures.push(
+      "delivery cost exceeds the frozen per-brief threshold"
+    );
+  }
+
+  return {
+    complete: true,
+    passed:
+      failures.length === 0,
+    metrics,
+    failures
+  };
+}
