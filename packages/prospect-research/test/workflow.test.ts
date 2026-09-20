@@ -76,13 +76,15 @@ function sample() {
       id: sampleId,
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v4",
+        "gate13-measured-research-v5",
       purpose:
         "CALIBRATION",
       cohortDefinition:
         "Single-target workflow calibration fixture; diagnostic only.",
       selectionMethod:
         "Single deterministic fixture target.",
+      selectionUniverse:
+        null,
       marketScope:
         "SINGLE_MARKET",
       marketDescription:
@@ -149,13 +151,45 @@ function acceptanceSample() {
         "sample.acceptance.workflow",
       status: "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v4",
+        "gate13-measured-research-v5",
       purpose:
         "ACCEPTANCE",
       cohortDefinition:
         "Thirty deterministic U.S. industrial/logistics fixture targets.",
       selectionMethod:
-        "Deterministic fixture selection.",
+        "Complete deterministic fixture universe.",
+      selectionUniverse: {
+        id:
+          "universe.acceptance.workflow",
+        sourceName:
+          "Deterministic workflow acceptance universe",
+        sourceUrl:
+          "https://example.test/workflow-acceptance-universe.csv",
+        methodologyUrl:
+          "https://example.test/workflow-acceptance-methodology",
+        sourceAsOfDate:
+          "2026-09-19",
+        sourceDeclaredCount:
+          30,
+        candidateTargetIds:
+          Array.from(
+            {
+              length: 30
+            },
+            (_value, index) =>
+              "target.acceptance." +
+              String(
+                index + 1
+              ).padStart(
+                2,
+                "0"
+              )
+          ),
+        selectionStrategy:
+          "COMPLETE_UNIVERSE",
+        selectionSeed:
+          null
+      },
       marketScope:
         "SINGLE_MARKET",
       marketDescription:
