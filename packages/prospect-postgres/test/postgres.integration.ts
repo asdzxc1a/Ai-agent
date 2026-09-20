@@ -167,7 +167,7 @@ function frozenSample():
     id: "sample.pg",
     status: "FROZEN",
     protocolVersion:
-      "gate13-measured-research-v3",
+      "gate13-measured-research-v4",
     purpose:
       "CALIBRATION",
     cohortDefinition:
@@ -193,9 +193,13 @@ function frozenSample():
         0.5,
       requireNoUnauthorizedActions:
         true,
-      maxDeliveryCostUsdPerBrief:
-        20
+      maxInfrastructureCostUsdPerAttempt:
+        5,
+      maxTotalDeliveryCostUsdPerUsableBrief:
+        25
     },
+    reviewLaborRateUsdPerHour:
+      60,
     costCeilingRationale:
       "Persistence fixture ceiling.",
     humanBaselineDescription:
@@ -247,7 +251,9 @@ function measuredOutcome():
       8,
     endToEndDurationMs:
       5_000,
-    deliveryCostUsd: 5,
+    infrastructureCostUsd: 1,
+    otherDeliveryCostUsd:
+      0.25,
     unauthorizedActions: 0,
     notes: null
   };
