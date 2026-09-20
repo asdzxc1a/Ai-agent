@@ -5,6 +5,8 @@ import type {
 import {
   ApprovedResearchTargetSchema,
   ProspectResearchHumanBaselineInputSchema,
+  ProspectResearchTargetEnrichmentProposalInputSchema,
+  ProspectResearchTargetEnrichmentProposalSchema,
   ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
@@ -13,6 +15,8 @@ import {
   type ProspectResearchHumanBaseline,
   type ProspectResearchHumanBaselineInput,
   type ProspectResearchSample,
+  type ProspectResearchTargetEnrichmentProposal,
+  type ProspectResearchTargetEnrichmentProposalInput,
   type ProspectResearchSampleOutcome
 } from "./schema.js";
 import {
@@ -24,6 +28,26 @@ import {
 } from "./validation.js";
 
 export interface ProspectResearchRepository {
+  saveTargetEnrichmentProposal(
+    proposal:
+      ProspectResearchTargetEnrichmentProposalInput
+  ): Promise<
+    ProspectResearchTargetEnrichmentProposal
+  >;
+
+  getTargetEnrichmentProposal(
+    proposalId: string
+  ): Promise<
+    ProspectResearchTargetEnrichmentProposal |
+    undefined
+  >;
+
+  listTargetEnrichmentProposals(
+    targetId: string
+  ): Promise<
+    ProspectResearchTargetEnrichmentProposal[]
+  >;
+
   saveTarget(
     target:
       ApprovedResearchTarget
@@ -119,6 +143,11 @@ export class InMemoryProspectResearchRepository
       string,
       ApprovedResearchTarget
     >();
+  readonly #targetEnrichmentProposals =
+    new Map<
+      string,
+      ProspectResearchTargetEnrichmentProposal
+    >();
   readonly #attempts =
     new Map<
       string,
@@ -148,6 +177,102 @@ export class InMemoryProspectResearchRepository
         new Date().toISOString()
   ) {
     this.#now = now;
+  }
+
+  public async saveTargetEnrichmentProposal(
+    input:
+      ProspectResearchTargetEnrichmentProposalInput
+  ): Promise<
+    ProspectResearchTargetEnrichmentProposal
+  > {
+    const parsed =
+      ProspectResearchTargetEnrichmentProposalInputSchema
+        .parse(input);
+
+    if (
+      this.#targetEnrichmentProposals
+        .has(
+          parsed.id
+        )
+    ) {
+      throw new Error(
+        "Research target enrichment proposal already exists: " +
+          parsed.id
+      );
+    }
+
+    const proposal =
+      ProspectResearchTargetEnrichmentProposalSchema
+        .parse({
+          ...parsed,
+          proposedAt:
+            this.#now()
+        });
+
+    this.#targetEnrichmentProposals
+      .set(
+        proposal.id,
+        structuredClone(
+          proposal
+        )
+      );
+
+    return structuredClone(
+      proposal
+    );
+  }
+
+  public async getTargetEnrichmentProposal(
+    proposalId: string
+  ): Promise<
+    ProspectResearchTargetEnrichmentProposal |
+    undefined
+  > {
+    const proposal =
+      this.#targetEnrichmentProposals
+        .get(
+          proposalId
+        );
+
+    return proposal ===
+      undefined
+      ? undefined
+      : structuredClone(
+          proposal
+        );
+  }
+
+  public async listTargetEnrichmentProposals(
+    targetId: string
+  ): Promise<
+    ProspectResearchTargetEnrichmentProposal[]
+  > {
+    return [
+      ...this
+        .#targetEnrichmentProposals
+        .values()
+    ]
+      .filter(
+        (proposal) =>
+          proposal.targetId ===
+          targetId
+      )
+      .map(
+        (proposal) =>
+          structuredClone(
+            proposal
+          )
+      )
+      .sort(
+        (left, right) =>
+          left.proposedAt
+            .localeCompare(
+              right.proposedAt
+            ) ||
+          left.id.localeCompare(
+            right.id
+          )
+      );
   }
 
   public async saveTarget(
