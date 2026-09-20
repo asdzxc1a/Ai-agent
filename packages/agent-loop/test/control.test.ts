@@ -517,3 +517,144 @@ test(
     ).toBe("unknown");
   }
 );
+
+test(
+  "an exact token cap blocks before the first model-using phase",
+  async () => {
+    const session =
+      new ControlSession();
+
+    const outcome =
+      await executeAgentLoop(
+        session,
+        {
+          goal:
+            "Do not exceed an exhausted token budget.",
+          policy: repeatPolicy,
+          usageMeter: {
+            getUsage() {
+              return {
+                modelTokens: 10,
+                estimatedCostUsd: 0
+              };
+            }
+          },
+          budget: {
+            maxModelTokens: 10
+          }
+        }
+      );
+
+    expect(outcome.type).toBe(
+      "BLOCKED"
+    );
+    expect(
+      session.observeCalls
+    ).toBe(0);
+
+    if (
+      outcome.type ===
+      "BLOCKED"
+    ) {
+      expect(
+        outcome.reason.code
+      ).toBe(
+        "MODEL_TOKEN_BUDGET_EXCEEDED"
+      );
+    }
+  }
+);
+
+test(
+  "an exact cost cap reached by observe blocks before another model decision",
+  async () => {
+    const session =
+      new ControlSession();
+    session.costPerObserve = 1;
+    let decisionCalls = 0;
+
+    const outcome =
+      await executeAgentLoop(
+        session,
+        {
+          goal:
+            "Stop at the exact cost cap.",
+          policy: {
+            async decide() {
+              decisionCalls += 1;
+              return repeatPolicy.decide();
+            }
+          },
+          usageMeter: {
+            getUsage() {
+              return {
+                modelTokens: 0,
+                estimatedCostUsd:
+                  session.usageCost
+              };
+            }
+          },
+          budget: {
+            maxEstimatedCostUsd: 1
+          }
+        }
+      );
+
+    expect(outcome.type).toBe(
+      "BLOCKED"
+    );
+    expect(
+      session.observeCalls
+    ).toBe(1);
+    expect(decisionCalls).toBe(0);
+    expect(session.actCalls).toBe(0);
+
+    if (
+      outcome.type ===
+      "BLOCKED"
+    ) {
+      expect(
+        outcome.reason.code
+      ).toBe(
+        "MODEL_COST_BUDGET_EXCEEDED"
+      );
+    }
+  }
+);
+
+test(
+  "zero model-cost budget blocks before any model-using phase",
+  async () => {
+    const session =
+      new ControlSession();
+
+    const outcome =
+      await executeAgentLoop(
+        session,
+        {
+          goal:
+            "Spend no model budget.",
+          policy: repeatPolicy,
+          usageMeter: {
+            getUsage() {
+              return {
+                modelTokens: 0,
+                estimatedCostUsd: 0
+              };
+            }
+          },
+          budget: {
+            maxEstimatedCostUsd: 0
+          }
+        }
+      );
+
+    expect(outcome.type).toBe(
+      "BLOCKED"
+    );
+    expect(
+      session.observeCalls
+    ).toBe(0);
+    expect(session.actCalls).toBe(0);
+  }
+);

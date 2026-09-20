@@ -427,8 +427,13 @@ function validateUsage(
   );
 }
 
+type UsageCheckPhase =
+  | "BEFORE_MODEL_USE"
+  | "AFTER_MODEL_USE";
+
 async function usageViolation(
-  options: AgentLoopOptions
+  options: AgentLoopOptions,
+  phase: UsageCheckPhase
 ): Promise<RunTerminalReason | undefined> {
   if (
     options.budget === undefined ||
@@ -444,12 +449,23 @@ async function usageViolation(
   if (
     options.budget.maxModelTokens !==
       undefined &&
-    usage.modelTokens >
-      options.budget.maxModelTokens
+    (
+      phase ===
+        "BEFORE_MODEL_USE"
+        ? usage.modelTokens >=
+          options.budget
+            .maxModelTokens
+        : usage.modelTokens >
+          options.budget
+            .maxModelTokens
+    )
   ) {
     return terminalReason(
       "MODEL_TOKEN_BUDGET_EXCEEDED",
-      "Agent loop exceeded its model-token budget."
+      phase ===
+        "BEFORE_MODEL_USE"
+        ? "Agent loop has exhausted its model-token budget."
+        : "Agent loop exceeded its model-token budget."
     );
   }
 
@@ -457,13 +473,23 @@ async function usageViolation(
     options.budget
       .maxEstimatedCostUsd !==
       undefined &&
-    usage.estimatedCostUsd >
-      options.budget
-        .maxEstimatedCostUsd
+    (
+      phase ===
+        "BEFORE_MODEL_USE"
+        ? usage.estimatedCostUsd >=
+          options.budget
+            .maxEstimatedCostUsd
+        : usage.estimatedCostUsd >
+          options.budget
+            .maxEstimatedCostUsd
+    )
   ) {
     return terminalReason(
       "MODEL_COST_BUDGET_EXCEEDED",
-      "Agent loop exceeded its model-cost budget."
+      phase ===
+        "BEFORE_MODEL_USE"
+        ? "Agent loop has exhausted its model-cost budget."
+        : "Agent loop exceeded its model-cost budget."
     );
   }
 
@@ -744,6 +770,24 @@ export async function executeAgentLoop(
       options.signal
     );
 
+    const beforeObserveBudget =
+      await usageViolation(
+        options,
+        "BEFORE_MODEL_USE"
+      );
+
+    if (
+      beforeObserveBudget !==
+      undefined
+    ) {
+      return block(
+        beforeObserveBudget.code,
+        beforeObserveBudget.message,
+        iteration,
+        trajectory
+      );
+    }
+
     let startedAt = Date.now();
     const observed =
       await abortable(
@@ -766,7 +810,8 @@ export async function executeAgentLoop(
 
     const afterObserveBudget =
       await usageViolation(
-        options
+        options,
+        "AFTER_MODEL_USE"
       );
 
     if (
@@ -776,6 +821,24 @@ export async function executeAgentLoop(
       return block(
         afterObserveBudget.code,
         afterObserveBudget.message,
+        iteration,
+        trajectory
+      );
+    }
+
+    const beforeDecisionBudget =
+      await usageViolation(
+        options,
+        "BEFORE_MODEL_USE"
+      );
+
+    if (
+      beforeDecisionBudget !==
+      undefined
+    ) {
+      return block(
+        beforeDecisionBudget.code,
+        beforeDecisionBudget.message,
         iteration,
         trajectory
       );
@@ -832,7 +895,8 @@ export async function executeAgentLoop(
 
     const afterDecisionBudget =
       await usageViolation(
-        options
+        options,
+        "AFTER_MODEL_USE"
       );
 
     if (
@@ -1133,7 +1197,8 @@ export async function executeAgentLoop(
 
     const afterActionBudget =
       await usageViolation(
-        options
+        options,
+        "AFTER_MODEL_USE"
       );
 
     if (
