@@ -254,6 +254,9 @@ export class SteelBrowserRuntime
   public async createSession(
     options: BrowserSessionOptions = {}
   ): Promise<BrowserSession> {
+    // Reject before the request starts. Once Steel session creation is
+    // in flight, keep the request alive so RunEngine receives the session
+    // id and can deterministically release it after observing cancellation.
     throwIfAborted(
       options.signal
     );
