@@ -317,10 +317,10 @@ function completedRun(
 function failedRun(
   id: string,
   code:
-    RunSnapshot["terminalReason"] extends
-      { code: infer T }
-        ? T
-        : never,
+    | "EXECUTION_FAILED"
+    | "RUN_TIMEOUT"
+    | "CLEANUP_FAILED"
+    | "RUN_CANCELLED",
   message: string
 ): RunSnapshot {
   return {
@@ -329,10 +329,7 @@ function failedRun(
       code === "RUN_CANCELLED"
         ? "CANCELLED"
         : "FAILED",
-    goalStatus:
-      code === "RUN_CANCELLED"
-        ? "FAILED"
-        : "FAILED",
+    goalStatus: "FAILED",
     createdAt:
       "2026-09-19T11:59:00.000Z",
     updatedAt:
@@ -342,13 +339,7 @@ function failedRun(
       ? {}
       : {
           error: {
-            code:
-              code ===
-                "GOAL_COMPLETED" ||
-              code ===
-                "RUN_CANCELLED"
-                ? "EXECUTION_FAILED"
-                : code,
+            code,
             message
           }
         }),
