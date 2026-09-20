@@ -750,7 +750,7 @@ export const ProspectResearchSampleSchema =
       z.literal("FROZEN"),
     protocolVersion:
       z.literal(
-        "gate13-measured-research-v7"
+        "gate13-measured-research-v8"
       ),
     purpose:
       z.enum(
@@ -1036,6 +1036,8 @@ export const ProspectResearchHumanBaselineInputSchema =
         .positive(),
     toolingDescription:
       TextSchema.max(4000),
+    brief:
+      ProspectResearchResultSchema,
     notes:
       z.string()
         .trim()
@@ -1153,6 +1155,44 @@ export const ProspectResearchSampleOutcomeSchema =
       z.string().datetime({
         offset: true
       }),
+    humanBriefDisposition:
+      z.enum([
+        "accepted",
+        "minor_edit",
+        "major_edit",
+        "rejected"
+      ]),
+    humanMaterialClaimsReviewed:
+      z.number()
+        .int()
+        .nonnegative(),
+    humanUnsupportedMaterialClaims:
+      z.number()
+        .int()
+        .nonnegative(),
+    humanCorrections:
+      z.object({
+        minor:
+          z.number()
+            .int()
+            .nonnegative(),
+        major:
+          z.number()
+            .int()
+            .nonnegative(),
+        critical:
+          z.number()
+            .int()
+            .nonnegative()
+      }).strict(),
+    humanRequestedFieldsTotal:
+      z.number()
+        .int()
+        .positive(),
+    humanRequestedFieldsCovered:
+      z.number()
+        .int()
+        .nonnegative(),
     materialClaimsReviewed:
       z.number()
         .int()
@@ -1223,6 +1263,36 @@ export const ProspectResearchSampleOutcomeSchema =
   }).strict()
     .superRefine(
       (outcome, context) => {
+        const expectedHumanDisposition =
+          outcome
+            .humanUnsupportedMaterialClaims >
+            0 ||
+          outcome.humanCorrections
+            .critical > 0
+            ? "rejected"
+            : outcome.humanCorrections
+                .major > 0
+              ? "major_edit"
+              : outcome.humanCorrections
+                  .minor > 0
+                ? "minor_edit"
+                : "accepted";
+
+        if (
+          outcome
+            .humanBriefDisposition !==
+          expectedHumanDisposition
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "humanBriefDisposition"
+            ],
+            message:
+              "human brief disposition must match the frozen Gate 13 review rubric"
+          });
+        }
+
         const expectedDisposition =
           outcome.attemptStatus ===
             "FAILED"
@@ -1272,6 +1342,38 @@ export const ProspectResearchSampleOutcomeSchema =
             ],
             message:
               "human baseline measurement must predate outcome review"
+          });
+        }
+
+        if (
+          outcome
+            .humanUnsupportedMaterialClaims >
+          outcome
+            .humanMaterialClaimsReviewed
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "humanUnsupportedMaterialClaims"
+            ],
+            message:
+              "human unsupported material claims cannot exceed reviewed human material claims"
+          });
+        }
+
+        if (
+          outcome
+            .humanRequestedFieldsCovered >
+          outcome
+            .humanRequestedFieldsTotal
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "humanRequestedFieldsCovered"
+            ],
+            message:
+              "human covered fields cannot exceed requested human fields"
           });
         }
 
