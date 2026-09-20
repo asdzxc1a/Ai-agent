@@ -11,12 +11,20 @@ import type {
 import {
   ApprovedResearchTargetSchema,
   FailedProspectResearchAttemptSchema,
+  ProspectResearchSampleOutcomeSchema,
+  ProspectResearchSampleSchema,
   type ApprovedResearchTarget,
   type CompletedProspectResearchAttempt,
   type FailedProspectResearchAttempt,
   type LiveResearchFailureCode,
-  type ProspectResearchCaptureReceipt
+  type ProspectResearchCaptureReceipt,
+  type ProspectResearchSample,
+  type ProspectResearchSampleOutcome
 } from "./schema.js";
+import {
+  evaluateProspectResearchSample,
+  type ProspectResearchSampleEvaluation
+} from "./measurement.js";
 import type {
   ProspectResearchRepository
 } from "./repository.js";
@@ -261,6 +269,94 @@ export class ProspectResearchService {
     }
 
     return requested;
+  }
+
+  public async freezeSample(
+    input: unknown
+  ): Promise<
+    ProspectResearchSample
+  > {
+    const sample =
+      ProspectResearchSampleSchema
+        .parse(input);
+
+    try {
+      await this.#repository
+        .saveSample(sample);
+    } catch (error) {
+      throw new ProspectResearchValidationError([
+        error instanceof Error
+          ? error.message
+          : "measured research sample could not be frozen"
+      ]);
+    }
+
+    return sample;
+  }
+
+  public async getSample(
+    sampleId: string
+  ): Promise<
+    ProspectResearchSample
+  > {
+    const sample =
+      await this.#repository
+        .getSample(sampleId);
+
+    if (sample === undefined) {
+      throw new ProspectResearchValidationError([
+        "measured research sample does not exist: " +
+          sampleId
+      ]);
+    }
+
+    return sample;
+  }
+
+  public async recordSampleOutcome(
+    input: unknown
+  ): Promise<
+    ProspectResearchSampleOutcome
+  > {
+    const outcome =
+      ProspectResearchSampleOutcomeSchema
+        .parse(input);
+
+    try {
+      await this.#repository
+        .saveSampleOutcome(
+          outcome
+        );
+    } catch (error) {
+      throw new ProspectResearchValidationError([
+        error instanceof Error
+          ? error.message
+          : "measured research outcome could not be recorded"
+      ]);
+    }
+
+    return outcome;
+  }
+
+  public async sampleEvaluation(
+    sampleId: string
+  ): Promise<
+    ProspectResearchSampleEvaluation
+  > {
+    const sample =
+      await this.getSample(
+        sampleId
+      );
+    const outcomes =
+      await this.#repository
+        .listSampleOutcomes(
+          sampleId
+        );
+
+    return evaluateProspectResearchSample(
+      sample,
+      outcomes
+    );
   }
 
   public getApprovedTarget(
