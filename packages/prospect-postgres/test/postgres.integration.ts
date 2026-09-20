@@ -140,6 +140,8 @@ function completedAttempt():
                 "artifact.pg",
               captureVersion:
                 "page-evidence-v1",
+              semanticSettled:
+                true,
               pageUrl:
                 "https://example.com/about",
               capturedAt:
