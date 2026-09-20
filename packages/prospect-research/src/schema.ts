@@ -235,6 +235,8 @@ export const ProspectResearchCaptureReceiptSchema =
       z.literal(
         "page-evidence-v1"
       ),
+    semanticSettled:
+      z.literal(true),
     pageUrl:
       z.string().url(),
     capturedAt:
