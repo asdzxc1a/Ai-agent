@@ -39,6 +39,12 @@ export interface AgentActionResult {
   effect?: AgentActionEffect;
 }
 
+export interface AgentPageEvidenceSnapshot {
+  url: string;
+  title: string;
+  text: string;
+}
+
 export interface AgentSession {
   navigate(
     url: string,
@@ -60,6 +66,10 @@ export interface AgentSession {
     schema: RuntimeSchema<T>,
     options?: AgentOperationOptions
   ): Promise<T>;
+
+  capturePageEvidence?(
+    options?: AgentOperationOptions
+  ): Promise<AgentPageEvidenceSnapshot>;
 
   close(): Promise<void>;
 }
