@@ -286,6 +286,35 @@ export class PostgresRunRepository implements RunRepository {
     return row?.request;
   }
 
+  public async listActiveRuns():
+    Promise<RunSnapshot[]> {
+    const result =
+      await this.#pool.query(
+        `
+          SELECT
+            id,
+            status,
+            goal_status,
+            request,
+            result,
+            error,
+            terminal_reason,
+            created_at,
+            updated_at
+          FROM runs
+          WHERE status IN (
+            'PENDING',
+            'RUNNING'
+          )
+          ORDER BY created_at ASC
+        `
+      );
+
+    return (
+      result.rows as RunRow[]
+    ).map(mapRun);
+  }
+
   public async updateRun(
     runId: string,
     update: RunUpdate
