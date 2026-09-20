@@ -22,7 +22,7 @@ import type {
 } from "@astra/browser-runtime";
 import {
   InMemoryArtifactStore
-} from "@astra/artifact-store";
+} from "../../artifact-store/src/index.js";
 
 import {
   InMemoryRunRepository,
