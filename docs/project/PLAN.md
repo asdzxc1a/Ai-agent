@@ -387,7 +387,7 @@ Build:
 - keep Gate 13 execution serial/single-owner while durable worker ownership, fencing, and cross-process endpoint reservations are not implemented;
 - keep the merged smallest complete operator workflow green: stored approval → frozen-sample membership → bounded read-only model-backed research on the approved start page → evidence/uncertainty review → accepted/corrected brief or explicit live failure;
 - use small cross-region samples only for calibration/stress testing; they may not close Gate 13;
-- for the first Gate 13 acceptance, freeze 30–50 approved U.S. industrial/logistics companies using a predeclared selection method; cross-market U.S./China work is calibration-only under D-031;
+- for the first Gate 13 acceptance, use the complete 43-equity IYT U.S. transportation holdings snapshot dated 2026-09-17 under D-033; source/methodology provenance and exact candidate target IDs are frozen before target enrichment, and cross-market U.S./China work remains calibration-only under D-031;
 - compare against the existing human researcher using normal tools; scope-matched human restrictions are calibration-only;
 - require a durable server-timestamped measured human baseline record for each acceptance target before its Astra attempt can start; fixed-cap baseline estimates are calibration-only;
 - record whether review was blind or unblinded and prefer blind review where practical;
@@ -414,8 +414,8 @@ Acceptance:
 - every measured run requires both stored approval and membership in the durable frozen sample;
 - the measured cohort contains only explicitly approved frozen targets, cannot be overwritten/widened after freeze, and is never broadened during the run;
 - calibration cohorts return no pass/fail verdict even when complete;
-- the first Gate 13 acceptance cohort contains 30–50 frozen U.S. industrial/logistics targets selected by a frozen method; incomplete cohorts return no verdict and exactly one outcome per frozen target is required;
-- acceptance sample metadata is `SINGLE_MARKET` and `NORMAL_TOOLS`; cross-market or scope-matched settings are rejected by the v3 protocol;
+- the first Gate 13 acceptance cohort contains exactly the complete 43-member frozen U.S. transportation universe; sample target IDs must equal the frozen universe membership, inaccessible members remain failures rather than exclusions, incomplete cohorts return no verdict, and exactly one outcome per frozen target is required;
+- acceptance sample metadata is `SINGLE_MARKET`, `NORMAL_TOOLS`, and carries v5 candidate-universe provenance; cross-market, scope-matched, or ad-hoc complete-universe membership is rejected;
 - acceptance state order is approval → sample freeze → durable `MEASURED_HUMAN` baseline → Astra attempt → reviewed outcome; the later outcome must reference and exactly match the stored baseline record; baseline source and review mode remain durable evidence;
 - every material observed fact in the measured sample is manually checked against its claimed source;
 - unsupported hypotheses are never represented as observed facts and unknowns remain explicit;
