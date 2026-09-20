@@ -7,9 +7,11 @@ import type {
 
 import {
   CompletedProspectResearchAttemptSchema,
+  ProspectResearchAttemptSchema,
   ProspectResearchResultSchema,
   type ApprovedResearchTarget,
   type CompletedProspectResearchAttempt,
+  type ProspectResearchAttempt,
   type ProspectResearchClaim,
   type ProspectResearchReport,
   type ProspectResearchResult
@@ -272,6 +274,21 @@ export function validateProspectResearch(
       );
     }  }
 
+  if (
+    report.prospect
+      .companyName !== null &&
+    !report.evidence.some(
+      (evidence) =>
+        evidence.observation ===
+        report.prospect
+          .companyName
+    )
+  ) {
+    errors.push(
+      "prospect companyName must exactly match observed evidence"
+    );
+  }
+
   const claims = allClaims(report);
   const claimById =
     new Map(
@@ -461,6 +478,34 @@ export function validateProspectResearch(
   }
 
   return errors;
+}
+
+export function validateProspectResearchAttemptForPersistence(
+  input: unknown
+): ProspectResearchAttempt {
+  const attempt =
+    ProspectResearchAttemptSchema
+      .parse(input);
+
+  if (
+    attempt.status ===
+    "COMPLETED"
+  ) {
+    const errors =
+      validateProspectResearch(
+        attempt.target,
+        attempt.report
+      );
+
+    if (errors.length > 0) {
+      throw new Error(
+        "Durable prospect research attempt failed validation: " +
+          errors.join("; ")
+      );
+    }
+  }
+
+  return attempt;
 }
 
 function inferredHypothesisIds(
