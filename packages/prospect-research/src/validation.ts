@@ -12,6 +12,7 @@ import {
   type ApprovedResearchTarget,
   type CompletedProspectResearchAttempt,
   type ProspectResearchAttempt,
+  type ProspectResearchCaptureReceipt,
   type ProspectResearchClaim,
   type ProspectResearchReport,
   type ProspectResearchResult
@@ -272,7 +273,111 @@ export function validateProspectResearch(
         "research evidence source is outside approved domains: " +
           evidence.id
       );
-    }  }
+    }
+
+    const receiptArtifactIds =
+      evidence.captureReceipts
+        .map(
+          (receipt) =>
+            receipt.artifactId
+        );
+
+    if (
+      new Set(
+        receiptArtifactIds
+      ).size !==
+        receiptArtifactIds
+          .length
+    ) {
+      errors.push(
+        "research evidence capture receipt artifact IDs must be unique: " +
+          evidence.id
+      );
+    }
+
+    if (
+      !receiptArtifactIds.every(
+        (artifactId) =>
+          evidence.artifactIds
+            .includes(
+              artifactId
+            )
+      )
+    ) {
+      errors.push(
+        "research evidence capture receipts must reference mapped artifacts: " +
+          evidence.id
+      );
+    }
+
+    let sourceHref:
+      string | undefined;
+
+    try {
+      sourceHref =
+        new URL(
+          evidence.sourceUrl
+        ).href;
+    } catch {
+      sourceHref = undefined;
+    }
+
+    for (
+      const receipt of
+      evidence.captureReceipts
+    ) {
+      if (
+        !isApprovedResearchUrl(
+          target,
+          receipt.pageUrl
+        )
+      ) {
+        errors.push(
+          "research evidence capture receipt is outside approved domains: " +
+            evidence.id
+        );
+      }
+
+      let receiptHref:
+        string | undefined;
+
+      try {
+        receiptHref =
+          new URL(
+            receipt.pageUrl
+          ).href;
+      } catch {
+        receiptHref =
+          undefined;
+      }
+
+      if (
+        sourceHref ===
+          undefined ||
+        receiptHref !==
+          sourceHref
+      ) {
+        errors.push(
+          "research evidence capture receipt page URL must match source URL: " +
+            evidence.id
+        );
+      }
+    }
+
+    if (
+      !evidence.captureReceipts
+        .some(
+          (receipt) =>
+            receipt.capturedAt ===
+            evidence.capturedAt
+        )
+    ) {
+      errors.push(
+        "research evidence capturedAt must match a server-owned capture receipt: " +
+          evidence.id
+      );
+    }
+  }
 
   if (
     report.prospect
@@ -605,6 +710,23 @@ export function validateProspectResearchResult(
             artifactIds: [
               "validation." +
                 evidence.id
+            ],
+            captureReceipts: [
+              {
+                artifactId:
+                  "validation." +
+                  evidence.id,
+                captureVersion:
+                  "page-evidence-v1",
+                pageUrl:
+                  evidence.sourceUrl,
+                capturedAt:
+                  researchedAt,
+                pageContentSha256:
+                  "0".repeat(64),
+                screenshotSha256:
+                  "1".repeat(64)
+              }
             ]
           })
         )
@@ -684,6 +806,11 @@ export interface BuildCompletedProspectResearchAttemptInput {
       string,
       readonly string[]
     >;
+  captureReceiptsByEvidenceId:
+    ReadonlyMap<
+      string,
+      readonly ProspectResearchCaptureReceipt[]
+    >;
   result: unknown;
 }
 
@@ -693,6 +820,7 @@ export function buildCompletedProspectResearchAttempt({
   researchedAt,
   capturedAtByEvidenceId,
   artifactIdsByEvidenceId,
+  captureReceiptsByEvidenceId,
   result: input
 }: BuildCompletedProspectResearchAttemptInput):
   CompletedProspectResearchAttempt {
@@ -723,6 +851,18 @@ export function buildCompletedProspectResearchAttempt({
     ) {
       throw new Error(
         "Missing server-owned artifact IDs for research evidence: " +
+          evidence.id
+      );
+    }
+
+    if (
+      !captureReceiptsByEvidenceId
+        .has(
+          evidence.id
+        )
+    ) {
+      throw new Error(
+        "Missing server-owned capture receipts for research evidence: " +
           evidence.id
       );
     }
@@ -783,6 +923,12 @@ export function buildCompletedProspectResearchAttempt({
                     )!,
                 artifactIds: [
                   ...artifactIdsByEvidenceId
+                    .get(
+                      evidence.id
+                    )!
+                ],
+                captureReceipts: [
+                  ...captureReceiptsByEvidenceId
                     .get(
                       evidence.id
                     )!
