@@ -249,7 +249,11 @@ function measuredOutcome(
     reviewedBy:
       "operator",
     reviewedAt:
-      "2026-09-19T12:10:00Z",
+      new Date(
+        Date.parse(
+          baseline.recordedAt
+        ) + 60_000
+      ).toISOString(),
     reviewMode:
       "UNBLINDED",
     baselineSource:
