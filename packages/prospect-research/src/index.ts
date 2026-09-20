@@ -99,6 +99,7 @@ export {
   researchNetworkPolicyOptions,
   sameApprovedResearchTarget,
   toSalesEvidence,
+  validateHumanBaselineBrief,
   validateProspectResearch,
   validateProspectResearchAttemptForPersistence,
   validateProspectResearchResult
