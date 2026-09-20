@@ -71,7 +71,7 @@ function sample(
       status:
         "FROZEN",
       protocolVersion:
-        "gate13-measured-research-v5",
+        "gate13-measured-research-v6",
       purpose,
       cohortDefinition:
         purpose ===
@@ -187,7 +187,11 @@ function outcome(input: {
     | "MEASURED_HUMAN";
   baselineRecordedAt?: string;
   baselineMinutes?: number;
-  reviewMinutes?: number;
+  setupMinutes?: number;
+  evidenceAuditMinutes?: number;
+  correctionMinutes?: number;
+  failureTriageMinutes?: number;
+  otherMinutes?: number;
   costUsd?: number;
 }) {
   const targetId =
@@ -272,9 +276,30 @@ function outcome(input: {
       baselineHumanPreparationMinutes:
         input.baselineMinutes ??
         20,
-      astraHumanReviewMinutes:
-        input.reviewMinutes ??
-        8,
+      astraHumanTime: {
+        targetSetupMinutes:
+          input.setupMinutes ??
+          1,
+        evidenceMappingAndAuditMinutes:
+          input.evidenceAuditMinutes ??
+          4,
+        correctionAndFinalizationMinutes:
+          input.correctionMinutes ??
+          3,
+        failureTriageMinutes:
+          input.failureTriageMinutes ??
+          0,
+        otherMinutes:
+          input.otherMinutes ??
+          0,
+        measurementMethod:
+          "STOPWATCH",
+        otherDescription:
+          (input.otherMinutes ?? 0) >
+            0
+            ? "Other measured operator work."
+            : null
+      },
       endToEndDurationMs:
         5_000,
       deliveryCostUsd:
@@ -443,6 +468,8 @@ describe(
                 0,
               medianHumanTimeReductionFraction:
                 0.6,
+              medianAstraHumanPreparationMinutes:
+                8,
               requestedFieldCoverageRate:
                 1,
               unauthorizedActions:
@@ -709,6 +736,56 @@ describe(
             })
         ).toThrow(
           "selection universe source date must not be after sample freeze"
+        );
+      }
+    );
+
+    it(
+      "uses total Astra-side human labor rather than a narrow review-time proxy",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const outcomes =
+          acceptance.targets.map(
+            (_target, index) =>
+              outcome({
+                sampleId:
+                  acceptance.id,
+                targetIndex:
+                  index + 1,
+                baselineMinutes:
+                  20,
+                setupMinutes: 2,
+                evidenceAuditMinutes:
+                  5,
+                correctionMinutes:
+                  5
+              })
+          );
+        const evaluation =
+          evaluateProspectResearchSample(
+            acceptance,
+            outcomes
+          );
+
+        expect(
+          evaluation.metrics
+            .medianAstraHumanPreparationMinutes
+        ).toBe(12);
+        expect(
+          evaluation.metrics
+            .medianHumanTimeReductionFraction
+        ).toBeCloseTo(0.4);
+        expect(
+          evaluation.passed
+        ).toBe(false);
+        expect(
+          evaluation.failures
+        ).toContain(
+          "median human time reduction is below the frozen threshold"
         );
       }
     );
