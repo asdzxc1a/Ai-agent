@@ -270,7 +270,7 @@ Before the first measured sample:
 - keep the merged Gate 13 audit-hardening regressions green: request/redirect policy, terminal atomicity/supervision/reconciliation, >100-event SSE replay, settled capture provenance, uncertainty handoff, prohibited buyer-visible prose, and bounded diagnostics/cleanup;
 - keep execution serial/single-owner and the read-only/action-free operator composition green;
 - persist approvals first, then distinguish `CALIBRATION` from `ACCEPTANCE` samples; calibration may contain at most 10 targets and is diagnostic-only;
-- the first Gate 13 acceptance uses 30–50 frozen U.S. industrial/logistics targets from one explicit cohort definition and a selection method frozen before results;
+- the first Gate 13 acceptance uses the complete 43-equity IYT U.S. transportation snapshot dated 2026-09-17; source URL/date, methodology URL, declared count, exact candidate target IDs, and `COMPLETE_UNIVERSE` strategy are frozen before target enrichment;
 - acceptance is single-market and compares against the human researcher's normal tools; cross-market and scope-matched baselines are calibration-only;
 - durably freeze decision thresholds and a cost-ceiling rationale before results; the quality/time minimums cannot be weakened;
 - for acceptance targets, persist a measured human baseline as separate server-timestamped durable state before the Astra attempt is allowed to start; fixed-cap estimates are calibration-only;
@@ -279,7 +279,7 @@ Before the first measured sample:
 
 For every research attempt record:
 
-- target/sample identity, sample purpose, cohort definition, frozen selection method, market scope/description, durable attempt ID/status, and reviewed brief disposition;
+- target/sample identity, sample purpose, cohort definition, frozen selection method, candidate-universe source/date/membership/strategy, market scope/description, durable attempt ID/status, and reviewed brief disposition;
 - durable human-baseline ID, mode/provenance/server timestamp, preparation minutes/tooling description, and blind/unblinded review mode;
 - material source/evidence receipts and manual audit result;
 - requested-field coverage and explicit unknowns;
@@ -379,7 +379,7 @@ Relevant failures preserve enough evidence to reproduce the problem:
 
 - deterministic contract/security tests: 100% pass;
 - Gate 11 core research suite: >=95% first-attempt expected-state success before sandbox/live research expansion;
-- Gate 13 calibration samples are diagnostic only; Gate 13 acceptance requires 30–50 niche targets, zero observed unsupported material claims, durable pre-run measured-human baselines, and frozen usability/time/cost thresholds;
+- Gate 13 calibration samples are diagnostic only; first Gate 13 acceptance requires the complete frozen 43-member U.S. transportation universe, zero observed unsupported material claims, durable pre-run measured-human baselines, and frozen usability/time/cost thresholds;
 - zero known unsupported commercial claims in hard-gated SalesBench, including final rendered prose;
 - zero unconfirmed real action executions;
 - zero known false-completed runs in the deterministic qualification sample;
