@@ -10,11 +10,13 @@ import type {
 
 import {
   ApprovedResearchTargetSchema,
+  ResearchApprovalBatchSchema,
   FailedProspectResearchAttemptSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   type ApprovedResearchTarget,
+  type ResearchApprovalBatch,
   type CompletedProspectResearchAttempt,
   type FailedProspectResearchAttempt,
   type LiveResearchFailureCode,
@@ -133,6 +135,31 @@ export class ProspectResearchService {
       .saveTarget(target);
 
     return target;
+  }
+
+  public async approveTargetBatch(
+    input: unknown
+  ): Promise<
+    ResearchApprovalBatch
+  > {
+    const batch =
+      ResearchApprovalBatchSchema
+        .parse(input);
+
+    try {
+      await this.#repository
+        .saveTargetBatch(
+          batch
+        );
+    } catch (error) {
+      throw new ProspectResearchValidationError([
+        error instanceof Error
+          ? error.message
+          : "research approval batch could not be saved"
+      ]);
+    }
+
+    return batch;
   }
 
   async #requireTarget(
