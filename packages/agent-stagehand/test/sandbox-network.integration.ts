@@ -1,10 +1,16 @@
 import {
+  execFile
+} from "node:child_process";
+import {
   createServer,
   type Server
 } from "node:http";
 import type {
   AddressInfo
 } from "node:net";
+import {
+  promisify
+} from "node:util";
 
 import { z } from "zod";
 import {
@@ -43,6 +49,40 @@ const steelBaseUrl =
 const steelSecondaryBaseUrl =
   process.env.STEEL_SECONDARY_BASE_URL ??
   "http://127.0.0.1:3001";
+
+const steelPrimaryContainer =
+  process.env
+    .STEEL_PRIMARY_CONTAINER ??
+  "astra-steel-stagehand";
+const steelSecondaryContainer =
+  process.env
+    .STEEL_SECONDARY_CONTAINER ??
+  "astra-steel-stagehand-secondary";
+const execFileAsync =
+  promisify(execFile);
+
+async function docker(
+  ...args: string[]
+) {
+  return execFileAsync(
+    "docker",
+    args,
+    {
+      encoding: "utf8"
+    }
+  );
+}
+
+async function dockerSucceeds(
+  ...args: string[]
+): Promise<boolean> {
+  try {
+    await docker(...args);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const stateSchema =
   z.object({
@@ -603,4 +643,128 @@ test(
     }
   },
   300_000
+);
+
+
+test(
+  "independent Steel sandbox providers isolate filesystem, process, and loopback-port state",
+  async () => {
+    const markerPath =
+      "/tmp/astra-gate12-isolation-" +
+      String(process.pid);
+    const processMarker =
+      "astra-gate12-process-" +
+      String(process.pid);
+    const port = 49123;
+
+    await docker(
+      "exec",
+      steelPrimaryContainer,
+      "node",
+      "-e",
+      "require('fs').writeFileSync(" +
+        JSON.stringify(markerPath) +
+        ",'primary')"
+    );
+
+    await expect(
+      dockerSucceeds(
+        "exec",
+        steelSecondaryContainer,
+        "node",
+        "-e",
+        "process.exit(require('fs').existsSync(" +
+          JSON.stringify(markerPath) +
+          ")?7:0)"
+      )
+    ).resolves.toBe(true);
+
+    await docker(
+      "exec",
+      "-d",
+      steelPrimaryContainer,
+      "node",
+      "-e",
+      "process.title=" +
+        JSON.stringify(processMarker) +
+        ";setInterval(()=>{},1000)"
+    );
+
+    await expect(
+      dockerSucceeds(
+        "exec",
+        steelSecondaryContainer,
+        "node",
+        "-e",
+        [
+          "const fs=require('fs');",
+          "const marker=" +
+            JSON.stringify(processMarker) +
+            ";",
+          "const found=fs.readdirSync('/proc')",
+          ".filter(x=>/^\\d+$/.test(x))",
+          ".some(x=>{try{return fs.readFileSync('/proc/'+x+'/cmdline','utf8').includes(marker)}catch{return false}});",
+          "process.exit(found?7:0);"
+        ].join("")
+      )
+    ).resolves.toBe(true);
+
+    await docker(
+      "exec",
+      "-d",
+      steelPrimaryContainer,
+      "node",
+      "-e",
+      "require('http').createServer((_,r)=>r.end('isolated')).listen(" +
+        String(port) +
+        ",'127.0.0.1');setInterval(()=>{},1000)"
+    );
+
+    let primaryReady = false;
+
+    for (
+      let attempt = 0;
+      attempt < 40;
+      attempt += 1
+    ) {
+      if (
+        await dockerSucceeds(
+          "exec",
+          steelPrimaryContainer,
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:" +
+            String(port) +
+            "').then(r=>r.text()).then(v=>process.exit(v==='isolated'?0:7)).catch(()=>process.exit(8))"
+        )
+      ) {
+        primaryReady = true;
+        break;
+      }
+
+      await new Promise(
+        (resolve) => {
+          setTimeout(
+            resolve,
+            100
+          );
+        }
+      );
+    }
+
+    expect(primaryReady).toBe(true);
+
+    await expect(
+      dockerSucceeds(
+        "exec",
+        steelSecondaryContainer,
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:" +
+          String(port) +
+          "').then(()=>process.exit(7)).catch(()=>process.exit(0))"
+      )
+    ).resolves.toBe(true);
+  },
+  30_000
 );
