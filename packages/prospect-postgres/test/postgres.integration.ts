@@ -168,7 +168,7 @@ function frozenSample():
     id: "sample.pg",
     status: "FROZEN",
     protocolVersion:
-      "gate13-measured-research-v6",
+      "gate13-measured-research-v7",
     purpose:
       "CALIBRATION",
     cohortDefinition:
@@ -212,6 +212,49 @@ function frozenSample():
   };
 }
 
+function humanBaselineBrief() {
+  return {
+    companyName: {
+      value:
+        "Example Systems",
+      evidenceIds: [
+        "human.pg.evidence"
+      ]
+    },
+    companySummary: [
+      {
+        id:
+          "human.pg.claim",
+        kind:
+          "observed_fact" as const,
+        statement:
+          "Example Systems operates an automation business.",
+        evidenceIds: [
+          "human.pg.evidence"
+        ]
+      }
+    ],
+    transformationOpportunities:
+      [],
+    buyingSignals: [],
+    unknowns: [],
+    evidence: [
+      {
+        id:
+          "human.pg.evidence",
+        sourceUrl:
+          "https://research.example.org/example-systems",
+        observation:
+          "Example Systems operates an automation business.",
+        uncertainty:
+          "none" as const,
+        uncertaintyNote:
+          null
+      }
+    ]
+  };
+}
+
 function humanBaselineInput() {
   return {
     id:
@@ -228,6 +271,8 @@ function humanBaselineInput() {
       20,
     toolingDescription:
       "Scope-matched persistence fixture tools.",
+    brief:
+      humanBaselineBrief(),
     notes: null
   };
 }
@@ -256,6 +301,16 @@ function measuredOutcome(
           baseline.recordedAt
         ) + 60_000
       ).toISOString(),
+    humanBriefDisposition:
+      "accepted",
+    humanMaterialClaimsReviewed:
+      1,
+    humanUnsupportedMaterialClaims:
+      0,
+    humanRequestedFieldsTotal:
+      3,
+    humanRequestedFieldsCovered:
+      3,
     reviewMode:
       "UNBLINDED",
     baselineSource:
