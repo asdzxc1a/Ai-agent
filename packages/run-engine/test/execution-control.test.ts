@@ -41,6 +41,7 @@ class FixtureBrowser
   public async close():
     Promise<void> {
     this.closeCalls += 1;
+    await this.options.close?.();
   }
 }
 
@@ -65,6 +66,7 @@ interface FixtureAgentOptions {
   act?(
     action: AgentAction
   ): Promise<AgentActionResult>;
+  close?(): Promise<void>;
   extraction?: unknown;
 }
 
@@ -277,6 +279,46 @@ async function waitForNavigate(
   throw new Error(
     "Navigation did not start."
   );
+}
+
+function never<T>():
+  Promise<T> {
+  return new Promise<T>(
+    () => undefined
+  );
+}
+
+class HangingDiagnosticsBrowser
+  implements BrowserSession {
+  public readonly id =
+    "hanging-diagnostics-browser";
+  public readonly cdpUrl =
+    "ws://fixture/hanging-diagnostics";
+  public closeCalls = 0;
+
+  public getDiagnostics() {
+    return never<never[]>();
+  }
+
+  public async close():
+    Promise<void> {
+    this.closeCalls += 1;
+  }
+}
+
+class HangingBrowserClose
+  implements BrowserSession {
+  public readonly id =
+    "hanging-browser-close";
+  public readonly cdpUrl =
+    "ws://fixture/hanging-close";
+  public closeCalls = 0;
+
+  public async close():
+    Promise<void> {
+    this.closeCalls += 1;
+    await never<void>();
+  }
 }
 
 function abortWait(
@@ -725,6 +767,231 @@ test(
     ).resolves.toMatchObject({
       status: "CANCELLED"
     });
+  }
+);
+
+test(
+  "hung optional diagnostics cannot hold browser cleanup or successful completion",
+  async () => {
+    const browser =
+      new HangingDiagnosticsBrowser();
+    const agent =
+      new FixtureAgent();
+    const artifactStore =
+      new InMemoryArtifactStore();
+    const engine =
+      new RunEngine({
+        repository:
+          new InMemoryRunRepository(),
+        browserRuntime: {
+          async createSession() {
+            return browser;
+          }
+        },
+        agentRuntime:
+          new FixtureAgentRuntime(
+            agent
+          ),
+        artifactStore,
+        diagnosticsTimeoutMs: 10,
+        cleanupTimeoutMs: 10,
+        completionVerifier: {
+          verify() {
+            return {
+              verified: true,
+              message:
+                "Fixture completion verified."
+            };
+          }
+        }
+      });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Complete despite hung diagnostics."
+        }
+      });
+    const terminal =
+      await waitForTerminal(
+        engine,
+        started.id
+      );
+
+    expect(
+      terminal.status
+    ).toBe("COMPLETED");
+    expect(
+      browser.closeCalls
+    ).toBe(1);
+    expect(
+      agent.closeCalls
+    ).toBe(1);
+
+    const summaryRecord =
+      (
+        await engine
+          .listArtifacts(
+            started.id
+          )
+      ).find(
+        (artifact) =>
+          artifact.name ===
+          "run-summary.json"
+      );
+    const summary =
+      await engine.readArtifact(
+        started.id,
+        summaryRecord!.id
+      );
+    const summaryText =
+      new TextDecoder().decode(
+        summary!.data
+      );
+
+    expect(
+      summaryText
+    ).toContain(
+      "Browser diagnostics exceeded 10 ms."
+    );
+  }
+);
+
+test(
+  "hung agent cleanup is bounded and browser cleanup is still attempted",
+  async () => {
+    const browser =
+      new FixtureBrowserRuntime();
+    const agent =
+      new FixtureAgent({
+        close() {
+          return never<void>();
+        }
+      });
+    const engine =
+      new RunEngine({
+        repository:
+          new InMemoryRunRepository(),
+        browserRuntime:
+          browser,
+        agentRuntime:
+          new FixtureAgentRuntime(
+            agent
+          ),
+        cleanupTimeoutMs: 10,
+        completionVerifier: {
+          verify() {
+            return {
+              verified: true,
+              message:
+                "Fixture completion verified."
+            };
+          }
+        }
+      });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Bound hung agent cleanup."
+        }
+      });
+    const terminal =
+      await waitForTerminal(
+        engine,
+        started.id
+      );
+
+    expect(
+      terminal.status
+    ).toBe("FAILED");
+    expect(
+      terminal.error?.code
+    ).toBe("CLEANUP_FAILED");
+    expect(
+      terminal.error?.message
+    ).toContain(
+      "Agent cleanup exceeded 10 ms."
+    );
+    expect(
+      agent.closeCalls
+    ).toBe(1);
+    expect(
+      browser.session.closeCalls
+    ).toBe(1);
+  }
+);
+
+test(
+  "hung browser cleanup is bounded and becomes a durable cleanup failure",
+  async () => {
+    const browser =
+      new HangingBrowserClose();
+    const agent =
+      new FixtureAgent();
+    const engine =
+      new RunEngine({
+        repository:
+          new InMemoryRunRepository(),
+        browserRuntime: {
+          async createSession() {
+            return browser;
+          }
+        },
+        agentRuntime:
+          new FixtureAgentRuntime(
+            agent
+          ),
+        cleanupTimeoutMs: 10,
+        completionVerifier: {
+          verify() {
+            return {
+              verified: true,
+              message:
+                "Fixture completion verified."
+            };
+          }
+        }
+      });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Bound hung browser cleanup."
+        }
+      });
+    const terminal =
+      await waitForTerminal(
+        engine,
+        started.id
+      );
+
+    expect(
+      terminal.status
+    ).toBe("FAILED");
+    expect(
+      terminal.error?.code
+    ).toBe("CLEANUP_FAILED");
+    expect(
+      terminal.error?.message
+    ).toContain(
+      "Browser cleanup exceeded 10 ms."
+    );
+    expect(
+      agent.closeCalls
+    ).toBe(1);
+    expect(
+      browser.closeCalls
+    ).toBe(1);
   }
 );
 
