@@ -264,6 +264,13 @@ async function streamRunEvents(
         return;
       }
 
+      if (
+        events.length ===
+        EVENT_BATCH_SIZE
+      ) {
+        continue;
+      }
+
       const run =
         await runService.getRun(runId);
 
