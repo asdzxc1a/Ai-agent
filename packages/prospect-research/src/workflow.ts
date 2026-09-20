@@ -40,6 +40,7 @@ import type {
 } from "./repository.js";
 
 export interface StartApprovedProspectResearchInput {
+  sampleId: string;
   targetId: string;
 }
 
@@ -264,6 +265,38 @@ export class ProspectResearchWorkflow {
       );
   }
 
+  public freezeSample(
+    input: unknown
+  ) {
+    return this.#research
+      .freezeSample(input);
+  }
+
+  public getSample(
+    sampleId: string
+  ) {
+    return this.#research
+      .getSample(sampleId);
+  }
+
+  public recordSampleOutcome(
+    input: unknown
+  ) {
+    return this.#research
+      .recordSampleOutcome(
+        input
+      );
+  }
+
+  public sampleEvaluation(
+    sampleId: string
+  ) {
+    return this.#research
+      .sampleEvaluation(
+        sampleId
+      );
+  }
+
   async #assertSerialAvailable():
     Promise<void> {
     if (
@@ -302,6 +335,28 @@ export class ProspectResearchWorkflow {
   ) {
     await this
       .#assertSerialAvailable();
+
+    const sample =
+      await this.#research
+        .getSample(
+          input.sampleId
+        );
+    const frozenTarget =
+      sample.targets.find(
+        (candidate) =>
+          candidate.id ===
+          input.targetId
+      );
+
+    if (
+      frozenTarget ===
+      undefined
+    ) {
+      throw new ProspectResearchValidationError([
+        "research target is outside the frozen measured sample: " +
+          input.targetId
+      ]);
+    }
 
     const target =
       await this.#research
