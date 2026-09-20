@@ -557,12 +557,19 @@ async function handleRequest(
 export function createApiServer(
   runService: RunService
 ): Server {
+  const ready =
+    runService
+      .reconcileInterruptedRuns();
+
   return createServer(
     (request, response) => {
-      void handleRequest(
-        request,
-        response,
-        runService
+      void ready.then(
+        () =>
+          handleRequest(
+            request,
+            response,
+            runService
+          )
       ).catch((error: unknown) => {
         if (response.headersSent) {
           response.end();
