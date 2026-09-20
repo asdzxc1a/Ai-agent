@@ -105,6 +105,15 @@ export function validateProspectResearchSampleOutcomeContext(
     );
 
   if (
+    outcome.reviewRubricVersion !==
+      sample.reviewRubricVersion
+  ) {
+    throw new Error(
+      "Measured research outcome review rubric differs from the frozen sample."
+    );
+  }
+
+  if (
     baseline.id !==
       outcome.baselineId ||
     baseline.sampleId !==
