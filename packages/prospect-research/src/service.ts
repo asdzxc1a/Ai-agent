@@ -63,6 +63,13 @@ export class ProspectResearchValidationError
 export interface RecordCompletedProspectResearchInput {
   targetId: string;
   runId: string;
+  artifactIdsByEvidenceId:
+    Readonly<
+      Record<
+        string,
+        readonly string[]
+      >
+    >;
 }
 
 export interface RecordFailedProspectResearchInput {
@@ -380,18 +387,92 @@ export class ProspectResearchService {
     const errors: string[] = [];
     const capturedAtByEvidenceId =
       new Map<string, string>();
+    const artifactIdsByEvidenceId =
+      new Map<
+        string,
+        readonly string[]
+      >();
+    const expectedEvidenceIds =
+      result.evidence.map(
+        (evidence) =>
+          evidence.id
+      );
+    const suppliedEvidenceIds =
+      Object.keys(
+        input
+          .artifactIdsByEvidenceId
+      );
+
+    if (
+      expectedEvidenceIds.length !==
+        suppliedEvidenceIds.length ||
+      expectedEvidenceIds.some(
+        (evidenceId) =>
+          !suppliedEvidenceIds
+            .includes(
+              evidenceId
+            )
+      )
+    ) {
+      errors.push(
+        "server-owned artifact mapping must exactly match research evidence ids"
+      );
+    }
 
     for (
       const evidence of
       result.evidence
     ) {
+      const suppliedArtifactIds =
+        input
+          .artifactIdsByEvidenceId[
+            evidence.id
+          ];
       const screenshotCaptureTimes:
         string[] = [];
 
+      if (
+        !Array.isArray(
+          suppliedArtifactIds
+        ) ||
+        suppliedArtifactIds
+          .length === 0
+      ) {
+        errors.push(
+          "research evidence requires server-owned artifact IDs: " +
+            evidence.id
+        );
+        continue;
+      }
+
+      if (
+        new Set(
+          suppliedArtifactIds
+        ).size !==
+          suppliedArtifactIds
+            .length
+      ) {
+        errors.push(
+          "research evidence artifact IDs must be unique: " +
+            evidence.id
+        );
+      }
+
       for (
         const artifactId of
-        evidence.artifactIds
+        suppliedArtifactIds
       ) {
+        if (
+          typeof artifactId !==
+          "string"
+        ) {
+          errors.push(
+            "research evidence artifact ID must be a string: " +
+              evidence.id
+          );
+          continue;
+        }
+
         const artifact =
           artifactById.get(
             artifactId
@@ -434,6 +515,10 @@ export class ProspectResearchService {
         evidence.id,
         screenshotCaptureTimes[0]!
       );
+      artifactIdsByEvidenceId.set(
+        evidence.id,
+        [...suppliedArtifactIds]
+      );
     }
 
     if (errors.length > 0) {
@@ -454,6 +539,7 @@ export class ProspectResearchService {
           researchedAt:
             run.updatedAt,
           capturedAtByEvidenceId,
+          artifactIdsByEvidenceId,
           result
         });
     } catch (error) {
