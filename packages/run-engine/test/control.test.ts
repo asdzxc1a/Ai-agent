@@ -958,3 +958,56 @@ test(
     );
   }
 );
+
+test(
+  "malformed completion-verifier output fails closed",
+  async () => {
+    const engine = new RunEngine({
+      repository:
+        new InMemoryRunRepository(),
+      browserRuntime:
+        new ControlBrowserRuntime(),
+      agentRuntime:
+        new ControlAgentRuntime(),
+      completionVerifier: {
+        async verify() {
+          return {
+            verified: "yes"
+          };
+        }
+      }
+    });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Reject malformed verification."
+        }
+      });
+
+    const terminal =
+      await waitForTerminal(
+        engine,
+        started.id
+      );
+
+    expect(terminal.status).toBe(
+      "FAILED"
+    );
+    expect(
+      terminal.terminalReason
+        ?.code
+    ).toBe(
+      "COMPLETION_REJECTED"
+    );
+    expect(
+      terminal.terminalReason
+        ?.message
+    ).toBe(
+      "Completion verifier returned an invalid decision."
+    );
+  }
+);

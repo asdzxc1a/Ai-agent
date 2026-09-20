@@ -30,3 +30,7 @@ export type {
   CompletionVerificationResult,
   CompletionVerifier
 } from "./completion.js";
+
+export {
+  parseCompletionVerificationResult
+} from "./completion.js";

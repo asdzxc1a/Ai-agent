@@ -31,6 +31,9 @@ import type {
   RunTerminalReason
 } from "@astra/contracts";
 
+import {
+  parseCompletionVerificationResult
+} from "./completion.js";
 import type {
   CompletionVerifier
 } from "./completion.js";
@@ -697,7 +700,7 @@ export class RunEngine implements RunService {
       );
     }
 
-    const verification =
+    const rawVerification =
       await abortable(
         this.#completionVerifier.verify({
           url: input.request.url,
@@ -716,6 +719,20 @@ export class RunEngine implements RunService {
         }),
         signal
       );
+
+    let verification;
+
+    try {
+      verification =
+        parseCompletionVerificationResult(
+          rawVerification
+        );
+    } catch {
+      throw new RunExecutionError(
+        "COMPLETION_REJECTED",
+        "Completion verifier returned an invalid decision."
+      );
+    }
 
     if (!verification.verified) {
       throw new RunExecutionError(
