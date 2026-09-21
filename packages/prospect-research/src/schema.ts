@@ -725,6 +725,14 @@ export const PROSPECT_RESEARCH_SELECTION_STRATEGIES =
     "DETERMINISTIC_SUBSET"
   ] as const;
 
+export const PROSPECT_RESEARCH_REQUESTED_FIELDS =
+  [
+    "companyName",
+    "companySummary",
+    "transformationOpportunities",
+    "buyingSignals"
+  ] as const;
+
 export const PROSPECT_RESEARCH_EXECUTION_PROFILE_VERSION =
   "gate13-execution-profile-v1" as const;
 
@@ -1242,6 +1250,15 @@ export const ProspectResearchSampleSchema =
       ).min(1).max(50),
     criteria:
       ProspectResearchSampleCriteriaSchema,
+    requestedFields:
+      z.array(
+        z.enum(
+          PROSPECT_RESEARCH_REQUESTED_FIELDS
+        )
+      ).min(1).max(
+        PROSPECT_RESEARCH_REQUESTED_FIELDS
+          .length
+      ).optional(),
     executionProfile:
       ProspectResearchExecutionProfileSchema
         .optional(),
@@ -1314,6 +1331,42 @@ export const ProspectResearchSampleSchema =
             message:
               "Gate 13 acceptance must use one market; cross-market samples are calibration-only"
           });
+        }
+
+        if (
+          sample.purpose ===
+            "ACCEPTANCE"
+        ) {
+          const requested =
+            sample.requestedFields;
+
+          if (
+            requested ===
+              undefined ||
+            requested.length !==
+              PROSPECT_RESEARCH_REQUESTED_FIELDS
+                .length ||
+            new Set(
+              requested
+            ).size !==
+              requested.length ||
+            PROSPECT_RESEARCH_REQUESTED_FIELDS
+              .some(
+                (field) =>
+                  !requested.includes(
+                    field
+                  )
+              )
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: [
+                "requestedFields"
+              ],
+              message:
+                "Gate 13 acceptance requires the exact frozen requested-field set"
+            });
+          }
         }
 
         if (
@@ -1753,6 +1806,15 @@ export const ProspectResearchSampleOutcomeSchema =
       z.number()
         .int()
         .nonnegative(),
+    requestedFieldsCoveredIds:
+      z.array(
+        z.enum(
+          PROSPECT_RESEARCH_REQUESTED_FIELDS
+        )
+      ).max(
+        PROSPECT_RESEARCH_REQUESTED_FIELDS
+          .length
+      ).optional(),
     baselineSource:
       z.enum(
         PROSPECT_RESEARCH_BASELINE_SOURCES
@@ -1886,6 +1948,48 @@ export const ProspectResearchSampleOutcomeSchema =
 
         if (
           outcome
+            .requestedFieldsCoveredIds !==
+              undefined
+        ) {
+          if (
+            new Set(
+              outcome
+                .requestedFieldsCoveredIds
+            ).size !==
+              outcome
+                .requestedFieldsCoveredIds
+                .length
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: [
+                "requestedFieldsCoveredIds"
+              ],
+              message:
+                "covered requested-field IDs must be unique"
+            });
+          }
+
+          if (
+            outcome
+              .requestedFieldsCovered !==
+            outcome
+              .requestedFieldsCoveredIds
+              .length
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: [
+                "requestedFieldsCovered"
+              ],
+              message:
+                "requestedFieldsCovered must equal the covered requested-field ID count"
+            });
+          }
+        }
+
+        if (
+          outcome
             .requestedFieldsCovered >
           outcome
             .requestedFieldsTotal
@@ -2009,6 +2113,10 @@ export type ProspectResearchSampleCriteria =
   z.infer<
     typeof ProspectResearchSampleCriteriaSchema
   >;
+export type ProspectResearchRequestedField =
+  typeof PROSPECT_RESEARCH_REQUESTED_FIELDS[
+    number
+  ];
 export type ProspectResearchSample =
   z.infer<
     typeof ProspectResearchSampleSchema
