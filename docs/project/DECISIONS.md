@@ -1120,3 +1120,38 @@ The acceptance cohort is a complete frozen universe. Partial success during appr
 
 If a future operator UI introduces signed approvals, the signature may extend this batch record; the atomic all-or-none authorization boundary remains.
 
+
+
+---
+
+## D-037 — Gate 13 live execution has one database-scoped operator owner
+
+**Date:** 2026-09-21
+**Status:** Accepted
+
+**Decision**
+
+The Gate 13 `run-target` operator command must hold one PostgreSQL session-level advisory lock for the entire live research execution.
+
+The command uses a fail-fast `pg_try_advisory_lock` boundary before creating the live workflow. A second process connected to the same Gate 13 database cannot start another live target while the first owner holds the lock. The owning session releases the advisory lock in cleanup, and PostgreSQL session termination remains the final lock-release backstop.
+
+This guard applies to live `run-target` execution only. Approval, sample freeze, baseline entry, artifact review, attempt/outcome persistence, status, and evaluation remain separate operator transitions.
+
+**Why**
+
+Gate 13 is deliberately serial/single-owner under D-029, but the existing workflow and Steel endpoint guards were process-local. Two shell processes could therefore bypass those in-memory guards and contend for the same live research executor/provider. That would invalidate the measured experiment's ownership assumptions.
+
+A database-scoped advisory lock closes that accidental cross-process concurrency gap with the smallest mechanism already available in Gate 13's required PostgreSQL control plane.
+
+**Consequences**
+
+- one Gate 13 database permits at most one active `run-target` operator process;
+- contention fails closed immediately rather than waiting or starting a second browser session;
+- tests prove exclusivity across two real PostgreSQL sessions and availability after release;
+- `apps/gate13-operator/**` changes trigger the Stagehand/Steel/PostgreSQL provider workflow;
+- this is not a durable worker lease, fencing token, cancellation-intent record, or multi-worker scheduler;
+- multi-worker execution remains blocked until the stronger ownership/fencing requirements in D-029 are implemented and accepted.
+
+**Revisit when**
+
+Replace or subsume this advisory lock only when Astra has durable leased/fenced run ownership, durable cancellation intent, reconciliation, and centrally owned browser-endpoint allocation that can safely support more than one worker.
