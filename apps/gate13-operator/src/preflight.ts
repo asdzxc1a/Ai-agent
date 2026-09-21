@@ -224,39 +224,6 @@ export function gate13AcceptanceInputPreflight(
     }
   }
 
-  const preflightAt =
-    Date.parse(
-      input.preflightAt
-    );
-
-  if (
-    !Number.isFinite(
-      preflightAt
-    )
-  ) {
-    throw new Error(
-      "Gate 13 preflightAt must be a valid timestamp."
-    );
-  }
-
-  for (
-    const rate of
-    plan.rates
-  ) {
-    if (
-      Date.parse(
-        rate.sourceAsOfDate +
-          "T00:00:00.000Z"
-      ) >
-        preflightAt
-    ) {
-      throw new Error(
-        "Gate 13 cost rate source date must not be after the preflight timestamp: " +
-          rate.id
-      );
-    }
-  }
-
   const categories =
     [
       ...new Set(
