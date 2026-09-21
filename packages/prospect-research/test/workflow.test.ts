@@ -221,6 +221,58 @@ function acceptanceSample() {
         maxDeliveryCostUsdPerBrief:
           25
       },
+      deliveryCostPlan: {
+        version:
+          "gate13-delivery-cost-v1",
+        methodologyDescription:
+          "Deterministic workflow fixture allocation.",
+        rates: [
+          {
+            id:
+              "cost.workflow.model",
+            category:
+              "MODEL",
+            label:
+              "Fixture model",
+            meter:
+              "FIXED_PER_RUN",
+            unitsPerBillingUnit:
+              1,
+            usdPerBillingUnit:
+              1,
+            rounding:
+              "NONE",
+            sourceDescription:
+              "Deterministic workflow fixture model rate.",
+            sourceUrl:
+              "https://example.test/model-pricing",
+            sourceAsOfDate:
+              "2026-09-20"
+          },
+          {
+            id:
+              "cost.workflow.browser",
+            category:
+              "BROWSER_PROVIDER",
+            label:
+              "Fixture browser",
+            meter:
+              "FIXED_PER_RUN",
+            unitsPerBillingUnit:
+              1,
+            usdPerBillingUnit:
+              1,
+            rounding:
+              "NONE",
+            sourceDescription:
+              "Deterministic workflow fixture browser allocation.",
+            sourceUrl:
+              "https://example.test/browser-pricing",
+            sourceAsOfDate:
+              "2026-09-20"
+          }
+        ]
+      },
       costCeilingRationale:
         "Fixture acceptance ceiling.",
       humanBaselineDescription:
