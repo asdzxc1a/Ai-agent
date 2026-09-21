@@ -1686,7 +1686,7 @@ async function releaseOrphanAttemptReservation(
       "--run-id"
     );
 
-  await withGate13Database(
+  await withGate13FailureContext(
     async (
       context
     ) => {
@@ -1708,21 +1708,7 @@ async function releaseOrphanAttemptReservation(
         );
       }
 
-      const run =
-        await context.runRepository
-          .getRun(
-            runId
-          );
-
-      if (
-        run !== undefined
-      ) {
-        throw new Error(
-          "Gate 13 measured-attempt reservation cannot be released because its durable run exists."
-        );
-      }
-
-      await context.repository
+      await context.service
         .releaseAcceptanceAttemptReservation(
           sampleId,
           targetId,
