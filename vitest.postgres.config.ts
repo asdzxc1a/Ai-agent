@@ -65,7 +65,8 @@ export default defineConfig({
   test: {
     include: [
       "packages/run-postgres/test/**/*.integration.ts",
-      "packages/prospect-postgres/test/**/*.integration.ts"
+      "packages/prospect-postgres/test/**/*.integration.ts",
+      "apps/gate13-operator/test/**/*.postgres.integration.ts"
     ],
     maxWorkers: 1,
     testTimeout: 60_000,
