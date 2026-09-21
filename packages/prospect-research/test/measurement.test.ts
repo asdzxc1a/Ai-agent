@@ -835,6 +835,88 @@ describe(
     );
 
     it(
+      "refuses an acceptance verdict when outcome coverage drifts from the frozen field ledger",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const outcomes =
+          acceptance.targets.map(
+            (_target, index) =>
+              outcome({
+                sampleId:
+                  acceptance.id,
+                targetIndex:
+                  index + 1
+              })
+          );
+
+        outcomes[0] = {
+          ...outcomes[0]!,
+          requestedFieldsTotal:
+            3
+        };
+
+        const denominatorDrift =
+          evaluateProspectResearchSample(
+            acceptance,
+            outcomes
+          );
+
+        expect(
+          denominatorDrift.complete
+        ).toBe(false);
+        expect(
+          denominatorDrift.passed
+        ).toBeNull();
+        expect(
+          denominatorDrift.failures
+        ).toContain(
+          "acceptance outcome requested-field coverage differs from the frozen field ledger"
+        );
+
+        const cleanOutcomes =
+          acceptance.targets.map(
+            (_target, index) =>
+              outcome({
+                sampleId:
+                  acceptance.id,
+                targetIndex:
+                  index + 1
+              })
+          );
+
+        cleanOutcomes[0] = {
+          ...cleanOutcomes[0]!,
+          requestedFieldsCovered:
+            3,
+          requestedFieldsCoveredIds: [
+            "companyName",
+            "companySummary",
+            "buyingSignals"
+          ]
+        };
+
+        const coveredSetDrift =
+          evaluateProspectResearchSample(
+            acceptance,
+            cleanOutcomes
+          );
+
+        expect(
+          coveredSetDrift.complete
+        ).toBe(false);
+        expect(
+          coveredSetDrift.failures
+        ).toContain(
+          "acceptance outcome requested-field coverage differs from the frozen field ledger"
+        );
+      }
+    );
+
+    it(
       "refuses an acceptance verdict when an outcome cost snapshot drifts from the frozen plan",
       () => {
         const acceptance =
@@ -1791,6 +1873,31 @@ describe(
             })
         ).toThrow(
           "must compare against the human workflow using its normal tools"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              requestedFields:
+                undefined
+            })
+        ).toThrow(
+          "requires the exact frozen requested-field set"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              requestedFields: [
+                "companyName",
+                "companySummary",
+                "buyingSignals"
+              ]
+            })
+        ).toThrow(
+          "requires the exact frozen requested-field set"
         );
 
         expect(() =>
