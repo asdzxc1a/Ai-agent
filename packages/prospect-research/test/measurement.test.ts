@@ -835,7 +835,7 @@ describe(
     );
 
     it(
-      "refuses an acceptance verdict when outcome coverage drifts from the frozen field ledger",
+      "refuses an acceptance verdict when outcome coverage denominator or ledger presence drifts",
       () => {
         const acceptance =
           sample(
@@ -856,7 +856,14 @@ describe(
         outcomes[0] = {
           ...outcomes[0]!,
           requestedFieldsTotal:
-            3
+            3,
+          requestedFieldsCovered:
+            3,
+          requestedFieldsCoveredIds: [
+            "companyName",
+            "companySummary",
+            "buyingSignals"
+          ]
         };
 
         const denominatorDrift =
@@ -877,7 +884,7 @@ describe(
           "acceptance outcome requested-field coverage differs from the frozen field ledger"
         );
 
-        const cleanOutcomes =
+        const missingLedger =
           acceptance.targets.map(
             (_target, index) =>
               outcome({
@@ -888,28 +895,25 @@ describe(
               })
           );
 
-        cleanOutcomes[0] = {
-          ...cleanOutcomes[0]!,
-          requestedFieldsCovered:
-            3,
-          requestedFieldsCoveredIds: [
-            "companyName",
-            "companySummary",
-            "buyingSignals"
-          ]
+        missingLedger[0] = {
+          ...missingLedger[0]!,
+          requestedFieldsCoveredIds:
+            undefined
         };
 
-        const coveredSetDrift =
+        const missingLedgerEvaluation =
           evaluateProspectResearchSample(
             acceptance,
-            cleanOutcomes
+            missingLedger
           );
 
         expect(
-          coveredSetDrift.complete
+          missingLedgerEvaluation
+            .complete
         ).toBe(false);
         expect(
-          coveredSetDrift.failures
+          missingLedgerEvaluation
+            .failures
         ).toContain(
           "acceptance outcome requested-field coverage differs from the frozen field ledger"
         );
