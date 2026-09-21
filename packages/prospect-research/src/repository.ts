@@ -10,7 +10,6 @@ import {
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
-  ProspectResearchSampleSchema,
   canonicalizeProspectResearchSampleFreeze,
   type ApprovedResearchTarget,
   type ResearchApprovalBatch,
