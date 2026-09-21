@@ -650,7 +650,6 @@ export class PostgresProspectResearchRepository
             SELECT id
             FROM prospect_research_samples
             WHERE sample->>'purpose' = 'ACCEPTANCE'
-              AND frozen_at <= $2
               AND EXISTS (
                 SELECT 1
                 FROM jsonb_array_elements(sample->'targets') AS target
@@ -659,8 +658,7 @@ export class PostgresProspectResearchRepository
             FOR SHARE
           `,
           [
-            attempt.target.id,
-            attempt.startedAt
+            attempt.target.id
           ]
         );
       const acceptanceSampleIds =
