@@ -1023,7 +1023,7 @@ test(
         )
       )
     ).rejects.toThrow(
-      "does not match the reserved Gate 13 acceptance run"
+      "requires the exact reserved measured run"
     );
 
     const attempt =
