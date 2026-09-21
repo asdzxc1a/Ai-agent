@@ -2195,6 +2195,31 @@ export type ResearchApprovalBatch =
   z.infer<
     typeof ResearchApprovalBatchSchema
   >;
+export function canonicalizeResearchApprovalBatchTime(
+  input: unknown,
+  approvedAt: string
+): ResearchApprovalBatch {
+  const parsed =
+    ResearchApprovalBatchSchema
+      .parse(input);
+
+  return ResearchApprovalBatchSchema
+    .parse({
+      ...parsed,
+      approvedAt,
+      targets:
+        parsed.targets.map(
+          (target) => ({
+            ...target,
+            approval: {
+              ...target.approval,
+              approvedAt
+            }
+          })
+        )
+    });
+}
+
 export type ApprovedResearchTarget =
   z.infer<
     typeof ApprovedResearchTargetSchema
