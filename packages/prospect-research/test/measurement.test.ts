@@ -1892,6 +1892,12 @@ describe(
                   acceptance.id,
                 targetIndex:
                   1,
+                baselineRecordedAt:
+                  durableBaseline
+                    .recordedAt,
+                baselineMinutes:
+                  durableBaseline
+                    .humanPreparationMinutes,
                 materialClaimsReviewed:
                   2
               }),
