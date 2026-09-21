@@ -35,6 +35,7 @@ import {
 } from "./experiment.js";
 import {
   currentGate13ExecutionProfile,
+  exportGate13ExecutionProfile,
   parseGate13ExecutionProfile
 } from "./execution-profile.js";
 import {
@@ -115,6 +116,7 @@ function usage(): string {
     "",
     "Execution profile:",
     "  GATE13_STEEL_BASE_URL=... GATE13_MODEL_NAME=... [GATE13_MODEL_BASE_URL=...] pnpm gate13:operator -- execution-profile-preview",
+    "  GATE13_STEEL_BASE_URL=... GATE13_MODEL_NAME=... [GATE13_MODEL_BASE_URL=...] pnpm gate13:operator -- execution-profile-export --output <path>",
     "",
     "Approval inspection/persistence:",
     "  pnpm gate13:operator -- preview",
@@ -1184,6 +1186,40 @@ async function recordBaseline(
   });
 }
 
+async function executionProfileExport(
+  args: string[]
+): Promise<void> {
+  const parsed =
+    parseOptions(
+      args,
+      [
+        "--output"
+      ]
+    );
+  const output =
+    requiredOption(
+      parsed,
+      "--output"
+    );
+  const profile =
+    await currentGate13ExecutionProfile();
+  const resolved =
+    await exportGate13ExecutionProfile(
+      output,
+      profile
+    );
+
+  print({
+    action:
+      "EXECUTION_PROFILE_EXPORTED",
+    output:
+      resolved,
+    profile,
+    note:
+      "The file contains credential-free frozen execution identity only. Existing files are never overwritten."
+  });
+}
+
 async function executionProfilePreview(
   args: string[]
 ): Promise<void> {
@@ -2179,6 +2215,11 @@ async function main():
   switch (command) {
     case "execution-profile-preview":
       await executionProfilePreview(
+        args
+      );
+      return;
+    case "execution-profile-export":
+      await executionProfileExport(
         args
       );
       return;

@@ -1,5 +1,6 @@
 import {
-  readFile
+  readFile,
+  writeFile
 } from "node:fs/promises";
 import {
   resolve
@@ -196,6 +197,49 @@ export async function currentGate13ExecutionProfile():
     stagehandPackageText,
     steelImagePinText
   });
+}
+
+export function serializeGate13ExecutionProfile(
+  input:
+    ProspectResearchExecutionProfile
+): string {
+  const profile =
+    ProspectResearchExecutionProfileSchema
+      .parse(input);
+
+  return (
+    JSON.stringify(
+      profile,
+      null,
+      2
+    ) +
+    "\n"
+  );
+}
+
+export async function exportGate13ExecutionProfile(
+  outputPath: string,
+  input:
+    ProspectResearchExecutionProfile
+): Promise<string> {
+  const resolved =
+    resolve(
+      process.cwd(),
+      outputPath
+    );
+
+  await writeFile(
+    resolved,
+    serializeGate13ExecutionProfile(
+      input
+    ),
+    {
+      encoding: "utf8",
+      flag: "wx"
+    }
+  );
+
+  return resolved;
 }
 
 function comparable(
