@@ -1436,3 +1436,49 @@ Reserving the run identity before execution closes that loophole without treatin
 **Revisit when**
 
 A future acceptance protocol deliberately includes retries. Freeze the retry budget, retry-trigger rules, attempt-selection/evaluation rule, and first-attempt versus retry-assisted reporting before results.
+
+
+---
+
+## D-045 — Gate 13 model usage is bound into the durable research attempt before cost review
+
+**Date:** 2026-09-21
+**Status:** Accepted
+
+**Decision**
+
+For service-generated Gate 13 attempts, Astra copies the provider-neutral model-usage measurement from the durable run step `AGENT_MODEL_USAGE` into the persisted research attempt before human outcome review.
+
+The attempt snapshot owns:
+
+- prompt tokens;
+- completion tokens;
+- reasoning tokens;
+- cached-input tokens;
+- inference time in milliseconds.
+
+A run may contain at most one `AGENT_MODEL_USAGE` step. Duplicate or malformed usage steps fail attempt persistence instead of becoming billing evidence. Absence remains explicit: an attempt may omit model usage when capture was unavailable, but any frozen cost plan that prices token meters then fails closed during outcome cost derivation.
+
+Acceptance delivery-cost evidence is re-derived from the persisted attempt's model usage plus its server-derived run duration and the frozen rate plan. Repository outcome-context validation recomputes those quantities and rejects an internally consistent cost snapshot if its measured token/duration quantities differ from the durable attempt.
+
+`run-summary.json` and `run-usage` remain useful independent audit/inspection surfaces, but local artifact content is no longer the authoritative input required by `record-outcome`.
+
+**Why**
+
+PR #92 made model usage durable at the run layer and PR #93 made cost rates reproducible, but outcome persistence still read token quantities from the local run-summary artifact. A caller could construct internally consistent cost evidence with different token quantities unless those measurements were first bound into the durable attempt that the outcome already references.
+
+Copying the owned run-step measurement into the attempt aligns model cost with the same durable-boundary pattern already used for duration, unauthorized-action count, audit completeness, requested-field coverage, and first-attempt identity.
+
+**Consequences**
+
+- completed and failed service-generated research attempts retain the durable model-usage snapshot when present;
+- duplicate/malformed model-usage run evidence fails attempt persistence;
+- token-metered cost plans cannot complete when durable model usage is absent;
+- fixed-per-run/duration pricing may still operate without token usage where that frozen accounting method is legitimate;
+- `record-outcome` no longer needs `GATE13_ARTIFACT_DIR` or `run-summary.json` for cost calculation;
+- acceptance outcome persistence rechecks measured quantities against the durable attempt, not just rate arithmetic;
+- run-summary artifacts remain audit evidence and are not discarded.
+
+**Revisit when**
+
+The run layer exposes signed/provider billing receipts or another stronger usage attestation. Preserve the attempt-bound historical measurement and add the stronger receipt as additional provenance rather than rewriting prior outcomes.
