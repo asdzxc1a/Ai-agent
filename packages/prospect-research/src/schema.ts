@@ -866,27 +866,76 @@ export const ProspectResearchCostMeasurementsSchema =
   }).strict();
 
 export const ProspectResearchDeliveryCostComponentSchema =
-  ProspectResearchDeliveryCostRateSchema
-    .safeExtend({
-      rateId:
-        IdentifierSchema,
-      measuredQuantity:
-        z.number()
-          .finite()
-          .nonnegative(),
-      billedUnits:
-        z.number()
-          .finite()
-          .nonnegative(),
-      amountUsd:
-        z.number()
-          .finite()
-          .nonnegative()
-    })
-    .omit({
-      id: true
-    })
-    .strict();
+  z.object({
+    rateId:
+      IdentifierSchema,
+    category:
+      z.enum(
+        PROSPECT_RESEARCH_COST_CATEGORIES
+      ),
+    label:
+      TextSchema.max(240),
+    meter:
+      z.enum(
+        PROSPECT_RESEARCH_COST_METERS
+      ),
+    unitsPerBillingUnit:
+      z.number()
+        .finite()
+        .positive(),
+    usdPerBillingUnit:
+      z.number()
+        .finite()
+        .nonnegative(),
+    rounding:
+      z.enum(
+        PROSPECT_RESEARCH_COST_ROUNDING
+      ),
+    sourceDescription:
+      TextSchema.max(2000),
+    sourceUrl:
+      z.string()
+        .url()
+        .nullable(),
+    sourceAsOfDate:
+      z.string().regex(
+        /^\d{4}-\d{2}-\d{2}$/
+      ),
+    measuredQuantity:
+      z.number()
+        .finite()
+        .nonnegative(),
+    billedUnits:
+      z.number()
+        .finite()
+        .nonnegative(),
+    amountUsd:
+      z.number()
+        .finite()
+        .nonnegative()
+  }).strict()
+    .superRefine(
+      (component, context) => {
+        if (
+          component.meter ===
+            "FIXED_PER_RUN" &&
+          (
+            component
+              .unitsPerBillingUnit !==
+              1 ||
+            component.rounding !==
+              "NONE"
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["meter"],
+            message:
+              "fixed-per-run cost components must use unitsPerBillingUnit=1 and NONE rounding"
+          });
+        }
+      }
+    );
 
 export const ProspectResearchDeliveryCostEvidenceSchema =
   z.object({
