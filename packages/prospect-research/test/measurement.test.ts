@@ -1233,6 +1233,16 @@ describe(
           );
         const addressed =
           completedAttempt(1);
+
+        if (
+          addressed.status !==
+            "COMPLETED"
+        ) {
+          throw new Error(
+            "Fixture completed attempt must be COMPLETED."
+          );
+        }
+
         const full =
           deriveProspectResearchRequestedFieldCoverage(
             acceptance,
