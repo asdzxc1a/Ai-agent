@@ -7,7 +7,8 @@ import {
 import {
   assertGate13ExecutionProfileMatches,
   buildGate13ExecutionProfile,
-  parseGate13ExecutionProfile
+  parseGate13ExecutionProfile,
+  type Gate13ExecutionProfileInput
 } from "../src/execution-profile.js";
 
 const stagehandPackageText =
@@ -33,6 +34,58 @@ function profile() {
     steelImagePinText
   });
 }
+
+const driftCases:
+  Array<
+    [
+      string,
+      Partial<
+        Gate13ExecutionProfileInput
+      >
+    ]
+  > = [
+    [
+      "modelName",
+      {
+        modelName:
+          "different-model"
+      }
+    ],
+    [
+      "modelBaseUrl",
+      {
+        modelBaseUrl:
+          "https://other.example.test/v1"
+      }
+    ],
+    [
+      "browserBaseUrl",
+      {
+        steelBaseUrl:
+          "http://127.0.0.1:3001"
+      }
+    ],
+    [
+      "agentRuntimeVersion",
+      {
+        stagehandPackageText:
+          JSON.stringify({
+            dependencies: {
+              "@browserbasehq/stagehand":
+                "3.8.0"
+            }
+          })
+      }
+    ],
+    [
+      "browserExpectedImagePin",
+      {
+        steelImagePinText:
+          "ghcr.io/steel-dev/steel-browser@sha256:" +
+          "b".repeat(64)
+      }
+    ]
+  ];
 
 describe(
   "Gate 13 execution profile",
@@ -91,49 +144,9 @@ describe(
       }
     );
 
-    it.each([
-      [
-        "modelName",
-        {
-          modelName:
-            "different-model"
-        }
-      ],
-      [
-        "modelBaseUrl",
-        {
-          modelBaseUrl:
-            "https://other.example.test/v1"
-        }
-      ],
-      [
-        "browserBaseUrl",
-        {
-          steelBaseUrl:
-            "http://127.0.0.1:3001"
-        }
-      ],
-      [
-        "agentRuntimeVersion",
-        {
-          stagehandPackageText:
-            JSON.stringify({
-              dependencies: {
-                "@browserbasehq/stagehand":
-                  "3.8.0"
-              }
-            })
-        }
-      ],
-      [
-        "browserExpectedImagePin",
-        {
-          steelImagePinText:
-            "ghcr.io/steel-dev/steel-browser@sha256:" +
-            "b".repeat(64)
-        }
-      ]
-    ])(
+    it.each(
+      driftCases
+    )(
       "rejects %s drift before live execution",
       (
         field,
@@ -160,7 +173,7 @@ describe(
             actual
           )
         ).toThrow(
-          String(field)
+          field
         );
       }
     );
