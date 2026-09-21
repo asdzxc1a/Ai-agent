@@ -275,7 +275,7 @@ Before the first measured sample:
 - the operator approval path must derive all 43 approved target payloads from the exact canonical candidate-manifest bytes, compute the SHA-256 itself, remain mutation-free in preview mode, and reject persistence unless the manifest ID, exact SHA-256, and explicit all-43 authorization are confirmed;
 - the acceptance operator path must reconstruct the expected approval batch from the canonical manifest before sample freeze, require exact 43-member universe equality, keep read-only inspection commands migration-free, generate freeze/review timestamps at execution time, keep acceptance baselines `MEASURED_HUMAN`, require explicit human source/screenshot-audit completion before persisting a completed attempt, derive later outcome baseline/disposition fields from durable sample/baseline/attempt truth rather than operator-supplied provenance, and keep live execution under one database-scoped operator owner without claiming that advisory locking is a future multi-worker lease/fencing design;
 - acceptance is single-market and compares against the human researcher's normal tools; cross-market and scope-matched baselines are calibration-only;
-- durably freeze decision thresholds and a cost-ceiling rationale before results; the quality/time minimums cannot be weakened;
+- durably freeze decision thresholds, a cost-ceiling rationale, and a versioned source-attributed delivery-cost plan before results; acceptance cost plans require explicit MODEL and BROWSER_PROVIDER categories and rate-source dates no later than sample freeze; the quality/time minimums cannot be weakened;
 - for acceptance targets, persist a measured human baseline as separate server-timestamped durable state before the Astra attempt is allowed to start; fixed-cap estimates are calibration-only;
 - record blind versus unblinded review and use blind review where practical;
 - derive completed-outcome `materialClaimsReviewed` from the durable attempt evidence count; tests must reject both under-counting and over-counting, while failed/not-produced outcomes remain zero;
@@ -292,7 +292,7 @@ For every research attempt record:
 - total Astra-side human preparation minutes, broken down into target setup, evidence mapping/source audit, corrections/finalization, failure triage, and other measured operator work;
 - end-to-end duration;
 - measured Stagehand prompt/completion/reasoning/cached-token usage and inference time when available, captured before cleanup and retained for failed as well as completed runs;
-- complete model/token/browser/provider delivery cost, including failed attempts; token usage alone must not be silently treated as dollar cost;
+- complete model/token/browser/provider delivery cost, including failed attempts; acceptance outcome cost must be derived from the durable attempt run summary plus the frozen rate plan, preserving measured quantity, billed units, rounding, rate/source/date, component amount, and total; token usage alone must not be silently treated as dollar cost;
 - unauthorized-action count, which must remain zero.
 
 Blind review where practical. Keep blocked/failed attempts in the denominator/report. A live-site failure is not a Gate 11 deterministic regression.
