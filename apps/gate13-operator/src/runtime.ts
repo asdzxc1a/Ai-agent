@@ -23,6 +23,9 @@ import {
 } from "@astra/run-postgres";
 
 import {
+  buildGate13ExecutionProfile
+} from "./experiment.js";
+import {
   acquireGate13RunOwnership,
   releaseGate13RunOwnership
 } from "./operator-lock.js";
@@ -44,6 +47,10 @@ export interface Gate13ReviewContext
 
 export interface Gate13WorkflowContext
   extends Gate13ReviewContext {
+  executionProfile:
+    ReturnType<
+      typeof buildGate13ExecutionProfile
+    >;
   workflow:
     ProspectResearchWorkflow;
 }
@@ -290,23 +297,40 @@ export async function withGate13Workflow<T>(
     optionalEnv(
       "GATE13_MODEL_BASE_URL"
     );
+  const executionProfile =
+    buildGate13ExecutionProfile({
+      modelName,
+      modelBaseUrl:
+        baseURL ??
+        null,
+      steelBaseUrl
+    });
+  const canonicalModelBaseUrl =
+    executionProfile
+      .modelBaseUrl ??
+    undefined;
   const model =
     apiKey === undefined &&
-    baseURL === undefined
-      ? modelName
+    canonicalModelBaseUrl ===
+      undefined
+      ? executionProfile
+          .modelName
       : {
-          modelName,
+          modelName:
+            executionProfile
+              .modelName,
           ...(apiKey ===
             undefined
             ? {}
             : {
                 apiKey
               }),
-          ...(baseURL ===
+          ...(canonicalModelBaseUrl ===
             undefined
             ? {}
             : {
-                baseURL
+                baseURL:
+                  canonicalModelBaseUrl
               })
         };
   const pool =
@@ -376,7 +400,8 @@ export async function withGate13Workflow<T>(
         browserRuntime:
           new SteelBrowserRuntime({
             baseUrl:
-              steelBaseUrl
+              executionProfile
+                .browserBaseUrl
           }),
         agentRuntime:
           new StagehandAgentRuntime({
@@ -389,6 +414,7 @@ export async function withGate13Workflow<T>(
         ...context,
         artifactStore,
         service,
+        executionProfile,
         workflow
       });
     completed = true;
