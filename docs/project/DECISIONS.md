@@ -1192,3 +1192,47 @@ Counting durable observed evidence closes that gap without inventing model-based
 **Revisit when**
 
 A later protocol may replace the aggregate audit count with durable per-claim/per-evidence human-review receipts. Any replacement must preserve full coverage of the durable observed-evidence set and must not weaken historical acceptance requirements.
+
+
+---
+
+## D-039 — Gate 13 delivery cost is derived from a frozen source-attributed rate plan
+
+**Date:** 2026-09-21
+**Status:** Accepted
+
+**Decision**
+
+Before the first Gate 13 acceptance sample is frozen, the sample must also freeze a versioned delivery-cost accounting plan.
+
+Each rate records:
+
+- a stable rate ID and cost category;
+- the measured meter it prices (model token class, run duration, or fixed per run);
+- units per billing unit, USD per billing unit, and rounding rule;
+- a human-readable resource/rate description;
+- the rate source description, optional source URL, and source-as-of date.
+
+Acceptance requires at least explicit `MODEL` and `BROWSER_PROVIDER` cost categories. Rate-source dates may not be later than the sample freeze.
+
+The operator review payload no longer supplies `deliveryCostUsd`. At outcome persistence, Astra reads the durable local `run-summary.json`, binds it to the attempt's durable run ID, uses measured Stagehand token counts and total run duration where the frozen meters require them, deterministically calculates each rate component, and persists both the component calculation snapshot and its total. The scalar `deliveryCostUsd` is derived from that evidence.
+
+**Why**
+
+The Gate 13 acceptance threshold already requires complete delivery cost and freezes a per-brief ceiling before results. A free post-hoc dollar scalar cannot prove whether model, browser/provider, proxy, or other costs were actually included, nor which rate card or allocation was used.
+
+PR #92 supplies measured model token evidence. Binding that usage and run duration to a pre-frozen source-attributed plan makes the cost threshold reproducible without pretending that self-hosted infrastructure has the same price as a managed cloud product.
+
+**Consequences**
+
+- acceptance sample freeze requires a delivery-cost plan in addition to the existing positive ceiling and rationale;
+- acceptance outcomes require source-attributed cost evidence bound to the durable attempt run;
+- the repository rechecks the frozen rate snapshot, run identity, rounding, component arithmetic, and total;
+- missing required run-summary/model-usage evidence fails closed when the frozen plan needs it;
+- failed attempts remain in the cost denominator when a durable run exists;
+- managed-provider rates may use the applicable official rate card, while self-hosted Steel must use an explicit documented infrastructure allocation rather than silently copying Steel Cloud pricing;
+- the frozen v7 usability/time/cost thresholds, review rubric, cohort, and denominator do not change.
+
+**Revisit when**
+
+A later provider/billing integration may replace operator-frozen rate inputs with signed or API-fetched billing receipts. The evidence must still remain bound to the measured attempt and preserve historical pricing provenance.
