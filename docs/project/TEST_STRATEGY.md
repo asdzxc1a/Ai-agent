@@ -271,12 +271,13 @@ Before the first measured sample:
 - keep execution serial/single-owner and the read-only/action-free operator composition green;
 - persist approvals first, then distinguish `CALIBRATION` from `ACCEPTANCE` samples; calibration may contain at most 10 targets and is diagnostic-only;
 - the first Gate 13 acceptance uses the complete 43-equity IYT U.S. transportation snapshot dated 2026-09-17; source URL/date, methodology URL, declared count, exact candidate target IDs, and `COMPLETE_UNIVERSE` strategy are frozen before target enrichment;
-- the 43 acceptance approvals are persisted as one manifest-hash-bound batch; tests must prove mixed provenance is rejected and duplicate/storage failure rolls back the batch audit row plus every new target;
+- the 43 acceptance approvals are persisted as one self-verifying raw-manifest-bound batch; schema/tests recompute SHA-256 from the embedded manifest bytes, prove every approved target matches its verified candidate row, reject target/manifest tampering, and prove duplicate/storage failure rolls back the batch audit row plus every new target;
 - acceptance is single-market and compares against the human researcher's normal tools; cross-market and scope-matched baselines are calibration-only;
 - durably freeze decision thresholds and a cost-ceiling rationale before results; the quality/time minimums cannot be weakened;
 - for acceptance targets, persist a measured human baseline as separate server-timestamped durable state before the Astra attempt is allowed to start; fixed-cap estimates are calibration-only;
 - record blind versus unblinded review and use blind review where practical;
 - freeze the brief-review rubric before results; reviewers record correction severities, while the schema derives the allowed brief disposition;
+- the canonical 43-row approval preflight runs in normal CI; CI validates manifest/universe consistency but never applies approval to a database;
 - do not report an acceptance pass/fail verdict until every frozen target has exactly one recorded outcome.
 
 For every research attempt record:
