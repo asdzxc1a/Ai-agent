@@ -1,4 +1,8 @@
 import {
+  createHash
+} from "node:crypto";
+
+import {
   describe,
   expect,
   it
@@ -236,11 +240,74 @@ function acceptanceSample() {
     });
 }
 
+function acceptanceApprovalManifestRaw(
+  targets =
+    acceptanceSample()
+      .targets
+) {
+  return JSON.stringify({
+    id:
+      "manifest.acceptance.workflow",
+    universeId:
+      "universe.acceptance.workflow",
+    purpose:
+      "APPROVAL_CANDIDATE_ENRICHMENT",
+    status:
+      "NOT_APPROVED",
+    generatedFrom:
+      "Deterministic workflow acceptance candidates.",
+    verificationDate:
+      "2026-09-19",
+    approvalRule:
+      "Explicit operator approval is required.",
+    targets:
+      targets.map(
+        (approved, index) => ({
+          ticker:
+            "WF" +
+            String(
+              index + 1
+            ).padStart(
+              2,
+              "0"
+            ),
+          targetId:
+            approved.id,
+          companyName:
+            approved
+              .companyNameHint!,
+          canonicalDomain:
+            approved.domain,
+          startUrl:
+            approved.startUrl,
+          approvedDomainsCandidate:
+            approved
+              .approvedDomains,
+          icpContext:
+            approved.icpContext,
+          verificationStatus:
+            "VERIFIED_OFFICIAL_PUBLIC",
+          verificationSourceUrl:
+            approved.startUrl,
+          verificationSourceKind:
+            "COMPANY_OVERVIEW",
+          approvalStatus:
+            "PENDING_OPERATOR_APPROVAL"
+        })
+      )
+  });
+}
+
 function acceptanceApprovalBatch(
   targets =
     acceptanceSample()
       .targets
 ) {
+  const sourceManifestRaw =
+    acceptanceApprovalManifestRaw(
+      targets
+    );
+
   return ResearchApprovalBatchSchema
     .parse({
       id:
@@ -248,7 +315,14 @@ function acceptanceApprovalBatch(
       sourceManifestId:
         "manifest.acceptance.workflow",
       sourceManifestSha256:
-        "c".repeat(64),
+        createHash(
+          "sha256"
+        )
+          .update(
+            sourceManifestRaw
+          )
+          .digest("hex"),
+      sourceManifestRaw,
       approvedBy:
         "operator",
       approvedAt:
