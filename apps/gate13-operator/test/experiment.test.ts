@@ -18,17 +18,16 @@ import {
   buildGate13ApprovalBatchFromManifest
 } from "../src/approval.js";
 import {
-  GATE13_STAGEHAND_VERSION,
   GATE13_UNIVERSE_PATH,
-  assertGate13ExecutionProfile,
   buildGate13AcceptanceSample,
   buildGate13DeliveryCostEvidenceFromRunSummary,
-  buildGate13ExecutionProfile,
   buildGate13HumanBaselineInput,
   buildGate13SampleOutcome,
-  parseGate13ExecutionProfile,
   parseGate13OutcomeReview
 } from "../src/experiment.js";
+import {
+  buildGate13ExecutionProfile
+} from "../src/execution-profile.js";
 
 const approvedAt =
   "2026-09-21T12:00:00.000Z";
@@ -42,7 +41,17 @@ function executionProfile() {
     modelBaseUrl:
       "http://127.0.0.1:4010/v1",
     steelBaseUrl:
-      "http://127.0.0.1:3000"
+      "http://127.0.0.1:3000",
+    stagehandPackageText:
+      JSON.stringify({
+        dependencies: {
+          "@browserbasehq/stagehand":
+            "3.7.0"
+        }
+      }),
+    steelImagePinText:
+      "ghcr.io/steel-dev/steel-browser@sha256:" +
+      "a".repeat(64)
   });
 }
 
@@ -210,106 +219,6 @@ describe(
           maxDeliveryCostUsdPerBrief:
             12.5
         });
-      }
-    );
-
-    it(
-      "pins Stagehand runtime identity and rejects execution-profile drift before live use",
-      async () => {
-        const packageJson =
-          JSON.parse(
-            await readFile(
-              "packages/agent-stagehand/package.json",
-              "utf8"
-            )
-          ) as {
-            dependencies: {
-              "@browserbasehq/stagehand":
-                string;
-            };
-          };
-
-        expect(
-          packageJson.dependencies[
-            "@browserbasehq/stagehand"
-          ]
-        ).toBe(
-          GATE13_STAGEHAND_VERSION
-        );
-
-        const fixture =
-          await fixtures();
-        const sample =
-          buildGate13AcceptanceSample({
-            ...fixture,
-            approvalBatch:
-              fixture.batch,
-            sampleId:
-              "g13.sample.profile",
-            frozenBy:
-              "operator@example",
-            frozenAt,
-            maxDeliveryCostUsdPerBrief:
-              12.5,
-            executionProfile:
-              executionProfile(),
-            deliveryCostPlan:
-              costPlan(),
-            costCeilingRationale:
-              "Pre-frozen business ceiling.",
-            humanBaselineDescription:
-              "Measured human workflow."
-          });
-        const actual =
-          executionProfile();
-
-        expect(() =>
-          assertGate13ExecutionProfile(
-            sample,
-            actual
-          )
-        ).not.toThrow();
-
-        expect(() =>
-          assertGate13ExecutionProfile(
-            sample,
-            {
-              ...actual,
-              modelName:
-                "fixture/other-model"
-            }
-          )
-        ).toThrow(
-          "differs from the frozen acceptance profile"
-        );
-
-        expect(() =>
-          assertGate13ExecutionProfile(
-            sample,
-            {
-              ...actual,
-              browserBaseUrl:
-                "http://127.0.0.1:3001/"
-            }
-          )
-        ).toThrow(
-          "differs from the frozen acceptance profile"
-        );
-
-        expect(() =>
-          parseGate13ExecutionProfile(
-            JSON.stringify({
-              modelName:
-                "fixture/model-v1",
-              modelBaseUrl:
-                "https://user:secret@example.test/v1",
-              steelBaseUrl:
-                "http://127.0.0.1:3000"
-            })
-          )
-        ).toThrow(
-          "credential-free HTTP(S) base URLs"
-        );
       }
     );
 
