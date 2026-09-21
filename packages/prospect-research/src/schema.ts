@@ -1,4 +1,7 @@
 import {
+  createHash
+} from "node:crypto";
+import {
   isIP
 } from "node:net";
 
@@ -227,6 +230,186 @@ const Sha256Schema =
       /^[a-f0-9]{64}$/
     );
 
+export const ResearchApprovalCandidateSchema =
+  z.object({
+    ticker:
+      TextSchema.max(32),
+    targetId:
+      IdentifierSchema,
+    companyName:
+      TextSchema.max(240),
+    canonicalDomain:
+      ResearchDomainSchema,
+    startUrl:
+      z.string().url(),
+    approvedDomainsCandidate:
+      z.array(
+        ResearchDomainSchema
+      ).min(1).max(16),
+    icpContext:
+      z.string()
+        .trim()
+        .min(1)
+        .max(4000)
+        .nullable(),
+    verificationStatus:
+      z.literal(
+        "VERIFIED_OFFICIAL_PUBLIC"
+      ),
+    verificationSourceUrl:
+      z.string().url(),
+    verificationSourceKind:
+      TextSchema.max(128),
+    approvalStatus:
+      z.literal(
+        "PENDING_OPERATOR_APPROVAL"
+      )
+  }).strict()
+    .superRefine(
+      (candidate, context) => {
+        if (
+          !candidate
+            .approvedDomainsCandidate
+            .includes(
+              candidate
+                .canonicalDomain
+            )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "approvedDomainsCandidate"
+            ],
+            message:
+              "approval candidate domains must include the canonical domain"
+          });
+        }
+
+        let start: URL | undefined;
+
+        try {
+          start =
+            new URL(
+              candidate.startUrl
+            );
+        } catch {
+          start = undefined;
+        }
+
+        if (
+          start === undefined ||
+          start.protocol !==
+            "https:" ||
+          start.username.length >
+            0 ||
+          start.password.length >
+            0 ||
+          (
+            start.port.length > 0 &&
+            start.port !== "443"
+          ) ||
+          !candidate
+            .approvedDomainsCandidate
+            .some(
+              (domain) =>
+                hostnameWithinDomain(
+                  start!.hostname,
+                  domain
+                )
+            )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["startUrl"],
+            message:
+              "approval candidate startUrl must be HTTPS within approved domain candidates"
+          });
+        }
+
+        if (
+          candidate
+            .verificationSourceUrl !==
+          candidate.startUrl
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "verificationSourceUrl"
+            ],
+            message:
+              "approval candidate verification source must equal startUrl"
+          });
+        }
+      }
+    );
+
+export const ResearchApprovalCandidateManifestSchema =
+  z.object({
+    id:
+      IdentifierSchema,
+    universeId:
+      IdentifierSchema,
+    purpose:
+      z.literal(
+        "APPROVAL_CANDIDATE_ENRICHMENT"
+      ),
+    status:
+      z.literal(
+        "NOT_APPROVED"
+      ),
+    generatedFrom:
+      TextSchema.max(4000),
+    verificationDate:
+      z.string()
+        .regex(
+          /^\d{4}-\d{2}-\d{2}$/
+        ),
+    approvalRule:
+      TextSchema.max(4000),
+    targets:
+      z.array(
+        ResearchApprovalCandidateSchema
+      ).min(1).max(50)
+  }).strict()
+    .superRefine(
+      (manifest, context) => {
+        const ids =
+          manifest.targets.map(
+            (target) =>
+              target.targetId
+          );
+        const tickers =
+          manifest.targets.map(
+            (target) =>
+              target.ticker
+          );
+
+        if (
+          new Set(ids).size !==
+            ids.length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["targets"],
+            message:
+              "approval candidate target IDs must be unique"
+          });
+        }
+
+        if (
+          new Set(tickers).size !==
+            tickers.length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["targets"],
+            message:
+              "approval candidate tickers must be unique"
+          });
+        }
+      }
+    );
+
 export const ResearchApprovalBatchSchema =
   z.object({
     id: IdentifierSchema,
@@ -234,6 +417,10 @@ export const ResearchApprovalBatchSchema =
       IdentifierSchema,
     sourceManifestSha256:
       Sha256Schema,
+    sourceManifestRaw:
+      z.string()
+        .min(1)
+        .max(200_000),
     approvedBy:
       TextSchema.max(240),
     approvedAt:
@@ -247,6 +434,165 @@ export const ResearchApprovalBatchSchema =
   }).strict()
     .superRefine(
       (batch, context) => {
+        const computedSha =
+          createHash("sha256")
+            .update(
+              batch
+                .sourceManifestRaw
+            )
+            .digest("hex");
+
+        if (
+          computedSha !==
+          batch
+            .sourceManifestSha256
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "sourceManifestSha256"
+            ],
+            message:
+              "approval batch manifest SHA-256 does not match sourceManifestRaw"
+          });
+        }
+
+        let manifest:
+          z.infer<
+            typeof ResearchApprovalCandidateManifestSchema
+          > | undefined;
+
+        try {
+          manifest =
+            ResearchApprovalCandidateManifestSchema
+              .parse(
+                JSON.parse(
+                  batch
+                    .sourceManifestRaw
+                )
+              );
+        } catch {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "sourceManifestRaw"
+            ],
+            message:
+              "approval batch source manifest is invalid"
+          });
+        }
+
+        if (
+          manifest !== undefined
+        ) {
+          if (
+            manifest.id !==
+            batch.sourceManifestId
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: [
+                "sourceManifestId"
+              ],
+              message:
+                "approval batch sourceManifestId does not match source manifest"
+            });
+          }
+
+          if (
+            manifest.targets.length !==
+            batch.targets.length
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: ["targets"],
+              message:
+                "approval batch target count does not match source manifest"
+            });
+          }
+
+          const candidates =
+            new Map(
+              manifest.targets.map(
+                (candidate) => [
+                  candidate.targetId,
+                  candidate
+                ]
+              )
+            );
+
+          batch.targets.forEach(
+            (target, index) => {
+              const candidate =
+                candidates.get(
+                  target.id
+                );
+
+              if (
+                candidate ===
+                undefined
+              ) {
+                context.addIssue({
+                  code: "custom",
+                  path: [
+                    "targets",
+                    index
+                  ],
+                  message:
+                    "approval batch target is not present in source manifest"
+                });
+                return;
+              }
+
+              const sameDomains =
+                target
+                  .approvedDomains
+                  .length ===
+                  candidate
+                    .approvedDomainsCandidate
+                    .length &&
+                target
+                  .approvedDomains
+                  .every(
+                    (
+                      domain,
+                      domainIndex
+                    ) =>
+                      domain ===
+                      candidate
+                        .approvedDomainsCandidate[
+                          domainIndex
+                        ]
+                  );
+
+              if (
+                target.domain !==
+                  candidate
+                    .canonicalDomain ||
+                target.startUrl !==
+                  candidate.startUrl ||
+                !sameDomains ||
+                target
+                  .companyNameHint !==
+                  candidate
+                    .companyName ||
+                target.icpContext !==
+                  candidate.icpContext
+              ) {
+                context.addIssue({
+                  code: "custom",
+                  path: [
+                    "targets",
+                    index
+                  ],
+                  message:
+                    "approval batch target differs from verified source manifest candidate"
+                });
+              }
+            }
+          );
+        }
+
         const targetIds =
           batch.targets.map(
             (target) =>
@@ -1500,6 +1846,14 @@ export type ProspectResearchSample =
 export type ProspectResearchSampleOutcome =
   z.infer<
     typeof ProspectResearchSampleOutcomeSchema
+  >;
+export type ResearchApprovalCandidate =
+  z.infer<
+    typeof ResearchApprovalCandidateSchema
+  >;
+export type ResearchApprovalCandidateManifest =
+  z.infer<
+    typeof ResearchApprovalCandidateManifestSchema
   >;
 export type ResearchApprovalBatch =
   z.infer<
