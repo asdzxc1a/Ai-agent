@@ -262,6 +262,12 @@ function sample(
       ...(purpose ===
         "ACCEPTANCE"
         ? {
+            requestedFields: [
+              "companyName",
+              "companySummary",
+              "transformationOpportunities",
+              "buyingSignals"
+            ],
             executionProfile:
               executionProfile(),
             deliveryCostPlan:
@@ -392,6 +398,15 @@ function outcome(input: {
         notProduced
           ? 0
           : 4,
+      requestedFieldsCoveredIds:
+        notProduced
+          ? []
+          : [
+              "companyName",
+              "companySummary",
+              "transformationOpportunities",
+              "buyingSignals"
+            ],
       baselineHumanPreparationMinutes:
         input.baselineMinutes ??
         20,
