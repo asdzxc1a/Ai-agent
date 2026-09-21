@@ -81,6 +81,18 @@ export function totalAstraHumanPreparationMinutes(
   );
 }
 
+
+export function requiredMaterialClaimAuditCount(
+  attempt:
+    ProspectResearchAttempt
+): number {
+  return attempt.status ===
+    "COMPLETED"
+    ? attempt.report
+        .evidence.length
+    : 0;
+}
+
 export function validateProspectResearchSampleOutcomeContext(
   sampleInput:
     ProspectResearchSample,
@@ -177,6 +189,23 @@ export function validateProspectResearchSampleOutcomeContext(
   ) {
     throw new Error(
       "Measured research outcome attempt target differs from the frozen sample."
+    );
+  }
+
+
+  const requiredAuditCount =
+    requiredMaterialClaimAuditCount(
+      attempt
+    );
+
+  if (
+    outcome
+      .materialClaimsReviewed !==
+      requiredAuditCount
+  ) {
+    throw new Error(
+      "Measured research outcome materialClaimsReviewed must equal the durable observed-evidence audit count: " +
+        requiredAuditCount
     );
   }
 
