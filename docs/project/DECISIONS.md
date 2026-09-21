@@ -1320,3 +1320,43 @@ D-039 makes delivery cost reproducible from frozen rates plus measured usage, bu
 **Revisit when**
 
 A future runtime exposes signed provider/model deployment identities or immutable deployment IDs. Prefer those stronger identifiers over URL/name matching while retaining historical profile provenance.
+
+
+---
+
+## D-042 — Gate 13 requested-field coverage is frozen and derived from durable research truth
+
+**Date:** 2026-09-21
+**Status:** Accepted
+
+**Decision**
+
+Gate 13 acceptance freezes one exact requested-field ledger before results:
+
+- `companyName`;
+- `companySummary`;
+- `transformationOpportunities`;
+- `buyingSignals`.
+
+The acceptance reviewer does not supply `requestedFieldsTotal` or `requestedFieldsCovered`.
+
+For a completed durable research attempt, a requested field is covered when the canonical report either contains a value/list for that field or contains an explicit `unknowns[].field` entry with the exact requested-field ID. For a failed/not-produced attempt, covered requested fields are zero.
+
+The persisted outcome carries the exact covered field IDs plus the derived total/count. Acceptance context validation requires that ledger to match the frozen sample and durable attempt. Final cohort evaluation independently rejects denominator/covered-ID drift from the frozen ledger.
+
+**Why**
+
+The measured protocol already reports requested-field coverage, but a reviewer-entered denominator can change the metric after seeing results. Repository tests also exposed inconsistent fixture totals of three versus four. Freezing the four business-facing output fields removes that post-hoc degree of freedom while preserving Astra's rule that unavailable information should be explicit unknown rather than fabricated.
+
+**Consequences**
+
+- every Gate 13 acceptance sample freezes exactly the same four requested fields;
+- explicit unknowns count as addressed coverage, while silent omission does not;
+- failed attempts remain in the denominator with zero covered fields;
+- reviewer JSON cannot choose the denominator, covered count, or covered IDs;
+- calibration may retain historical/manual coverage records for compatibility;
+- the v7 usability threshold, correction-severity rubric, cohort, and denominator are unchanged.
+
+**Revisit when**
+
+A future protocol intentionally changes the sales-research brief schema or requested business fields. That requires a newly versioned protocol/rubric and must not rewrite historical v7 coverage.
