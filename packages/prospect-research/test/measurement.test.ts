@@ -7,6 +7,7 @@ import {
 import {
   ApprovedResearchTargetSchema,
   ProspectResearchHumanBaselineSchema,
+  ProspectResearchAttemptSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   evaluateProspectResearchSample,
@@ -195,6 +196,7 @@ function outcome(input: {
   failureTriageMinutes?: number;
   otherMinutes?: number;
   costUsd?: number;
+  materialClaimsReviewed?: number;
 }) {
   const targetId =
     "target." +
@@ -253,9 +255,13 @@ function outcome(input: {
         input.baselineRecordedAt ??
         "2026-09-20T11:30:00.000Z",
       materialClaimsReviewed:
-        notProduced
-          ? 0
-          : 3,
+        input
+          .materialClaimsReviewed ??
+        (
+          notProduced
+            ? 0
+            : 3
+        ),
       unsupportedMaterialClaims:
         0,
       corrections: {
@@ -353,6 +359,186 @@ function baseline(input: {
       recordedAt:
         input.recordedAt ??
         "2026-09-20T11:30:00.000Z"
+    });
+}
+
+
+function completedAttempt(
+  targetIndex: number
+) {
+  const approved =
+    target(
+      targetIndex
+    );
+  const suffix =
+    String(
+      targetIndex
+    ).padStart(2, "0");
+  const runId =
+    "run." +
+    suffix;
+  const firstEvidenceId =
+    "evidence." +
+    suffix +
+    ".one";
+  const secondEvidenceId =
+    "evidence." +
+    suffix +
+    ".two";
+  const researchedAt =
+    "2026-09-20T12:05:00.000Z";
+
+  return ProspectResearchAttemptSchema
+    .parse({
+      id:
+        runId,
+      target:
+        approved,
+      startedAt:
+        "2026-09-20T12:00:00.000Z",
+      createdAt:
+        researchedAt,
+      status:
+        "COMPLETED",
+      report: {
+        id:
+          runId,
+        runId,
+        targetId:
+          approved.id,
+        researchedAt,
+        prospect: {
+          id:
+            approved.id,
+          domain:
+            approved.domain,
+          companyName:
+            approved
+              .companyNameHint,
+          fit:
+            "unknown",
+          disqualifiers: [],
+          evidenceIds: [
+            firstEvidenceId,
+            secondEvidenceId
+          ],
+          hypothesisIds: []
+        },
+        companySummary: [
+          {
+            id:
+              "claim." +
+              suffix +
+              ".one",
+            kind:
+              "observed_fact",
+            statement:
+              approved
+                .companyNameHint!,
+            evidenceIds: [
+              firstEvidenceId
+            ]
+          },
+          {
+            id:
+              "claim." +
+              suffix +
+              ".two",
+            kind:
+              "observed_fact",
+            statement:
+              "Example Systems operates a distributed service network.",
+            evidenceIds: [
+              secondEvidenceId
+            ]
+          }
+        ],
+        transformationOpportunities:
+          [],
+        buyingSignals: [],
+        unknowns: [],
+        evidence: [
+          {
+            id:
+              firstEvidenceId,
+            sourceUrl:
+              approved.startUrl,
+            observation:
+              approved
+                .companyNameHint!,
+            capturedAt:
+              researchedAt,
+            uncertainty:
+              "none",
+            uncertaintyNote:
+              null,
+            artifactIds: [
+              "artifact." +
+              suffix +
+              ".one"
+            ],
+            captureReceipts: [
+              {
+                artifactId:
+                  "artifact." +
+                  suffix +
+                  ".one",
+                captureVersion:
+                  "page-evidence-v1",
+                semanticSettled:
+                  true,
+                pageUrl:
+                  approved.startUrl,
+                capturedAt:
+                  researchedAt,
+                pageContentSha256:
+                  "a".repeat(64),
+                screenshotSha256:
+                  "b".repeat(64)
+              }
+            ]
+          },
+          {
+            id:
+              secondEvidenceId,
+            sourceUrl:
+              approved.startUrl,
+            observation:
+              "Example Systems operates a distributed service network.",
+            capturedAt:
+              researchedAt,
+            uncertainty:
+              "none",
+            uncertaintyNote:
+              null,
+            artifactIds: [
+              "artifact." +
+              suffix +
+              ".two"
+            ],
+            captureReceipts: [
+              {
+                artifactId:
+                  "artifact." +
+                  suffix +
+                  ".two",
+                captureVersion:
+                  "page-evidence-v1",
+                semanticSettled:
+                  true,
+                pageUrl:
+                  approved.startUrl,
+                capturedAt:
+                  researchedAt,
+                pageContentSha256:
+                  "c".repeat(64),
+                screenshotSha256:
+                  "d".repeat(64)
+              }
+            ]
+          }
+        ]
+      }
     });
 }
 
@@ -694,6 +880,102 @@ describe(
         ).toThrow(
           "differs from durable baseline truth"
         );
+      }
+    );
+
+    it(
+      "requires the human audit count to cover every durable observed evidence item for completed attempts",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const attempt =
+          completedAttempt(1);
+        const durableBaseline =
+          baseline({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            recordedAt:
+              "2026-09-20T11:59:00.000Z"
+          });
+        const incompleteAudit =
+          outcome({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            materialClaimsReviewed:
+              0,
+            baselineRecordedAt:
+              durableBaseline
+                .recordedAt,
+            baselineMinutes:
+              durableBaseline
+                .humanPreparationMinutes
+          });
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            durableBaseline,
+            incompleteAudit
+          )
+        ).toThrow(
+          "must equal the durable observed-evidence audit count: 2"
+        );
+
+        const overCountedAudit =
+          outcome({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            materialClaimsReviewed:
+              3,
+            baselineRecordedAt:
+              durableBaseline
+                .recordedAt,
+            baselineMinutes:
+              durableBaseline
+                .humanPreparationMinutes
+          });
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            durableBaseline,
+            overCountedAudit
+          )
+        ).toThrow(
+          "must equal the durable observed-evidence audit count: 2"
+        );
+
+        const completeAudit =
+          outcome({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            materialClaimsReviewed:
+              2,
+            baselineRecordedAt:
+              durableBaseline
+                .recordedAt,
+            baselineMinutes:
+              durableBaseline
+                .humanPreparationMinutes
+          });
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            durableBaseline,
+            completeAudit
+          )
+        ).not.toThrow();
       }
     );
 
