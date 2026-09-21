@@ -235,7 +235,12 @@ function acceptanceSample() {
         browserRuntime:
           "STEEL",
         browserBaseUrl:
-          "http://127.0.0.1:3000/"
+          "http://127.0.0.1:3000/",
+        browserExpectedImagePin:
+          "ghcr.io/steel-dev/steel-browser@sha256:" +
+          "a".repeat(64),
+        browserIdentityEvidence:
+          "EXPECTED_IMAGE_PIN_ONLY"
       },
       deliveryCostPlan: {
         version:
