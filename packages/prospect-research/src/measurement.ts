@@ -274,6 +274,90 @@ function sameCostRateSnapshot(
   );
 }
 
+function assertDeliveryCostEvidenceMatchesPlan(
+  plan:
+    ProspectResearchDeliveryCostPlan,
+  evidence:
+    ProspectResearchDeliveryCostEvidence
+): void {
+  if (
+    evidence.version !==
+      plan.version ||
+    evidence.components.length !==
+      plan.rates.length ||
+    plan.rates.some(
+      (rate) => {
+        const component =
+          evidence.components
+            .find(
+              (candidate) =>
+                candidate.rateId ===
+                rate.id
+            );
+
+        return (
+          component ===
+            undefined ||
+          !sameCostRateSnapshot(
+            rate,
+            component
+          )
+        );
+      }
+    )
+  ) {
+    throw new Error(
+      "Gate 13 delivery cost evidence differs from the frozen cost plan."
+    );
+  }
+
+  for (
+    const component of
+    evidence.components
+  ) {
+    const rate =
+      plan.rates.find(
+        (candidate) =>
+          candidate.id ===
+          component.rateId
+      );
+
+    if (rate === undefined) {
+      throw new Error(
+        "Gate 13 delivery cost evidence contains an unknown frozen rate."
+      );
+    }
+
+    const expectedUnits =
+      billedUnits(
+        component
+          .measuredQuantity,
+        rate
+      );
+    const expectedAmount =
+      expectedUnits *
+      rate.usdPerBillingUnit;
+
+    if (
+      Math.abs(
+        expectedUnits -
+        component.billedUnits
+      ) >
+        1e-9 ||
+      Math.abs(
+        expectedAmount -
+        component.amountUsd
+      ) >
+        1e-9
+    ) {
+      throw new Error(
+        "Gate 13 delivery cost component does not match its frozen rate calculation: " +
+          component.rateId
+      );
+    }
+  }
+}
+
 export function requiredMaterialClaimAuditCount(
   attempt:
     ProspectResearchAttempt
@@ -433,82 +517,10 @@ export function validateProspectResearchSampleOutcomeContext(
       );
     }
 
-    if (
-      evidence.version !==
-        plan.version ||
-      evidence.components.length !==
-        plan.rates.length ||
-      plan.rates.some(
-        (rate) => {
-          const component =
-            evidence.components
-              .find(
-                (candidate) =>
-                  candidate.rateId ===
-                  rate.id
-              );
-
-          return (
-            component ===
-              undefined ||
-            !sameCostRateSnapshot(
-              rate,
-              component
-            )
-          );
-        }
-      )
-    ) {
-      throw new Error(
-        "Gate 13 delivery cost evidence differs from the frozen cost plan."
-      );
-    }
-
-    for (
-      const component of
-      evidence.components
-    ) {
-      const rate =
-        plan.rates.find(
-          (candidate) =>
-            candidate.id ===
-            component.rateId
-        );
-
-      if (rate === undefined) {
-        throw new Error(
-          "Gate 13 delivery cost evidence contains an unknown frozen rate."
-        );
-      }
-
-      const expectedUnits =
-        billedUnits(
-          component
-            .measuredQuantity,
-          rate
-        );
-      const expectedAmount =
-        expectedUnits *
-        rate.usdPerBillingUnit;
-
-      if (
-        Math.abs(
-          expectedUnits -
-          component.billedUnits
-        ) >
-          1e-9 ||
-        Math.abs(
-          expectedAmount -
-          component.amountUsd
-        ) >
-          1e-9
-      ) {
-        throw new Error(
-          "Gate 13 delivery cost component does not match its frozen rate calculation: " +
-            component.rateId
-        );
-      }
-    }
+    assertDeliveryCostEvidenceMatchesPlan(
+      plan,
+      evidence
+    );
 
     if (
       Math.abs(
@@ -607,17 +619,55 @@ export function evaluateProspectResearchSample(
     );
   }
 
-  const costEvidenceComplete =
-    sample.purpose !==
-      "ACCEPTANCE" ||
-    outcomes.every(
-      (outcome) =>
-        outcome.deliveryCostEvidence !==
-          undefined
-    );
+  if (
+    sample.purpose ===
+      "ACCEPTANCE"
+  ) {
+    const plan =
+      sample.deliveryCostPlan!;
+
+    for (
+      const outcome of
+      outcomes
+    ) {
+      const evidence =
+        outcome.deliveryCostEvidence;
+
+      if (evidence === undefined) {
+        failures.push(
+          "acceptance outcome is missing source-attributed delivery cost evidence"
+        );
+        break;
+      }
+
+      try {
+        assertDeliveryCostEvidenceMatchesPlan(
+          plan,
+          evidence
+        );
+
+        if (
+          Math.abs(
+            outcome.deliveryCostUsd -
+            evidence.totalUsd
+          ) >
+            1e-9
+        ) {
+          throw new Error(
+            "delivery cost total mismatch"
+          );
+        }
+      } catch {
+        failures.push(
+          "acceptance outcome delivery cost evidence differs from the frozen plan"
+        );
+        break;
+      }
+    }
+  }
+
   const complete =
     failures.length === 0 &&
-    costEvidenceComplete &&
     outcomes.length ===
       sample.targets.length &&
     sample.targets.every(
