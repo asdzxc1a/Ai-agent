@@ -681,7 +681,8 @@ export class PostgresProspectResearchRepository
             `
               SELECT
                 sample_id,
-                run_id
+                run_id,
+                reserved_at
               FROM prospect_research_acceptance_attempt_reservations
               WHERE target_id = $1
                 AND sample_id = ANY($2::text[])
@@ -693,20 +694,56 @@ export class PostgresProspectResearchRepository
             ]
           );
 
-        if (
-          !reservationResult.rows.some(
-            (row) =>
-              (
-                row as {
+        const matchingReservation =
+          reservationResult.rows
+            .find(
+              (row) =>
+                (
+                  row as {
+                    run_id:
+                      string;
+                  }
+                ).run_id ===
+                  attempt.id
+            ) as
+              | {
                   run_id:
                     string;
+                  reserved_at:
+                    Date | string;
                 }
-              ).run_id ===
-                attempt.id
-          )
+              | undefined;
+
+        if (
+          matchingReservation ===
+            undefined
         ) {
           throw new Error(
             "Gate 13 acceptance-era research attempt requires the exact reserved measured run."
+          );
+        }
+
+        const reservedAt =
+          matchingReservation
+            .reserved_at instanceof Date
+            ? matchingReservation
+                .reserved_at
+                .toISOString()
+            : new Date(
+                matchingReservation
+                  .reserved_at
+              ).toISOString();
+
+        if (
+          Date.parse(
+            attempt.startedAt
+          ) <
+            Date.parse(
+              reservedAt
+            )
+        ) {
+          throw new Error(
+            "Gate 13 measured attempt cannot start before its durable reservation."
           );
         }
       }
