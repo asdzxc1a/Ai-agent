@@ -50,12 +50,24 @@ importers:
 
   apps/gate13-operator:
     dependencies:
+      '@astra/agent-stagehand':
+        specifier: workspace:*
+        version: link:../../packages/agent-stagehand
+      '@astra/artifact-store':
+        specifier: workspace:*
+        version: link:../../packages/artifact-store
+      '@astra/browser-steel':
+        specifier: workspace:*
+        version: link:../../packages/browser-steel
       '@astra/prospect-postgres':
         specifier: workspace:*
         version: link:../../packages/prospect-postgres
       '@astra/prospect-research':
         specifier: workspace:*
         version: link:../../packages/prospect-research
+      '@astra/run-postgres':
+        specifier: workspace:*
+        version: link:../../packages/run-postgres
       zod:
         specifier: 4.4.3
         version: 4.4.3
