@@ -141,7 +141,9 @@ function preparation() {
     costCeilingRationale:
       "Business and engineering delivery-cost ceiling frozen before results.",
     humanBaselineDescription:
-      "A skilled human researcher uses the existing normal research workflow and normal tools."
+      "A skilled human researcher uses the existing normal research workflow and normal tools.",
+    preflightAt:
+      "2026-09-21T12:00:00.000Z"
   };
 }
 
@@ -288,6 +290,34 @@ describe(
           })
         ).toThrow(
           "human baseline description"
+        );
+
+        const futureRate =
+          preparation();
+
+        expect(() =>
+          gate13AcceptanceInputPreflight({
+            ...futureRate,
+            deliveryCostPlan: {
+              ...futureRate
+                .deliveryCostPlan,
+              rates:
+                futureRate
+                  .deliveryCostPlan
+                  .rates.map(
+                    (rate, index) =>
+                      index === 0
+                        ? {
+                            ...rate,
+                            sourceAsOfDate:
+                              "2026-09-22"
+                          }
+                        : rate
+                  )
+            }
+          })
+        ).toThrow(
+          "must not be after the preflight timestamp"
         );
       }
     );
