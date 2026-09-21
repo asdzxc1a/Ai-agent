@@ -463,33 +463,33 @@ async function approve(
       approvedAt
     });
 
-  await withGate13Database(
-    async (
-      context
-    ) => {
-      await context.repository
-        .saveTargetBatch(
-          batch
-        );
-    }
-  );
+  const persisted =
+    await withGate13Database(
+      async (
+        context
+      ) =>
+        context.repository
+          .saveTargetBatch(
+            batch
+          )
+    );
 
   print({
     action:
       "APPROVAL_BATCH_PERSISTED",
     batchId:
-      batch.id,
+      persisted.id,
     sourceManifestId:
-      batch.sourceManifestId,
+      persisted.sourceManifestId,
     sourceManifestSha256:
-      batch
+      persisted
         .sourceManifestSha256,
     approvedBy:
-      batch.approvedBy,
+      persisted.approvedBy,
     approvedAt:
-      batch.approvedAt,
+      persisted.approvedAt,
     targetCount:
-      batch.targets.length
+      persisted.targets.length
   });
 }
 
