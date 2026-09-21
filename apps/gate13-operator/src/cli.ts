@@ -25,15 +25,17 @@ import {
 } from "./approval.js";
 import {
   GATE13_UNIVERSE_PATH,
-  assertGate13ExecutionProfile,
   buildGate13AcceptanceSample,
   buildGate13DeliveryCostEvidenceFromRunSummary,
   buildGate13HumanBaselineInput,
   buildGate13SampleOutcome,
   parseGate13DeliveryCostPlan,
-  parseGate13ExecutionProfile,
   parseGate13OutcomeReview
 } from "./experiment.js";
+import {
+  currentGate13ExecutionProfile,
+  parseGate13ExecutionProfile
+} from "./execution-profile.js";
 import {
   gate13ArtifactDir,
   withGate13Database,
@@ -104,6 +106,9 @@ const RunSummaryUsageSchema =
 function usage(): string {
   return [
     "Gate 13 operator",
+    "",
+    "Execution profile:",
+    "  GATE13_STEEL_BASE_URL=... GATE13_MODEL_NAME=... [GATE13_MODEL_BASE_URL=...] pnpm gate13:operator -- execution-profile-preview",
     "",
     "Approval inspection/persistence:",
     "  pnpm gate13:operator -- preview",
@@ -782,6 +787,30 @@ async function recordBaseline(
   });
 }
 
+async function executionProfilePreview(
+  args: string[]
+): Promise<void> {
+  if (
+    args.length >
+      0
+  ) {
+    throw new Error(
+      "Execution profile preview accepts no options."
+    );
+  }
+
+  const profile =
+    await currentGate13ExecutionProfile();
+
+  print({
+    action:
+      "EXECUTION_PROFILE_PREVIEW",
+    profile,
+    note:
+      "browserExpectedImagePin is the immutable Steel image expected by this checkout. EXPECTED_IMAGE_PIN_ONLY does not attest the digest of the already-running Steel endpoint."
+  });
+}
+
 function terminalStatus(
   status: string
 ): boolean {
@@ -814,28 +843,29 @@ async function runTarget(
       "--target-id"
     );
 
+  const sample =
+    await withGate13DatabaseReadOnly(
+      async (
+        context
+      ) =>
+        context.repository
+          .getSample(
+            sampleId
+          )
+    );
+
+  if (sample === undefined) {
+    throw new Error(
+      "Measured research sample does not exist: " +
+        sampleId
+    );
+  }
+
   await withGate13Workflow(
+    sample.executionProfile,
     async (
       context
     ) => {
-      const sample =
-        await context.repository
-          .getSample(
-            sampleId
-          );
-
-      if (sample === undefined) {
-        throw new Error(
-          "Measured research sample does not exist: " +
-            sampleId
-        );
-      }
-
-      assertGate13ExecutionProfile(
-        sample,
-        context.executionProfile
-      );
-
       const started =
         await context.workflow
           .start({
@@ -1718,6 +1748,11 @@ async function main():
   }
 
   switch (command) {
+    case "execution-profile-preview":
+      await executionProfilePreview(
+        args
+      );
+      return;
     case "preview":
       await previewApproval(
         args
