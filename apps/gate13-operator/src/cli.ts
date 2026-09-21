@@ -851,11 +851,23 @@ async function runTarget(
             context.executionProfile
           );
       } catch (error) {
-        await context.workflow
-          .cancelRun(
-            started.id
-          )
-          .catch(() => undefined);
+        try {
+          await context.workflow
+            .cancelRun(
+              started.id
+            );
+        } catch (
+          cancelError
+        ) {
+          throw new AggregateError(
+            [
+              error,
+              cancelError
+            ],
+            "Gate 13 execution-profile audit persistence failed and the owned run could not be cancelled."
+          );
+        }
+
         throw error;
       }
       let interruptRequested =
@@ -908,7 +920,9 @@ async function runTarget(
         runId:
           started.id,
         status:
-          started.status
+          started.status,
+        executionProfile:
+          context.executionProfile
       });
 
       try {
