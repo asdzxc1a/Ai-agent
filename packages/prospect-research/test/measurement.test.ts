@@ -9,6 +9,7 @@ import {
   ProspectResearchHumanBaselineSchema,
   ProspectResearchAttemptSchema,
   ProspectResearchSampleOutcomeSchema,
+  calculateProspectResearchDeliveryCost,
   ProspectResearchSampleSchema,
   evaluateProspectResearchSample,
   validateProspectResearchSampleOutcomeContext,
@@ -19,6 +20,81 @@ const approvedAt =
   "2026-09-20T12:00:00.000Z";
 const frozenAt =
   "2026-09-20T12:10:00.000Z";
+
+function deliveryCostPlan(
+  totalUsd = 4
+) {
+  return {
+    version:
+      "gate13-delivery-cost-v1" as const,
+    methodologyDescription:
+      "Deterministic test allocation: half model, half browser provider.",
+    rates: [
+      {
+        id:
+          "cost.model.fixed",
+        category:
+          "MODEL" as const,
+        label:
+          "Fixture model",
+        meter:
+          "FIXED_PER_RUN" as const,
+        unitsPerBillingUnit:
+          1,
+        usdPerBillingUnit:
+          totalUsd / 2,
+        rounding:
+          "NONE" as const,
+        sourceDescription:
+          "Deterministic fixture model rate.",
+        sourceUrl:
+          "https://example.test/model-pricing",
+        sourceAsOfDate:
+          "2026-09-20"
+      },
+      {
+        id:
+          "cost.browser.fixed",
+        category:
+          "BROWSER_PROVIDER" as const,
+        label:
+          "Fixture browser",
+        meter:
+          "FIXED_PER_RUN" as const,
+        unitsPerBillingUnit:
+          1,
+        usdPerBillingUnit:
+          totalUsd / 2,
+        rounding:
+          "NONE" as const,
+        sourceDescription:
+          "Deterministic fixture browser allocation.",
+        sourceUrl:
+          "https://example.test/browser-pricing",
+        sourceAsOfDate:
+          "2026-09-20"
+      }
+    ]
+  };
+}
+
+function deliveryCostEvidence(
+  runId: string,
+  totalUsd = 4
+) {
+  return calculateProspectResearchDeliveryCost(
+    deliveryCostPlan(
+      totalUsd
+    ),
+    {
+      modelUsage:
+        null,
+      runDurationMs:
+        5_000
+    },
+    runId
+  );
+}
 
 function target(
   index: number
@@ -159,6 +235,13 @@ function sample(
         maxDeliveryCostUsdPerBrief:
           10
       },
+      ...(purpose ===
+        "ACCEPTANCE"
+        ? {
+            deliveryCostPlan:
+              deliveryCostPlan()
+          }
+        : {}),
       costCeilingRationale:
         "Pre-registered engineering/business ceiling for this sample.",
       humanBaselineDescription:
@@ -315,6 +398,18 @@ function outcome(input: {
       deliveryCostUsd:
         input.costUsd ??
         4,
+      deliveryCostEvidence:
+        deliveryCostEvidence(
+          "run." +
+            String(
+              input.targetIndex
+            ).padStart(
+              2,
+              "0"
+            ),
+          input.costUsd ??
+            4
+        ),
       unauthorizedActions:
         0,
       notes: null
@@ -673,6 +768,68 @@ describe(
     );
 
     it(
+      "refuses an acceptance verdict when an outcome cost snapshot drifts from the frozen plan",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const outcomes =
+          acceptance.targets.map(
+            (_target, index) =>
+              outcome({
+                sampleId:
+                  acceptance.id,
+                targetIndex:
+                  index + 1
+              })
+          );
+        const first =
+          outcomes[0]!;
+
+        outcomes[0] = {
+          ...first,
+          deliveryCostEvidence: {
+            ...first
+              .deliveryCostEvidence!,
+            components:
+              first
+                .deliveryCostEvidence!
+                .components.map(
+                  (component, index) =>
+                    index === 0
+                      ? {
+                          ...component,
+                          sourceDescription:
+                            "Post-hoc drifted price source."
+                        }
+                      : component
+                )
+          }
+        };
+
+        const evaluation =
+          evaluateProspectResearchSample(
+            acceptance,
+            outcomes
+          );
+
+        expect(
+          evaluation.complete
+        ).toBe(false);
+        expect(
+          evaluation.passed
+        ).toBeNull();
+        expect(
+          evaluation.failures
+        ).toContain(
+          "acceptance outcome delivery cost evidence differs from the frozen plan"
+        );
+      }
+    );
+
+    it(
       "keeps failed attempts in the acceptance denominator and rejects a sub-90-percent usable cohort",
       () => {
         const acceptance =
@@ -976,6 +1133,56 @@ describe(
             completeAudit
           )
         ).not.toThrow();
+
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            durableBaseline,
+            {
+              ...completeAudit,
+              deliveryCostEvidence: {
+                ...completeAudit
+                  .deliveryCostEvidence!,
+                runId:
+                  "run.other"
+              }
+            }
+          )
+        ).toThrow(
+          "must reference the durable research run"
+        );
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            durableBaseline,
+            {
+              ...completeAudit,
+              deliveryCostEvidence: {
+                ...completeAudit
+                  .deliveryCostEvidence!,
+                components:
+                  completeAudit
+                    .deliveryCostEvidence!
+                    .components.map(
+                      (component, index) =>
+                        index === 0
+                          ? {
+                              ...component,
+                              sourceDescription:
+                                "Drifted post-hoc source."
+                            }
+                          : component
+                    )
+              }
+            }
+          )
+        ).toThrow(
+          "differs from the frozen cost plan"
+        );
       }
     );
 
@@ -1141,6 +1348,198 @@ describe(
     );
 
     it(
+      "calculates source-attributed model and rounded browser cost from measured usage",
+      () => {
+        const evidence =
+          calculateProspectResearchDeliveryCost(
+            {
+              version:
+                "gate13-delivery-cost-v1",
+              methodologyDescription:
+                "Token-priced model plus rounded browser-minute allocation.",
+              rates: [
+                {
+                  id:
+                    "cost.model.prompt",
+                  category:
+                    "MODEL",
+                  label:
+                    "Prompt tokens",
+                  meter:
+                    "PROMPT_TOKENS",
+                  unitsPerBillingUnit:
+                    1_000_000,
+                  usdPerBillingUnit:
+                    2,
+                  rounding:
+                    "NONE",
+                  sourceDescription:
+                    "Fixture model price.",
+                  sourceUrl:
+                    "https://example.test/model-pricing",
+                  sourceAsOfDate:
+                    "2026-09-20"
+                },
+                {
+                  id:
+                    "cost.browser.minute",
+                  category:
+                    "BROWSER_PROVIDER",
+                  label:
+                    "Browser minute",
+                  meter:
+                    "RUN_DURATION_MS",
+                  unitsPerBillingUnit:
+                    60_000,
+                  usdPerBillingUnit:
+                    0.1,
+                  rounding:
+                    "CEIL",
+                  sourceDescription:
+                    "Fixture browser allocation.",
+                  sourceUrl:
+                    "https://example.test/browser-pricing",
+                  sourceAsOfDate:
+                    "2026-09-20"
+                }
+              ]
+            },
+            {
+              modelUsage: {
+                promptTokens:
+                  500_000,
+                completionTokens:
+                  100,
+                reasoningTokens:
+                  0,
+                cachedInputTokens:
+                  0
+              },
+              runDurationMs:
+                61_000
+            },
+            "run.cost"
+          );
+
+        expect(
+          evidence.totalUsd
+        ).toBeCloseTo(
+          1.2,
+          10
+        );
+        expect(
+          evidence.components
+            .map(
+              (component) => ({
+                rateId:
+                  component.rateId,
+                measuredQuantity:
+                  component
+                    .measuredQuantity,
+                billedUnits:
+                  component
+                    .billedUnits,
+                amountUsd:
+                  component.amountUsd
+              })
+            )
+        ).toEqual([
+          {
+            rateId:
+              "cost.model.prompt",
+            measuredQuantity:
+              500_000,
+            billedUnits:
+              0.5,
+            amountUsd:
+              1
+          },
+          {
+            rateId:
+              "cost.browser.minute",
+            measuredQuantity:
+              61_000,
+            billedUnits:
+              2,
+            amountUsd:
+              0.2
+          }
+        ]);
+      }
+    );
+
+    it(
+      "fails closed when a token-priced cost plan has no captured model usage",
+      () => {
+        expect(() =>
+          calculateProspectResearchDeliveryCost(
+            {
+              version:
+                "gate13-delivery-cost-v1",
+              methodologyDescription:
+                "Token-priced fixture.",
+              rates: [
+                {
+                  id:
+                    "cost.model.prompt",
+                  category:
+                    "MODEL",
+                  label:
+                    "Prompt tokens",
+                  meter:
+                    "PROMPT_TOKENS",
+                  unitsPerBillingUnit:
+                    1_000_000,
+                  usdPerBillingUnit:
+                    2,
+                  rounding:
+                    "NONE",
+                  sourceDescription:
+                    "Fixture model price.",
+                  sourceUrl:
+                    "https://example.test/model-pricing",
+                  sourceAsOfDate:
+                    "2026-09-20"
+                },
+                {
+                  id:
+                    "cost.browser.fixed",
+                  category:
+                    "BROWSER_PROVIDER",
+                  label:
+                    "Browser allocation",
+                  meter:
+                    "FIXED_PER_RUN",
+                  unitsPerBillingUnit:
+                    1,
+                  usdPerBillingUnit:
+                    0,
+                  rounding:
+                    "NONE",
+                  sourceDescription:
+                    "Fixture browser allocation.",
+                  sourceUrl:
+                    null,
+                  sourceAsOfDate:
+                    "2026-09-20"
+                }
+              ]
+            },
+            {
+              modelUsage:
+                null,
+              runDurationMs:
+                5_000
+            },
+            "run.cost"
+          )
+        ).toThrow(
+          "model usage that was not captured"
+        );
+      }
+    );
+
+    it(
       "rejects undersized acceptance samples, oversized calibration samples, and weakened audit thresholds",
       () => {
         expect(() =>
@@ -1183,6 +1582,64 @@ describe(
             })
         ).toThrow(
           "must compare against the human workflow using its normal tools"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              deliveryCostPlan:
+                undefined
+            })
+        ).toThrow(
+          "requires a frozen delivery cost plan"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              deliveryCostPlan: {
+                ...acceptance
+                  .deliveryCostPlan!,
+                rates:
+                  acceptance
+                    .deliveryCostPlan!
+                    .rates.filter(
+                      (rate) =>
+                        rate.category !==
+                        "BROWSER_PROVIDER"
+                    )
+              }
+            })
+        ).toThrow(
+          "requires MODEL and BROWSER_PROVIDER rates"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              deliveryCostPlan: {
+                ...acceptance
+                  .deliveryCostPlan!,
+                rates:
+                  acceptance
+                    .deliveryCostPlan!
+                    .rates.map(
+                      (rate, index) =>
+                        index === 0
+                          ? {
+                              ...rate,
+                              sourceAsOfDate:
+                                "2026-09-21"
+                            }
+                          : rate
+                    )
+              }
+            })
+        ).toThrow(
+          "delivery cost rate source date must not be after sample freeze"
         );
 
         const acceptanceForThresholds =

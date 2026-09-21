@@ -26,8 +26,10 @@ import {
 import {
   GATE13_UNIVERSE_PATH,
   buildGate13AcceptanceSample,
+  buildGate13DeliveryCostEvidenceFromRunSummary,
   buildGate13HumanBaselineInput,
   buildGate13SampleOutcome,
+  parseGate13DeliveryCostPlan,
   parseGate13OutcomeReview
 } from "./experiment.js";
 import {
@@ -110,7 +112,7 @@ function usage(): string {
     "Acceptance sample:",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- sample-preview \\",
     "    --approval-batch-id <id> --sample-id <id> --operator <identity> \\",
-    "    --max-cost-usd <positive> --cost-rationale-file <path> --human-baseline-file <path>",
+    "    --max-cost-usd <positive> --cost-plan-file <path> --cost-rationale-file <path> --human-baseline-file <path>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- freeze-acceptance <same options> --confirm-complete-universe",
     "",
     "Measured human baseline:",
@@ -132,7 +134,7 @@ function usage(): string {
     "    --target-id <id> --run-id <id> [--code <failure-code>]",
     "",
     "Outcome/evaluation:",
-    "  GATE13_DATABASE_URL=... pnpm gate13:operator -- record-outcome \\",
+    "  GATE13_DATABASE_URL=... GATE13_ARTIFACT_DIR=... pnpm gate13:operator -- record-outcome \\",
     "    --sample-id <id> --target-id <id> --attempt-id <id> --review-file <path>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- sample-status --sample-id <id>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- evaluate --sample-id <id>",
@@ -469,6 +471,10 @@ interface AcceptanceOptions {
   sampleId: string;
   operator: string;
   maxCostUsd: number;
+  deliveryCostPlan:
+    ReturnType<
+      typeof parseGate13DeliveryCostPlan
+    >;
   costRationale: string;
   humanBaselineDescription:
     string;
@@ -489,6 +495,7 @@ async function acceptanceOptions(
         "--sample-id",
         "--operator",
         "--max-cost-usd",
+        "--cost-plan-file",
         "--cost-rationale-file",
         "--human-baseline-file"
       ],
@@ -533,6 +540,15 @@ async function acceptanceOptions(
           "--max-cost-usd"
         ),
         "--max-cost-usd"
+      ),
+    deliveryCostPlan:
+      parseGate13DeliveryCostPlan(
+        await readText(
+          requiredOption(
+            parsed,
+            "--cost-plan-file"
+          )
+        )
       ),
     costRationale:
       await readText(
@@ -594,6 +610,8 @@ async function buildAcceptanceFromStoredBatch(
             .toISOString(),
         maxDeliveryCostUsdPerBrief:
           options.maxCostUsd,
+        deliveryCostPlan:
+          options.deliveryCostPlan,
         costCeilingRationale:
           options
             .costRationale,
@@ -1243,7 +1261,7 @@ async function recordOutcome(
     );
 
   const outcome =
-    await withGate13Database(
+    await withGate13ReviewContext(
       async (
         context
       ) => {
@@ -1309,12 +1327,76 @@ async function recordOutcome(
           );
         }
 
+        const runId =
+          attempt.status ===
+            "COMPLETED"
+            ? attempt.report
+                .runId
+            : attempt.runId;
+
+        if (runId === null) {
+          throw new Error(
+            "Measured research attempt has no durable run ID for delivery cost accounting."
+          );
+        }
+
+        const artifacts =
+          await context.artifactStore
+            .listArtifacts(
+              runId
+            );
+        const summaryRecord =
+          artifacts.find(
+            (artifact) =>
+              artifact.kind ===
+                "RUN_SUMMARY" &&
+              artifact.name ===
+                "run-summary.json"
+          );
+
+        if (
+          summaryRecord ===
+            undefined
+        ) {
+          throw new Error(
+            "Run summary artifact is required for source-attributed delivery cost accounting: " +
+              runId
+          );
+        }
+
+        const summaryArtifact =
+          await context.artifactStore
+            .readArtifact(
+              runId,
+              summaryRecord.id
+            );
+
+        if (
+          summaryArtifact ===
+            undefined
+        ) {
+          throw new Error(
+            "Run summary artifact content is unavailable for delivery cost accounting: " +
+              runId
+          );
+        }
+
+        const deliveryCostEvidence =
+          buildGate13DeliveryCostEvidenceFromRunSummary(
+            sample,
+            attempt,
+            new TextDecoder()
+              .decode(
+                summaryArtifact.data
+              )
+          );
         const built =
           buildGate13SampleOutcome({
             sample,
             attempt,
             baseline,
             review,
+            deliveryCostEvidence,
             reviewedAt:
               new Date()
                 .toISOString()
