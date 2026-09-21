@@ -36,7 +36,8 @@ import {
   withGate13DatabaseReadOnly,
   withGate13FailureContext,
   withGate13ReviewContext,
-  withGate13Workflow
+  withGate13Workflow,
+  type Gate13DatabaseContext
 } from "./runtime.js";
 
 interface ParsedOptions {
@@ -522,11 +523,7 @@ async function buildAcceptanceFromStoredBatch(
   const operation =
     async (
       context:
-        Parameters<
-          Parameters<
-            typeof withGate13Database
-          >[0]
-        >[0]
+        Gate13DatabaseContext
     ) => {
       const batch =
         await context.repository
