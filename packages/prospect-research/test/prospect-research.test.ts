@@ -1051,6 +1051,55 @@ describe(
 describe(
   "server-owned approval persistence",
   () => {
+    it(
+      "rejects a batch target that differs from the exact source manifest candidate",
+      () => {
+        const batch =
+          approvalBatch();
+
+        expect(() =>
+          ResearchApprovalBatchSchema
+            .parse({
+              ...batch,
+              targets:
+                batch.targets.map(
+                  (approved, index) =>
+                    index === 0
+                      ? {
+                          ...approved,
+                          startUrl:
+                            "https://www.example.com/changed"
+                        }
+                      : approved
+                )
+            })
+        ).toThrow(
+          "approval batch target differs from verified source manifest candidate"
+        );
+      }
+    );
+
+    it(
+      "rejects tampered raw manifest bytes when the recorded SHA is stale",
+      () => {
+        const batch =
+          approvalBatch();
+
+        expect(() =>
+          ResearchApprovalBatchSchema
+            .parse({
+              ...batch,
+              sourceManifestRaw:
+                batch
+                  .sourceManifestRaw +
+                " "
+            })
+        ).toThrow(
+          "approval batch manifest SHA-256 does not match sourceManifestRaw"
+        );
+      }
+    );
+
     it("rejects direct in-memory attempts before approval and after approval widening", async () => {
       const repository =
         new InMemoryProspectResearchRepository();
