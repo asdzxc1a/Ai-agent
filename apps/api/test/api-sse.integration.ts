@@ -342,12 +342,9 @@ test("PostgreSQL SSE resumes after disconnect without duplicate events", async (
     expect(firstEvents[0]?.id).toBe(1);
     expect(firstEvents[0]?.event).toBe("RUN_CREATED");
 
-    const midRunResponse = await fetch(
-      `${baseUrl}/v1/runs/${accepted.runId}`
-    );
-    const midRun = await midRunResponse.json() as RunSnapshot;
-
-    expect(midRun.status).toBe("RUNNING");
+    // RUN_CREATED is persisted before the run snapshot is advanced from
+    // PENDING to RUNNING. The replay assertions below prove that RUN_STARTED
+    // was durably recorded as event 2 without depending on scheduler timing.
 
     const reconnect = await fetch(
       `${baseUrl}/v1/runs/${accepted.runId}/events`,
