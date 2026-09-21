@@ -1,8 +1,13 @@
 import {
+  ProspectResearchDeliveryCostInputSchema,
+  ProspectResearchDeliveryCostSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   type ProspectResearchAstraHumanTime,
   type ProspectResearchAttempt,
+  type ProspectResearchDeliveryCost,
+  type ProspectResearchDeliveryCostComponent,
+  type ProspectResearchDeliveryCostInput,
   type ProspectResearchHumanBaseline,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome
@@ -66,6 +71,51 @@ function median(
   );
 }
 
+function roundUsd(
+  value: number
+): number {
+  return Math.round(
+    value * 1_000_000
+  ) / 1_000_000;
+}
+
+export function totalProspectResearchDeliveryCostUsd(
+  components:
+    readonly ProspectResearchDeliveryCostComponent[]
+): number {
+  return roundUsd(
+    components.reduce(
+      (
+        total,
+        component
+      ) =>
+        total +
+        component.amountUsd,
+      0
+    )
+  );
+}
+
+export function buildProspectResearchDeliveryCost(
+  input:
+    ProspectResearchDeliveryCostInput,
+  recordedAt: string
+): ProspectResearchDeliveryCost {
+  const parsed =
+    ProspectResearchDeliveryCostInputSchema
+      .parse(input);
+
+  return ProspectResearchDeliveryCostSchema
+    .parse({
+      ...parsed,
+      totalDeliveryCostUsd:
+        totalProspectResearchDeliveryCostUsd(
+          parsed.components
+        ),
+      recordedAt
+    });
+}
+
 export function totalAstraHumanPreparationMinutes(
   time:
     ProspectResearchAstraHumanTime
@@ -89,7 +139,9 @@ export function validateProspectResearchSampleOutcomeContext(
   baseline:
     ProspectResearchHumanBaseline,
   outcomeInput:
-    ProspectResearchSampleOutcome
+    ProspectResearchSampleOutcome,
+  deliveryCost?:
+    ProspectResearchDeliveryCost
 ): ProspectResearchSampleOutcome {
   const sample =
     ProspectResearchSampleSchema
@@ -204,6 +256,72 @@ export function validateProspectResearchSampleOutcomeContext(
     throw new Error(
       "Gate 13 acceptance human baseline must be measured before the Astra attempt starts."
     );
+  }
+
+  if (
+    sample.protocolVersion ===
+      "gate13-measured-research-v8"
+  ) {
+    if (
+      deliveryCost ===
+        undefined
+    ) {
+      throw new Error(
+        "Gate 13 v8 outcomes require a durable delivery-cost record."
+      );
+    }
+
+    if (
+      outcome.costRecordId !==
+        deliveryCost.id ||
+      deliveryCost.sampleId !==
+        sample.id ||
+      deliveryCost.targetId !==
+        outcome.targetId ||
+      deliveryCost.attemptId !==
+        attempt.id
+    ) {
+      throw new Error(
+        "Measured research outcome does not match the durable delivery-cost record."
+      );
+    }
+
+    if (
+      outcome.deliveryCostUsd !==
+        deliveryCost
+          .totalDeliveryCostUsd
+    ) {
+      throw new Error(
+        "Measured research outcome delivery cost differs from durable cost truth."
+      );
+    }
+
+    if (
+      Date.parse(
+        deliveryCost.recordedAt
+      ) >
+        Date.parse(
+          outcome.reviewedAt
+        )
+    ) {
+      throw new Error(
+        "Delivery cost must be recorded before the reviewed outcome."
+      );
+    }
+  } else if (
+    outcome.costRecordId !==
+      undefined
+  ) {
+    if (
+      deliveryCost ===
+        undefined ||
+      outcome.costRecordId !==
+        deliveryCost.id
+    ) {
+      throw new Error(
+        "Legacy outcome costRecordId does not match a supplied durable cost record."
+      );
+    }
   }
 
   return outcome;
