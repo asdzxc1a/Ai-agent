@@ -1770,6 +1770,10 @@ describe(
         id: "run.failed",
         target: target(),
         createdAt: timestamp,
+        runDurationMs:
+          60_000,
+        unauthorizedActions:
+          0,
         status: "FAILED",
         runId:
           "run.failed",
