@@ -114,7 +114,66 @@ function secondTarget():
     });
 }
 
+function approvalManifestRaw() {
+  const targets = [
+    target(),
+    secondTarget()
+  ];
+
+  return JSON.stringify({
+    id:
+      "manifest.example",
+    universeId:
+      "universe.example",
+    purpose:
+      "APPROVAL_CANDIDATE_ENRICHMENT",
+    status:
+      "NOT_APPROVED",
+    generatedFrom:
+      "Deterministic unit-test approval candidates.",
+    verificationDate:
+      "2026-09-19",
+    approvalRule:
+      "Explicit operator approval is required.",
+    targets:
+      targets.map(
+        (approved, index) => ({
+          ticker:
+            "EX" +
+            String(
+              index + 1
+            ),
+          targetId:
+            approved.id,
+          companyName:
+            approved
+              .companyNameHint!,
+          canonicalDomain:
+            approved.domain,
+          startUrl:
+            approved.startUrl,
+          approvedDomainsCandidate:
+            approved
+              .approvedDomains,
+          icpContext:
+            approved.icpContext,
+          verificationStatus:
+            "VERIFIED_OFFICIAL_PUBLIC",
+          verificationSourceUrl:
+            approved.startUrl,
+          verificationSourceKind:
+            "COMPANY_OVERVIEW",
+          approvalStatus:
+            "PENDING_OPERATOR_APPROVAL"
+        })
+      )
+  });
+}
+
 function approvalBatch() {
+  const sourceManifestRaw =
+    approvalManifestRaw();
+
   return ResearchApprovalBatchSchema
     .parse({
       id:
@@ -122,7 +181,14 @@ function approvalBatch() {
       sourceManifestId:
         "manifest.example",
       sourceManifestSha256:
-        "c".repeat(64),
+        createHash(
+          "sha256"
+        )
+          .update(
+            sourceManifestRaw
+          )
+          .digest("hex"),
+      sourceManifestRaw,
       approvedBy:
         "operator",
       approvedAt:
@@ -985,6 +1051,55 @@ describe(
 describe(
   "server-owned approval persistence",
   () => {
+    it(
+      "rejects a batch target that differs from the exact source manifest candidate",
+      () => {
+        const batch =
+          approvalBatch();
+
+        expect(() =>
+          ResearchApprovalBatchSchema
+            .parse({
+              ...batch,
+              targets:
+                batch.targets.map(
+                  (approved, index) =>
+                    index === 0
+                      ? {
+                          ...approved,
+                          startUrl:
+                            "https://www.example.com/changed"
+                        }
+                      : approved
+                )
+            })
+        ).toThrow(
+          "approval batch target differs from verified source manifest candidate"
+        );
+      }
+    );
+
+    it(
+      "rejects tampered raw manifest bytes when the recorded SHA is stale",
+      () => {
+        const batch =
+          approvalBatch();
+
+        expect(() =>
+          ResearchApprovalBatchSchema
+            .parse({
+              ...batch,
+              sourceManifestRaw:
+                batch
+                  .sourceManifestRaw +
+                " "
+            })
+        ).toThrow(
+          "approval batch manifest SHA-256 does not match sourceManifestRaw"
+        );
+      }
+    );
+
     it("rejects direct in-memory attempts before approval and after approval widening", async () => {
       const repository =
         new InMemoryProspectResearchRepository();
