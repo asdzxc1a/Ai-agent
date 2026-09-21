@@ -1,4 +1,16 @@
 import {
+  mkdtemp,
+  readFile,
+  rm
+} from "node:fs/promises";
+import {
+  tmpdir
+} from "node:os";
+import {
+  join
+} from "node:path";
+
+import {
   describe,
   expect,
   it
@@ -7,6 +19,7 @@ import {
 import {
   assertGate13ExecutionProfileMatches,
   buildGate13ExecutionProfile,
+  exportGate13ExecutionProfile,
   parseGate13ExecutionProfile,
   type Gate13ExecutionProfileInput
 } from "../src/execution-profile.js";
@@ -175,6 +188,72 @@ describe(
         ).toThrow(
           field
         );
+      }
+    );
+
+    it(
+      "exports parser-ready credential-free profile bytes and refuses overwrite",
+      async () => {
+        const directory =
+          await mkdtemp(
+            join(
+              tmpdir(),
+              "gate13-execution-profile-"
+            )
+          );
+        const path =
+          join(
+            directory,
+            "execution-profile.json"
+          );
+
+        try {
+          await expect(
+            exportGate13ExecutionProfile(
+              path,
+              profile()
+            )
+          ).resolves.toBe(
+            path
+          );
+
+          const text =
+            await readFile(
+              path,
+              "utf8"
+            );
+
+          expect(
+            parseGate13ExecutionProfile(
+              text
+            )
+          ).toEqual(
+            profile()
+          );
+          expect(
+            text
+          ).not.toContain(
+            "apiKey"
+          );
+
+          await expect(
+            exportGate13ExecutionProfile(
+              path,
+              profile()
+            )
+          ).rejects.toMatchObject({
+            code:
+              "EEXIST"
+          });
+        } finally {
+          await rm(
+            directory,
+            {
+              recursive: true,
+              force: true
+            }
+          );
+        }
       }
     );
 
