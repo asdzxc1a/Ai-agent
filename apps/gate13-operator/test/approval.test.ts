@@ -61,6 +61,10 @@ describe(
           preview.sha256
         );
         expect(
+          batch
+            .sourceManifestRaw
+        ).toBe(text);
+        expect(
           batch.targets
         ).toHaveLength(43);
         expect(
