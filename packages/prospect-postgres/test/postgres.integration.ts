@@ -377,7 +377,7 @@ function acceptanceSample():
           sourceUrl:
             "https://example.test/model-pricing",
           sourceAsOfDate:
-            "2026-09-20"
+            "2026-09-19"
         },
         {
           id:
@@ -399,7 +399,7 @@ function acceptanceSample():
           sourceUrl:
             "https://example.test/browser-pricing",
           sourceAsOfDate:
-            "2026-09-20"
+            "2026-09-19"
         }
       ]
     },
