@@ -374,19 +374,26 @@ export async function withGate13ExclusiveFailureContext<T>(
       error;
   }
 
-  const errors =
-    [
+  const errors:
+    unknown[] = [];
+
+  for (
+    const error of [
       primaryError,
       releaseError,
       clientReleaseError,
       poolEndError
-    ].filter(
-      (
+    ]
+  ) {
+    if (
+      error !==
+        undefined
+    ) {
+      errors.push(
         error
-      ): error is {} =>
-        error !==
-          undefined
-    );
+      );
+    }
+  }
 
   if (
     errors.length ===
