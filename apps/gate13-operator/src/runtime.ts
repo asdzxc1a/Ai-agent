@@ -15,7 +15,8 @@ import {
 } from "@astra/prospect-postgres";
 import {
   ProspectResearchService,
-  ProspectResearchWorkflow
+  ProspectResearchWorkflow,
+  type ProspectResearchExecutionProfile
 } from "@astra/prospect-research";
 import {
   PostgresRunRepository,
@@ -25,6 +26,10 @@ import {
 import {
   buildGate13ExecutionProfile
 } from "./experiment.js";
+import {
+  assertGate13ExecutionProfileMatches,
+  currentGate13ExecutionProfile
+} from "./execution-profile.js";
 import {
   acquireGate13RunOwnership,
   releaseGate13RunOwnership
@@ -271,32 +276,46 @@ interface Gate13OwnershipClient {
 }
 
 export async function withGate13Workflow<T>(
+  expectedExecutionProfile:
+    ProspectResearchExecutionProfile |
+    undefined,
   operation:
     (
       context:
         Gate13WorkflowContext
     ) => Promise<T>
 ): Promise<T> {
+  const actualExecutionProfile =
+    await currentGate13ExecutionProfile();
+
+  if (
+    expectedExecutionProfile !==
+      undefined
+  ) {
+    assertGate13ExecutionProfileMatches(
+      expectedExecutionProfile,
+      actualExecutionProfile
+    );
+  }
+
   const artifactStore =
     new LocalArtifactStore(
       gate13ArtifactDir()
     );
   const steelBaseUrl =
-    requiredEnv(
-      "GATE13_STEEL_BASE_URL"
-    );
+    actualExecutionProfile
+      .browserBaseUrl;
   const modelName =
-    requiredEnv(
-      "GATE13_MODEL_NAME"
-    );
+    actualExecutionProfile
+      .modelName;
   const apiKey =
     optionalEnv(
       "GATE13_MODEL_API_KEY"
     );
   const baseURL =
-    optionalEnv(
-      "GATE13_MODEL_BASE_URL"
-    );
+    actualExecutionProfile
+      .modelBaseUrl ??
+    undefined;
   const executionProfile =
     buildGate13ExecutionProfile({
       modelName,
