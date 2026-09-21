@@ -1,4 +1,8 @@
 import {
+  createHash
+} from "node:crypto";
+
+import {
   afterAll,
   beforeAll,
   beforeEach,
@@ -80,6 +84,63 @@ function secondApprovedTarget() {
   };
 }
 
+function approvalManifestRaw(
+  targets = [
+    completedAttempt()
+      .target,
+    secondApprovedTarget()
+  ]
+) {
+  return JSON.stringify({
+    id:
+      "manifest.pg",
+    universeId:
+      "universe.pg",
+    purpose:
+      "APPROVAL_CANDIDATE_ENRICHMENT",
+    status:
+      "NOT_APPROVED",
+    generatedFrom:
+      "Deterministic PostgreSQL approval candidates.",
+    verificationDate:
+      "2026-09-19",
+    approvalRule:
+      "Explicit operator approval is required.",
+    targets:
+      targets.map(
+        (approved, index) => ({
+          ticker:
+            "PG" +
+            String(
+              index + 1
+            ),
+          targetId:
+            approved.id,
+          companyName:
+            approved
+              .companyNameHint!,
+          canonicalDomain:
+            approved.domain,
+          startUrl:
+            approved.startUrl,
+          approvedDomainsCandidate:
+            approved
+              .approvedDomains,
+          icpContext:
+            approved.icpContext,
+          verificationStatus:
+            "VERIFIED_OFFICIAL_PUBLIC",
+          verificationSourceUrl:
+            approved.startUrl,
+          verificationSourceKind:
+            "COMPANY_OVERVIEW",
+          approvalStatus:
+            "PENDING_OPERATOR_APPROVAL"
+        })
+      )
+  });
+}
+
 function approvalBatch(
   targets = [
     completedAttempt()
@@ -87,13 +148,25 @@ function approvalBatch(
     secondApprovedTarget()
   ]
 ): ResearchApprovalBatch {
+  const sourceManifestRaw =
+    approvalManifestRaw(
+      targets
+    );
+
   return {
     id:
       "approval-batch.pg",
     sourceManifestId:
       "manifest.pg",
     sourceManifestSha256:
-      "c".repeat(64),
+      createHash(
+        "sha256"
+      )
+        .update(
+          sourceManifestRaw
+        )
+        .digest("hex"),
+    sourceManifestRaw,
     approvedBy:
       "operator",
     approvedAt:
