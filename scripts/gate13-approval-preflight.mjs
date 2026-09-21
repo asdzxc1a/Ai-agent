@@ -569,6 +569,8 @@ export function buildGate13ApprovalBatch(
       preflight.manifestId,
     sourceManifestSha256:
       preflight.manifestSha256,
+    sourceManifestRaw:
+      preflight.manifestRaw,
     approvedBy:
       actor,
     approvedAt:
