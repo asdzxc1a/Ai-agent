@@ -1092,21 +1092,22 @@ async function freezeAcceptance(
       false
     );
 
-  await withGate13Database(
-    async (
-      context
-    ) => {
-      await context.repository
-        .saveSample(
-          sample
-        );
-    }
-  );
+  const frozenSample =
+    await withGate13Database(
+      async (
+        context
+      ) =>
+        context.repository
+          .saveSample(
+            sample
+          )
+    );
 
   print({
     action:
       "ACCEPTANCE_SAMPLE_FROZEN",
-    sample
+    sample:
+      frozenSample
   });
 }
 

@@ -30,6 +30,7 @@ export {
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   ProspectResearchSelectionUniverseSchema,
+  canonicalizeProspectResearchSampleFreeze,
   ProspectResearchUnknownSchema,
   PROSPECT_RESEARCH_BASELINE_SOURCES,
   PROSPECT_RESEARCH_BRIEF_DISPOSITIONS,

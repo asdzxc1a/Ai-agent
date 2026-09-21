@@ -2158,6 +2158,35 @@ export type ProspectResearchSample =
   z.infer<
     typeof ProspectResearchSampleSchema
   >;
+export function canonicalizeProspectResearchSampleFreeze(
+  input: unknown,
+  frozenAt: string
+): ProspectResearchSample {
+  if (
+    typeof input !==
+      "object" ||
+    input === null ||
+    Array.isArray(
+      input
+    )
+  ) {
+    return ProspectResearchSampleSchema
+      .parse(input);
+  }
+
+  return ProspectResearchSampleSchema
+    .parse({
+      ...(
+        input as
+          Record<
+            string,
+            unknown
+          >
+      ),
+      frozenAt
+    });
+}
+
 export type ProspectResearchSampleOutcome =
   z.infer<
     typeof ProspectResearchSampleOutcomeSchema

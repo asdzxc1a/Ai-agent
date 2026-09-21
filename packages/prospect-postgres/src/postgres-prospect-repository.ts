@@ -14,6 +14,7 @@ import {
   ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
+  canonicalizeProspectResearchSampleFreeze,
   sameApprovedResearchTarget,
   validateProspectResearchAttemptForPersistence,
   validateProspectResearchSampleOutcomeContext,
@@ -649,7 +650,6 @@ export class PostgresProspectResearchRepository
             SELECT id
             FROM prospect_research_samples
             WHERE sample->>'purpose' = 'ACCEPTANCE'
-              AND frozen_at <= $2
               AND EXISTS (
                 SELECT 1
                 FROM jsonb_array_elements(sample->'targets') AS target
@@ -658,8 +658,7 @@ export class PostgresProspectResearchRepository
             FOR SHARE
           `,
           [
-            attempt.target.id,
-            attempt.startedAt
+            attempt.target.id
           ]
         );
       const acceptanceSampleIds =
@@ -978,17 +977,37 @@ export class PostgresProspectResearchRepository
   }
 
   public async saveSample(
-    input:
-      ProspectResearchSample
-  ): Promise<void> {
-    const sample =
-      ProspectResearchSampleSchema
-        .parse(input);
+    input: unknown
+  ): Promise<
+    ProspectResearchSample
+  > {
     const client =
       await this.#pool.connect();
 
     try {
       await client.query("BEGIN");
+      const clock =
+        await client.query(
+          "SELECT NOW() AS frozen_at"
+        );
+      const frozenAtRaw =
+        (
+          clock.rows[0] as {
+            frozen_at:
+              Date | string;
+          }
+        ).frozen_at;
+      const frozenAt =
+        frozenAtRaw instanceof Date
+          ? frozenAtRaw.toISOString()
+          : new Date(
+              frozenAtRaw
+            ).toISOString();
+      const sample =
+        canonicalizeProspectResearchSampleFreeze(
+          input,
+          frozenAt
+        );
       const approvalBatchIds =
         new Set<string>();
 
@@ -1132,6 +1151,7 @@ export class PostgresProspectResearchRepository
       );
 
       await client.query("COMMIT");
+      return sample;
     } catch (error) {
       await client.query(
         "ROLLBACK"
