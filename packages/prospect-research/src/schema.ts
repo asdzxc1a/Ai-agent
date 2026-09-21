@@ -867,7 +867,7 @@ export const ProspectResearchCostMeasurementsSchema =
 
 export const ProspectResearchDeliveryCostComponentSchema =
   ProspectResearchDeliveryCostRateSchema
-    .extend({
+    .safeExtend({
       rateId:
         IdentifierSchema,
       measuredQuantity:
@@ -1245,6 +1245,42 @@ export const ProspectResearchSampleSchema =
                 ],
                 message:
                   "Gate 13 acceptance delivery cost plan requires MODEL and BROWSER_PROVIDER rates"
+              });
+            }
+          }
+        }
+
+        if (
+          sample.deliveryCostPlan !==
+            undefined
+        ) {
+          for (
+            const [
+              index,
+              rate
+            ] of sample
+              .deliveryCostPlan
+              .rates.entries()
+          ) {
+            if (
+              Date.parse(
+                rate.sourceAsOfDate +
+                  "T00:00:00.000Z"
+              ) >
+                Date.parse(
+                  sample.frozenAt
+                )
+            ) {
+              context.addIssue({
+                code: "custom",
+                path: [
+                  "deliveryCostPlan",
+                  "rates",
+                  index,
+                  "sourceAsOfDate"
+                ],
+                message:
+                  "delivery cost rate source date must not be after sample freeze"
               });
             }
           }
