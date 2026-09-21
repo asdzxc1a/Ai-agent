@@ -768,6 +768,68 @@ describe(
     );
 
     it(
+      "refuses an acceptance verdict when an outcome cost snapshot drifts from the frozen plan",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const outcomes =
+          acceptance.targets.map(
+            (_target, index) =>
+              outcome({
+                sampleId:
+                  acceptance.id,
+                targetIndex:
+                  index + 1
+              })
+          );
+        const first =
+          outcomes[0]!;
+
+        outcomes[0] = {
+          ...first,
+          deliveryCostEvidence: {
+            ...first
+              .deliveryCostEvidence!,
+            components:
+              first
+                .deliveryCostEvidence!
+                .components.map(
+                  (component, index) =>
+                    index === 0
+                      ? {
+                          ...component,
+                          sourceDescription:
+                            "Post-hoc drifted price source."
+                        }
+                      : component
+                )
+          }
+        };
+
+        const evaluation =
+          evaluateProspectResearchSample(
+            acceptance,
+            outcomes
+          );
+
+        expect(
+          evaluation.complete
+        ).toBe(false);
+        expect(
+          evaluation.passed
+        ).toBeNull();
+        expect(
+          evaluation.failures
+        ).toContain(
+          "acceptance outcome delivery cost evidence differs from the frozen plan"
+        );
+      }
+    );
+
+    it(
       "keeps failed attempts in the acceptance denominator and rejects a sub-90-percent usable cohort",
       () => {
         const acceptance =
