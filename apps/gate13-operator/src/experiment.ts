@@ -143,6 +143,8 @@ export interface BuildGate13AcceptanceSampleInput {
     ProspectResearchExecutionProfile;
   deliveryCostPlan:
     ProspectResearchDeliveryCostPlan;
+  executionProfile:
+    ProspectResearchExecutionProfile;
   costCeilingRationale: string;
   humanBaselineDescription: string;
 }
@@ -622,6 +624,8 @@ export function buildGate13AcceptanceSample(
           input
             .maxDeliveryCostUsdPerBrief
       },
+      executionProfile:
+        input.executionProfile,
       executionProfile:
         input.executionProfile,
       deliveryCostPlan:
