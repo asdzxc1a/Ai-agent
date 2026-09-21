@@ -240,12 +240,7 @@ export class ProspectResearchWorkflow {
       new ProspectResearchService(
         options.repository,
         options.artifactStore,
-        {
-          getRun:
-            (runId) =>
-              options.runRepository
-                .getRun(runId)
-        }
+        options.runRepository
       );
   }
 
