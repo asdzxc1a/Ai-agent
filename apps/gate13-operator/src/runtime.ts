@@ -279,13 +279,6 @@ interface Gate13OwnershipClient {
   release(): void;
 }
 
-function nonUndefined(
-  value: unknown
-): value is {} {
-  return value !==
-    undefined;
-}
-
 export async function withGate13Workflow<T>(
   operation:
     (
@@ -468,14 +461,26 @@ export async function withGate13Workflow<T>(
       error;
   }
 
-  const errors = [
-    primaryError,
-    releaseError,
-    clientReleaseError,
-    poolEndError
-  ].filter(
-    nonUndefined
-  );
+  const errors:
+    unknown[] = [];
+
+  for (
+    const error of [
+      primaryError,
+      releaseError,
+      clientReleaseError,
+      poolEndError
+    ]
+  ) {
+    if (
+      error !==
+        undefined
+    ) {
+      errors.push(
+        error
+      );
+    }
+  }
 
   if (
     errors.length ===
