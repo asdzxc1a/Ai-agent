@@ -50,6 +50,7 @@ import type {
 } from "./repository.js";
 
 export interface StartRunInput {
+  runId?: string;
   request: CreateRunRequest;
   outputSchema?: RuntimeSchema<Record<string, unknown>>;
   completionVerifier?: RunCompletionVerifier;
@@ -370,7 +371,18 @@ export class RunEngine implements RunService {
     input: StartRunInput
   ): Promise<RunSnapshot> {
     const now = new Date().toISOString();
-    const runId = randomUUID();
+    const runId =
+      input.runId ??
+      randomUUID();
+
+    if (
+      runId.trim().length === 0 ||
+      runId.length > 240
+    ) {
+      throw new TypeError(
+        "Run ID must be a non-empty string no longer than 240 characters."
+      );
+    }
     const snapshot: RunSnapshot = {
       id: runId,
       status: "PENDING",
