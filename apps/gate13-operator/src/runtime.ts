@@ -297,9 +297,6 @@ export async function withGate13Workflow<T>(
     new LocalArtifactStore(
       gate13ArtifactDir()
     );
-  const steelBaseUrl =
-    actualExecutionProfile
-      .browserBaseUrl;
   const modelName =
     actualExecutionProfile
       .modelName;
