@@ -364,15 +364,7 @@ export async function withGate13Workflow<T>(
       new ProspectResearchService(
         context.repository,
         artifactStore,
-        {
-          getRun:
-            (runId) =>
-              context
-                .runRepository
-                .getRun(
-                  runId
-                )
-        }
+        context.runRepository
       );
     const workflow =
       new ProspectResearchWorkflow({
