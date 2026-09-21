@@ -1360,3 +1360,39 @@ The measured protocol already reports requested-field coverage, but a reviewer-e
 **Revisit when**
 
 A future protocol intentionally changes the sales-research brief schema or requested business fields. That requires a newly versioned protocol/rubric and must not rewrite historical v7 coverage.
+
+
+---
+
+## D-043 — Gate 13 preparation/readiness preflight is read-only and non-authoritative
+
+**Date:** 2026-09-21
+**Status:** Accepted
+
+**Decision**
+
+Gate 13 exposes two preflight modes before and during acceptance execution:
+
+1. **offline acceptance preparation preflight** — no database, browser, approval, sample, baseline, run, or outcome mutation. It validates the exact canonical 43-target manifest/universe membership, requires the candidate manifest to remain `NOT_APPROVED`, verifies the proposed frozen execution profile against the current credential-free live configuration + repository pins, validates the versioned cost plan including required model/browser categories and non-future source dates, and requires a positive cost ceiling plus nonblank rationale and normal-tools human-baseline description. Success is labeled `PREPARED_NOT_AUTHORIZED`.
+2. **durable acceptance readiness** — read-only database inspection that reports the next valid transition among atomic approval, sample freeze, measured-human baselines, remaining run/review work, and complete-cohort evaluation.
+
+Before a sample is frozen, durable readiness requires an explicit approval-batch ID so it never reports “approval missing” merely because the operator omitted which batch to inspect. A supplied approval batch is independently reconstructed from the exact canonical manifest bytes and must match its provenance/targets; when a sample is frozen, its target snapshots must also match that supplied canonical batch.
+
+**Why**
+
+By Gate 13 the protocol has several intentionally frozen inputs. Without a single preparation check, operators can discover mismatched runtime identity, pricing provenance, business ceiling, baseline description, or cohort membership only after starting an irreversible durable transition. Conversely, a “green preflight” must never be confused with authorization.
+
+Separating preparation from authorization makes the operator boundary explicit: inputs can be validated thoroughly before any real-company state is approved, while durable readiness can explain what transition is next without executing it.
+
+**Consequences**
+
+- `acceptance-preflight` is offline/no-DB and returns `PREPARED_NOT_AUTHORIZED` on success;
+- `acceptance-readiness` is DB-read-only and reports the next durable transition;
+- neither command can approve targets, freeze a sample, record a baseline/outcome, start a browser, or contact a company;
+- canonical manifest status remains `NOT_APPROVED` until the guarded `approve` command is deliberately executed with explicit all-43 authorization;
+- readiness cannot use an unrelated/stale approval batch to claim the cohort is ready;
+- the v7 cohort, rubric, thresholds, denominator, and human-judgment boundaries remain unchanged.
+
+**Revisit when**
+
+A future operator UI can present the same preflight/readiness contracts interactively. The separation between preparation, authorization, and durable execution must remain explicit.
