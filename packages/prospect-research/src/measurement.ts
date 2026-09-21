@@ -101,6 +101,46 @@ function attemptRunId(
     : attempt.runId;
 }
 
+function costMeasurementsFromAttempt(
+  attempt:
+    ProspectResearchAttempt
+): ProspectResearchCostMeasurements {
+  const runDurationMs =
+    attempt.runDurationMs;
+
+  if (
+    runDurationMs ===
+      undefined
+  ) {
+    throw new Error(
+      "Gate 13 delivery cost accounting requires server-derived run duration on the durable attempt."
+    );
+  }
+
+  return ProspectResearchCostMeasurementsSchema
+    .parse({
+      modelUsage:
+        attempt.modelUsage ===
+          undefined
+          ? null
+          : {
+              promptTokens:
+                attempt.modelUsage
+                  .promptTokens,
+              completionTokens:
+                attempt.modelUsage
+                  .completionTokens,
+              reasoningTokens:
+                attempt.modelUsage
+                  .reasoningTokens,
+              cachedInputTokens:
+                attempt.modelUsage
+                  .cachedInputTokens
+            },
+      runDurationMs
+    });
+}
+
 function costMeterQuantity(
   rate:
     ProspectResearchDeliveryCostRate,
@@ -244,6 +284,34 @@ export function calculateProspectResearchDeliveryCost(
     });
 }
 
+export function calculateProspectResearchDeliveryCostFromAttempt(
+  plan:
+    ProspectResearchDeliveryCostPlan,
+  attempt:
+    ProspectResearchAttempt
+): ProspectResearchDeliveryCostEvidence {
+  const runId =
+    attemptRunId(
+      attempt
+    );
+
+  if (
+    runId === null
+  ) {
+    throw new Error(
+      "Gate 13 measured attempt has no durable run ID for delivery cost accounting."
+    );
+  }
+
+  return calculateProspectResearchDeliveryCost(
+    plan,
+    costMeasurementsFromAttempt(
+      attempt
+    ),
+    runId
+  );
+}
+
 function sameCostRateSnapshot(
   rate:
     ProspectResearchDeliveryCostRate,
@@ -355,6 +423,76 @@ function assertDeliveryCostEvidenceMatchesPlan(
       throw new Error(
         "Gate 13 delivery cost component does not match its frozen rate calculation: " +
           component.rateId
+      );
+    }
+  }
+}
+
+function assertDeliveryCostEvidenceMatchesAttempt(
+  plan:
+    ProspectResearchDeliveryCostPlan,
+  attempt:
+    ProspectResearchAttempt,
+  evidence:
+    ProspectResearchDeliveryCostEvidence
+): void {
+  const expected =
+    calculateProspectResearchDeliveryCostFromAttempt(
+      plan,
+      attempt
+    );
+
+  if (
+    Math.abs(
+      expected.totalUsd -
+      evidence.totalUsd
+    ) >
+      1e-9 ||
+    expected.components.length !==
+      evidence.components.length
+  ) {
+    throw new Error(
+      "Gate 13 delivery cost evidence differs from durable attempt measurements."
+    );
+  }
+
+  for (
+    const expectedComponent of
+    expected.components
+  ) {
+    const actual =
+      evidence.components
+        .find(
+          (component) =>
+            component.rateId ===
+              expectedComponent
+                .rateId
+        );
+
+    if (
+      actual ===
+        undefined ||
+      Math.abs(
+        actual.measuredQuantity -
+        expectedComponent
+          .measuredQuantity
+      ) >
+        1e-9 ||
+      Math.abs(
+        actual.billedUnits -
+        expectedComponent
+          .billedUnits
+      ) >
+        1e-9 ||
+      Math.abs(
+        actual.amountUsd -
+        expectedComponent
+          .amountUsd
+      ) >
+        1e-9
+    ) {
+      throw new Error(
+        "Gate 13 delivery cost evidence differs from durable attempt measurements."
       );
     }
   }
@@ -724,6 +862,11 @@ export function validateProspectResearchSampleOutcomeContext(
 
     assertDeliveryCostEvidenceMatchesPlan(
       plan,
+      evidence
+    );
+    assertDeliveryCostEvidenceMatchesAttempt(
+      plan,
+      attempt,
       evidence
     );
 
