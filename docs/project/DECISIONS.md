@@ -1482,3 +1482,41 @@ Copying the owned run-step measurement into the attempt aligns model cost with t
 **Revisit when**
 
 The run layer exposes signed/provider billing receipts or another stronger usage attestation. Preserve the attempt-bound historical measurement and add the stronger receipt as additional provenance rather than rewriting prior outcomes.
+
+
+---
+
+## D-046 — Gate 13 sample freeze time is server-owned durable state
+
+**Date:** 2026-09-21
+**Status:** Accepted
+
+**Decision**
+
+The authoritative `ProspectResearchSample.frozenAt` timestamp is assigned by the persistence boundary when the sample is first stored.
+
+Caller-supplied `frozenAt` remains part of the draft/sample schema for preview compatibility, but persistence ignores it and canonicalizes the sample with repository-owned time before final validation:
+
+- the in-memory repository uses its injected clock;
+- PostgreSQL uses one transaction-scoped database `NOW()`;
+- the canonical timestamp is written into both the stored sample JSON and the `frozen_at` column;
+- `saveSample()` / `freezeSample()` return the canonical persisted sample.
+
+All chronology rules that depend on sample freeze—especially cost-rate source dating and post-freeze first-attempt reservation—therefore evaluate against server-owned durable time rather than an operator-entered timestamp.
+
+**Why**
+
+Gate 13 now uses sample freeze time as a trust boundary: cost sources must predate the freeze, measured-human baselines and first attempts occur after it, and post-freeze attempts require a durable one-attempt reservation. Allowing a direct repository caller to choose `frozenAt` could weaken those pre-result ordering guarantees even though the operator CLI normally generated the current time.
+
+**Consequences**
+
+- a caller cannot backdate/forward-date a sample to change cost-source or first-attempt chronology;
+- sample preview timestamps are illustrative only and are replaced on persistence;
+- the operator prints the returned canonical sample after freeze;
+- PostgreSQL restart reads the same canonical timestamp stored at freeze;
+- historical calibration fixtures may need to compare against the returned persisted sample rather than their draft timestamp;
+- acceptance thresholds, cohort, approval state, and human-review semantics do not change.
+
+**Revisit when**
+
+If the platform later introduces a signed external experiment-registration timestamp, store it as separate provenance. Do not replace or overload the server-owned durable freeze timestamp.
