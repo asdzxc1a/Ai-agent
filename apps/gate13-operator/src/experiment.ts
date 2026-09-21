@@ -12,7 +12,7 @@ import {
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   ResearchApprovalBatchSchema,
-  calculateProspectResearchDeliveryCost,
+  calculateProspectResearchDeliveryCostFromAttempt,
   deriveProspectResearchRequestedFieldCoverage,
   requiredMaterialClaimAuditCount,
   sameApprovedResearchTarget,
@@ -184,36 +184,6 @@ export type Gate13OutcomeReview =
   z.infer<
     typeof OutcomeReviewSchema
   >;
-
-const Gate13RunSummaryCostSchema =
-  z.object({
-    runId:
-      z.string().trim().min(1),
-    modelUsage:
-      z.object({
-        promptTokens:
-          z.number()
-            .int()
-            .nonnegative(),
-        completionTokens:
-          z.number()
-            .int()
-            .nonnegative(),
-        reasoningTokens:
-          z.number()
-            .int()
-            .nonnegative(),
-        cachedInputTokens:
-          z.number()
-            .int()
-            .nonnegative(),
-        inferenceTimeMs:
-          z.number()
-            .finite()
-            .nonnegative()
-      }).strict()
-        .optional()
-  }).passthrough();
 
 function parseJson(
   text: string,
@@ -591,31 +561,11 @@ function briefDisposition(
   return "accepted" as const;
 }
 
-function gate13AttemptRunId(
-  attempt:
-    ProspectResearchAttempt
-): string {
-  const runId =
-    attempt.status ===
-      "COMPLETED"
-      ? attempt.report.runId
-      : attempt.runId;
-
-  if (runId === null) {
-    throw new Error(
-      "Gate 13 measured outcome requires a durable run ID for cost accounting."
-    );
-  }
-
-  return runId;
-}
-
-export function buildGate13DeliveryCostEvidenceFromRunSummary(
+export function buildGate13DeliveryCostEvidenceFromAttempt(
   sample:
     ProspectResearchSample,
   attempt:
-    ProspectResearchAttempt,
-  runSummaryText: string
+    ProspectResearchAttempt
 ): ProspectResearchDeliveryCostEvidence {
   const plan =
     sample.deliveryCostPlan;
@@ -626,63 +576,9 @@ export function buildGate13DeliveryCostEvidenceFromRunSummary(
     );
   }
 
-  const summary =
-    Gate13RunSummaryCostSchema
-      .parse(
-        parseJson(
-          runSummaryText,
-          "Gate 13 run summary"
-        )
-      );
-  const runId =
-    gate13AttemptRunId(
-      attempt
-    );
-  const runDurationMs =
-    attempt.runDurationMs;
-
-  if (
-    runDurationMs ===
-      undefined
-  ) {
-    throw new Error(
-      "Gate 13 delivery cost accounting requires server-derived run duration on the durable attempt."
-    );
-  }
-
-  if (
-    summary.runId !==
-      runId
-  ) {
-    throw new Error(
-      "Gate 13 run summary does not match the durable research attempt."
-    );
-  }
-
-  return calculateProspectResearchDeliveryCost(
+  return calculateProspectResearchDeliveryCostFromAttempt(
     plan,
-    {
-      modelUsage:
-        summary.modelUsage ===
-          undefined
-          ? null
-          : {
-              promptTokens:
-                summary.modelUsage
-                  .promptTokens,
-              completionTokens:
-                summary.modelUsage
-                  .completionTokens,
-              reasoningTokens:
-                summary.modelUsage
-                  .reasoningTokens,
-              cachedInputTokens:
-                summary.modelUsage
-                  .cachedInputTokens
-            },
-      runDurationMs
-    },
-    runId
+    attempt
   );
 }
 

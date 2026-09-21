@@ -7,7 +7,8 @@ import {
 } from "vitest";
 
 import {
-  calculateProspectResearchDeliveryCost
+  calculateProspectResearchDeliveryCost,
+  calculateProspectResearchDeliveryCostFromAttempt
 } from "@astra/prospect-research";
 import type {
   ApprovedResearchTarget,
@@ -395,11 +396,11 @@ function acceptanceSample():
           label:
             "Fixture model",
           meter:
-            "FIXED_PER_RUN",
+            "PROMPT_TOKENS",
           unitsPerBillingUnit:
-            1,
+            1_000_000,
           usdPerBillingUnit:
-            1,
+            2,
           rounding:
             "NONE",
           sourceDescription:
@@ -417,13 +418,13 @@ function acceptanceSample():
           label:
             "Fixture browser",
           meter:
-            "FIXED_PER_RUN",
+            "RUN_DURATION_MS",
           unitsPerBillingUnit:
-            1,
+            60_000,
           usdPerBillingUnit:
-            1,
+            0.1,
           rounding:
-            "NONE",
+            "CEIL",
           sourceDescription:
             "Deterministic persistence fixture browser allocation.",
           sourceUrl:
@@ -568,6 +569,18 @@ function acceptanceAttempt(
       5_000,
     unauthorizedActions:
       0,
+    modelUsage: {
+      promptTokens:
+        500_000,
+      completionTokens:
+        100,
+      reasoningTokens:
+        10,
+      cachedInputTokens:
+        50_000,
+      inferenceTimeMs:
+        1_500
+    },
     status:
       "COMPLETED",
     report: {
@@ -695,15 +708,9 @@ function acceptanceOutcome(
   }
 
   const deliveryCostEvidence =
-    calculateProspectResearchDeliveryCost(
+    calculateProspectResearchDeliveryCostFromAttempt(
       plan,
-      {
-        modelUsage:
-          null,
-        runDurationMs:
-          attempt.runDurationMs!
-      },
-      attempt.id
+      attempt
     );
 
   return {
@@ -1057,6 +1064,40 @@ test(
         baseline,
         attempt
       );
+    const forgedEvidence =
+      calculateProspectResearchDeliveryCost(
+        sample
+          .deliveryCostPlan!,
+        {
+          modelUsage: {
+            promptTokens:
+              250_000,
+            completionTokens:
+              100,
+            reasoningTokens:
+              10,
+            cachedInputTokens:
+              50_000
+          },
+          runDurationMs:
+            attempt.runDurationMs!
+        },
+        attempt.id
+      );
+
+    await expect(
+      repository
+        .saveSampleOutcome({
+          ...measured,
+          deliveryCostUsd:
+            forgedEvidence
+              .totalUsd,
+          deliveryCostEvidence:
+            forgedEvidence
+        })
+    ).rejects.toThrow(
+      "differs from durable attempt measurements"
+    );
 
     await expect(
       repository

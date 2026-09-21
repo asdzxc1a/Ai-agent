@@ -26,7 +26,7 @@ import {
 import {
   GATE13_UNIVERSE_PATH,
   buildGate13AcceptanceSample,
-  buildGate13DeliveryCostEvidenceFromRunSummary,
+  buildGate13DeliveryCostEvidenceFromAttempt,
   buildGate13HumanBaselineInput,
   buildGate13SampleOutcome,
   parseGate13DeliveryCostPlan,
@@ -161,7 +161,7 @@ function usage(): string {
     "    --target-id <id> --run-id <id> [--code <failure-code>]",
     "",
     "Outcome/evaluation:",
-    "  GATE13_DATABASE_URL=... GATE13_ARTIFACT_DIR=... pnpm gate13:operator -- record-outcome \\",
+    "  GATE13_DATABASE_URL=... pnpm gate13:operator -- record-outcome \\",
     "    --sample-id <id> --target-id <id> --attempt-id <id> --review-file <path>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- sample-status --sample-id <id>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- evaluate --sample-id <id>",
@@ -1892,7 +1892,7 @@ async function recordOutcome(
     );
 
   const outcome =
-    await withGate13ReviewContext(
+    await withGate13Database(
       async (
         context
       ) => {
@@ -1958,68 +1958,10 @@ async function recordOutcome(
           );
         }
 
-        const runId =
-          attempt.status ===
-            "COMPLETED"
-            ? attempt.report
-                .runId
-            : attempt.runId;
-
-        if (runId === null) {
-          throw new Error(
-            "Measured research attempt has no durable run ID for delivery cost accounting."
-          );
-        }
-
-        const artifacts =
-          await context.artifactStore
-            .listArtifacts(
-              runId
-            );
-        const summaryRecord =
-          artifacts.find(
-            (artifact) =>
-              artifact.kind ===
-                "RUN_SUMMARY" &&
-              artifact.name ===
-                "run-summary.json"
-          );
-
-        if (
-          summaryRecord ===
-            undefined
-        ) {
-          throw new Error(
-            "Run summary artifact is required for source-attributed delivery cost accounting: " +
-              runId
-          );
-        }
-
-        const summaryArtifact =
-          await context.artifactStore
-            .readArtifact(
-              runId,
-              summaryRecord.id
-            );
-
-        if (
-          summaryArtifact ===
-            undefined
-        ) {
-          throw new Error(
-            "Run summary artifact content is unavailable for delivery cost accounting: " +
-              runId
-          );
-        }
-
         const deliveryCostEvidence =
-          buildGate13DeliveryCostEvidenceFromRunSummary(
+          buildGate13DeliveryCostEvidenceFromAttempt(
             sample,
-            attempt,
-            new TextDecoder()
-              .decode(
-                summaryArtifact.data
-              )
+            attempt
           );
         const built =
           buildGate13SampleOutcome({

@@ -295,8 +295,8 @@ For every research attempt record:
 - frozen review-rubric version plus unsupported-claim/correction count and severity;
 - total Astra-side human preparation minutes, broken down into target setup, evidence mapping/source audit, corrections/finalization, failure triage, and other measured operator work;
 - end-to-end duration derived from terminal durable run timestamps rather than reviewer input;
-- measured Stagehand prompt/completion/reasoning/cached-token usage and inference time when available, captured before cleanup and retained for failed as well as completed runs;
-- complete model/token/browser/provider delivery cost, including failed attempts; acceptance outcome cost must be derived from the durable attempt run summary plus the frozen rate plan, preserving measured quantity, billed units, rounding, rate/source/date, component amount, and total; token usage alone must not be silently treated as dollar cost;
+- measured Stagehand prompt/completion/reasoning/cached-token usage and inference time when available, captured before cleanup as exactly one valid durable run step, copied into failed as well as completed service-generated attempts, and rejected if duplicate/malformed;
+- complete model/token/browser/provider delivery cost, including failed attempts; acceptance outcome cost must be derived from attempt-bound model usage + server-derived duration + the frozen rate plan, preserving measured quantity, billed units, rounding, rate/source/date, component amount, and total; repository context validation must reject an internally consistent cost snapshot whose measured quantities differ from the durable attempt; token usage alone must not be silently treated as dollar cost;
 - unauthorized-action count derived from durable `ACT` / `AGENT_LOOP_ACTION` steps in the read-only Gate 13 run; acceptance outcome values must exactly match the persisted attempt and remain zero.
 
 Blind review where practical. Keep blocked/failed/cancelled first measured attempts in the denominator/report; do not replace them with retry-assisted outcomes under the v7 acceptance protocol. A live-site failure is not a Gate 11 deterministic regression.

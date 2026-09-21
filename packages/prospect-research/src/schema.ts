@@ -640,6 +640,37 @@ export const ProspectResearchAttemptReservationSchema =
     })
     .strict();
 
+export const ProspectResearchModelUsageSchema =
+  z.object({
+    promptTokens:
+      z.number()
+        .int()
+        .nonnegative(),
+    completionTokens:
+      z.number()
+        .int()
+        .nonnegative(),
+    reasoningTokens:
+      z.number()
+        .int()
+        .nonnegative(),
+    cachedInputTokens:
+      z.number()
+        .int()
+        .nonnegative(),
+    inferenceTimeMs:
+      z.number()
+        .finite()
+        .nonnegative()
+  }).strict();
+
+const ProspectResearchBillableModelUsageSchema =
+  ProspectResearchModelUsageSchema
+    .omit({
+      inferenceTimeMs:
+        true
+    });
+
 const AttemptBase = {
   id: IdentifierSchema,
   target:
@@ -661,6 +692,9 @@ const AttemptBase = {
     z.number()
       .int()
       .nonnegative()
+      .optional(),
+  modelUsage:
+    ProspectResearchModelUsageSchema
       .optional()
 };
 
@@ -946,24 +980,7 @@ export const ProspectResearchDeliveryCostPlanSchema =
 export const ProspectResearchCostMeasurementsSchema =
   z.object({
     modelUsage:
-      z.object({
-        promptTokens:
-          z.number()
-            .int()
-            .nonnegative(),
-        completionTokens:
-          z.number()
-            .int()
-            .nonnegative(),
-        reasoningTokens:
-          z.number()
-            .int()
-            .nonnegative(),
-        cachedInputTokens:
-          z.number()
-            .int()
-            .nonnegative()
-      }).strict()
+      ProspectResearchBillableModelUsageSchema
         .nullable(),
     runDurationMs:
       z.number()
@@ -2204,6 +2221,10 @@ export type ProspectResearchAttemptReservationInput =
 export type ProspectResearchAttemptReservation =
   z.infer<
     typeof ProspectResearchAttemptReservationSchema
+  >;
+export type ProspectResearchModelUsage =
+  z.infer<
+    typeof ProspectResearchModelUsageSchema
   >;
 export type LiveResearchFailureCode =
   typeof LIVE_RESEARCH_FAILURE_CODES[number];
