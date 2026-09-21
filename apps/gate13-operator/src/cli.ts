@@ -13,8 +13,7 @@ import {
 } from "@astra/artifact-store";
 import {
   LIVE_RESEARCH_FAILURE_CODES,
-  evaluateProspectResearchSample,
-  sameApprovedResearchTarget
+  evaluateProspectResearchSample
 } from "@astra/prospect-research";
 import { z } from "zod";
 
@@ -39,6 +38,7 @@ import {
   parseGate13ExecutionProfile
 } from "./execution-profile.js";
 import {
+  assertGate13CanonicalApprovalBatch,
   gate13AcceptanceInputPreflight,
   gate13PreflightReadiness
 } from "./preflight.js";
@@ -719,75 +719,48 @@ async function acceptanceReadiness(
                 approvalBatch.approvedAt
             });
 
-          if (
-            approvalBatch
-              .sourceManifestId !==
-                manifest.manifest.id ||
-            approvalBatch
-              .sourceManifestSha256 !==
-                manifest.sha256 ||
-            approvalBatch.targets.length !==
-              expectedBatch.targets.length ||
-            expectedBatch.targets.some(
-              (expectedTarget) => {
-                const actual =
-                  approvalBatch.targets
-                    .find(
-                      (target) =>
-                        target.id ===
-                          expectedTarget.id
-                    );
-
-                return (
-                  actual ===
-                    undefined ||
-                  !sameApprovedResearchTarget(
-                    expectedTarget,
-                    actual
+          assertGate13CanonicalApprovalBatch(
+            approvalBatch,
+            {
+              id:
+                manifest.manifest.id,
+              sha256:
+                manifest.sha256,
+              targetIds:
+                manifest.manifest
+                  .targets.map(
+                    (target) =>
+                      target.targetId
                   )
-                );
-              }
-            )
+            },
+            expectedBatch.targets
+          );
+
+          if (
+            sample !==
+              undefined
           ) {
-            throw new Error(
-              "Gate 13 durable approval batch differs from the exact canonical manifest-derived batch."
+            assertGate13CanonicalApprovalBatch(
+              {
+                ...approvalBatch,
+                targets:
+                  sample.targets
+              },
+              {
+                id:
+                  manifest.manifest.id,
+                sha256:
+                  manifest.sha256,
+                targetIds:
+                  manifest.manifest
+                    .targets.map(
+                      (target) =>
+                        target.targetId
+                    )
+              },
+              expectedBatch.targets
             );
           }
-        }
-
-        if (
-          sample !==
-            undefined &&
-          approvalBatch !==
-            undefined &&
-          (
-            sample.targets.length !==
-              approvalBatch.targets.length ||
-            sample.targets.some(
-              (sampleTarget) => {
-                const batchTarget =
-                  approvalBatch.targets
-                    .find(
-                      (target) =>
-                        target.id ===
-                          sampleTarget.id
-                    );
-
-                return (
-                  batchTarget ===
-                    undefined ||
-                  !sameApprovedResearchTarget(
-                    sampleTarget,
-                    batchTarget
-                  )
-                );
-              }
-            )
-          )
-        ) {
-          throw new Error(
-            "Gate 13 frozen sample targets differ from the supplied canonical approval batch."
-          );
         }
 
         if (
