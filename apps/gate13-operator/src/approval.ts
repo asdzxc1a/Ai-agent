@@ -240,6 +240,8 @@ export function buildGate13ApprovalBatchFromManifest(
         manifest.id,
       sourceManifestSha256:
         preview.sha256,
+      sourceManifestRaw:
+        input.manifestText,
       approvedBy:
         input.approvedBy,
       approvedAt:
