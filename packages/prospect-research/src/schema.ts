@@ -715,6 +715,241 @@ export const PROSPECT_RESEARCH_SELECTION_STRATEGIES =
     "DETERMINISTIC_SUBSET"
   ] as const;
 
+export const PROSPECT_RESEARCH_COST_CATEGORIES =
+  [
+    "MODEL",
+    "BROWSER_PROVIDER",
+    "NETWORK_PROXY",
+    "CAPTCHA",
+    "OTHER"
+  ] as const;
+
+export const PROSPECT_RESEARCH_COST_METERS =
+  [
+    "PROMPT_TOKENS",
+    "COMPLETION_TOKENS",
+    "REASONING_TOKENS",
+    "CACHED_INPUT_TOKENS",
+    "RUN_DURATION_MS",
+    "FIXED_PER_RUN"
+  ] as const;
+
+export const PROSPECT_RESEARCH_COST_ROUNDING =
+  [
+    "NONE",
+    "CEIL"
+  ] as const;
+
+export const PROSPECT_RESEARCH_COST_ACCOUNTING_VERSION =
+  "gate13-delivery-cost-v1" as const;
+
+export const ProspectResearchDeliveryCostRateSchema =
+  z.object({
+    id:
+      IdentifierSchema,
+    category:
+      z.enum(
+        PROSPECT_RESEARCH_COST_CATEGORIES
+      ),
+    label:
+      TextSchema.max(240),
+    meter:
+      z.enum(
+        PROSPECT_RESEARCH_COST_METERS
+      ),
+    unitsPerBillingUnit:
+      z.number()
+        .finite()
+        .positive(),
+    usdPerBillingUnit:
+      z.number()
+        .finite()
+        .nonnegative(),
+    rounding:
+      z.enum(
+        PROSPECT_RESEARCH_COST_ROUNDING
+      ),
+    sourceDescription:
+      TextSchema.max(2000),
+    sourceUrl:
+      z.string()
+        .url()
+        .nullable(),
+    sourceAsOfDate:
+      z.string().regex(
+        /^\d{4}-\d{2}-\d{2}$/
+      )
+  }).strict()
+    .superRefine(
+      (rate, context) => {
+        if (
+          rate.meter ===
+            "FIXED_PER_RUN" &&
+          (
+            rate
+              .unitsPerBillingUnit !==
+              1 ||
+            rate.rounding !==
+              "NONE"
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["meter"],
+            message:
+              "fixed-per-run cost rates must use unitsPerBillingUnit=1 and NONE rounding"
+          });
+        }
+      }
+    );
+
+export const ProspectResearchDeliveryCostPlanSchema =
+  z.object({
+    version:
+      z.literal(
+        PROSPECT_RESEARCH_COST_ACCOUNTING_VERSION
+      ),
+    methodologyDescription:
+      TextSchema.max(4000),
+    rates:
+      z.array(
+        ProspectResearchDeliveryCostRateSchema
+      ).min(2).max(32)
+  }).strict()
+    .superRefine(
+      (plan, context) => {
+        const ids =
+          plan.rates.map(
+            (rate) => rate.id
+          );
+
+        if (
+          new Set(ids).size !==
+            ids.length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["rates"],
+            message:
+              "delivery cost rate IDs must be unique"
+          });
+        }
+      }
+    );
+
+export const ProspectResearchCostMeasurementsSchema =
+  z.object({
+    modelUsage:
+      z.object({
+        promptTokens:
+          z.number()
+            .int()
+            .nonnegative(),
+        completionTokens:
+          z.number()
+            .int()
+            .nonnegative(),
+        reasoningTokens:
+          z.number()
+            .int()
+            .nonnegative(),
+        cachedInputTokens:
+          z.number()
+            .int()
+            .nonnegative()
+      }).strict()
+        .nullable(),
+    runDurationMs:
+      z.number()
+        .int()
+        .positive()
+  }).strict();
+
+export const ProspectResearchDeliveryCostComponentSchema =
+  ProspectResearchDeliveryCostRateSchema
+    .extend({
+      rateId:
+        IdentifierSchema,
+      measuredQuantity:
+        z.number()
+          .finite()
+          .nonnegative(),
+      billedUnits:
+        z.number()
+          .finite()
+          .nonnegative(),
+      amountUsd:
+        z.number()
+          .finite()
+          .nonnegative()
+    })
+    .omit({
+      id: true
+    })
+    .strict();
+
+export const ProspectResearchDeliveryCostEvidenceSchema =
+  z.object({
+    version:
+      z.literal(
+        PROSPECT_RESEARCH_COST_ACCOUNTING_VERSION
+      ),
+    runId:
+      IdentifierSchema,
+    components:
+      z.array(
+        ProspectResearchDeliveryCostComponentSchema
+      ).min(2).max(32),
+    totalUsd:
+      z.number()
+        .finite()
+        .nonnegative()
+  }).strict()
+    .superRefine(
+      (evidence, context) => {
+        const rateIds =
+          evidence.components.map(
+            (component) =>
+              component.rateId
+          );
+
+        if (
+          new Set(rateIds).size !==
+            rateIds.length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["components"],
+            message:
+              "delivery cost evidence rate IDs must be unique"
+          });
+        }
+
+        const total =
+          evidence.components.reduce(
+            (sum, component) =>
+              sum +
+              component.amountUsd,
+            0
+          );
+
+        if (
+          Math.abs(
+            total -
+            evidence.totalUsd
+          ) >
+            1e-9
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["totalUsd"],
+            message:
+              "delivery cost evidence total must equal the component sum"
+          });
+        }
+      }
+    );
+
 export const ProspectResearchSelectionUniverseSchema =
   z.object({
     id: IdentifierSchema,
@@ -880,6 +1115,9 @@ export const ProspectResearchSampleSchema =
       ).min(1).max(50),
     criteria:
       ProspectResearchSampleCriteriaSchema,
+    deliveryCostPlan:
+      ProspectResearchDeliveryCostPlanSchema
+        .optional(),
     costCeilingRationale:
       TextSchema.max(2000),
     humanBaselineDescription:
@@ -962,6 +1200,54 @@ export const ProspectResearchSampleSchema =
             message:
               "Gate 13 acceptance must compare against the human workflow using its normal tools"
           });
+        }
+
+        if (
+          sample.purpose ===
+            "ACCEPTANCE"
+        ) {
+          const plan =
+            sample.deliveryCostPlan;
+
+          if (
+            plan === undefined
+          ) {
+            context.addIssue({
+              code: "custom",
+              path: [
+                "deliveryCostPlan"
+              ],
+              message:
+                "Gate 13 acceptance requires a frozen delivery cost plan"
+            });
+          } else {
+            const categories =
+              new Set(
+                plan.rates.map(
+                  (rate) =>
+                    rate.category
+                )
+              );
+
+            if (
+              !categories.has(
+                "MODEL"
+              ) ||
+              !categories.has(
+                "BROWSER_PROVIDER"
+              )
+            ) {
+              context.addIssue({
+                code: "custom",
+                path: [
+                  "deliveryCostPlan",
+                  "rates"
+                ],
+                message:
+                  "Gate 13 acceptance delivery cost plan requires MODEL and BROWSER_PROVIDER rates"
+              });
+            }
+          }
         }
 
         const targetIds =
@@ -1311,6 +1597,9 @@ export const ProspectResearchSampleOutcomeSchema =
       z.number()
         .finite()
         .nonnegative(),
+    deliveryCostEvidence:
+      ProspectResearchDeliveryCostEvidenceSchema
+        .optional(),
     unauthorizedActions:
       z.number()
         .int()
@@ -1343,6 +1632,27 @@ export const ProspectResearchSampleOutcomeSchema =
                       ? "minor_edit"
                       : "accepted"
               );
+
+        if (
+          outcome.deliveryCostEvidence !==
+            undefined &&
+          Math.abs(
+            outcome.deliveryCostUsd -
+            outcome
+              .deliveryCostEvidence
+              .totalUsd
+          ) >
+            1e-9
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "deliveryCostUsd"
+            ],
+            message:
+              "deliveryCostUsd must equal the source-attributed delivery cost evidence total"
+          });
+        }
 
         if (
           outcome.briefDisposition !==
@@ -1473,6 +1783,26 @@ export const ProspectResearchSampleOutcomeSchema =
       }
     );
 
+export type ProspectResearchDeliveryCostRate =
+  z.infer<
+    typeof ProspectResearchDeliveryCostRateSchema
+  >;
+export type ProspectResearchDeliveryCostPlan =
+  z.infer<
+    typeof ProspectResearchDeliveryCostPlanSchema
+  >;
+export type ProspectResearchCostMeasurements =
+  z.infer<
+    typeof ProspectResearchCostMeasurementsSchema
+  >;
+export type ProspectResearchDeliveryCostComponent =
+  z.infer<
+    typeof ProspectResearchDeliveryCostComponentSchema
+  >;
+export type ProspectResearchDeliveryCostEvidence =
+  z.infer<
+    typeof ProspectResearchDeliveryCostEvidenceSchema
+  >;
 export type ProspectResearchAstraHumanTime =
   z.infer<
     typeof ProspectResearchAstraHumanTimeSchema
