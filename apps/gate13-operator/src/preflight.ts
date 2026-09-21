@@ -2,8 +2,10 @@ import {
   PROSPECT_RESEARCH_REQUESTED_FIELDS,
   ProspectResearchDeliveryCostPlanSchema,
   ProspectResearchExecutionProfileSchema,
+  sameApprovedResearchTarget,
   type ProspectResearchDeliveryCostPlan,
-  type ProspectResearchExecutionProfile
+  type ProspectResearchExecutionProfile,
+  type ResearchApprovalBatch
 } from "@astra/prospect-research";
 
 import {
@@ -61,6 +63,12 @@ export interface Gate13AcceptanceInputPreparation {
   costCeilingRationale: string;
   humanBaselineDescription: string;
   preflightAt: string;
+}
+
+export interface Gate13CanonicalApprovalManifest {
+  id: string;
+  sha256: string;
+  targetIds: readonly string[];
 }
 
 export interface Gate13AcceptanceInputPreflight {
@@ -284,6 +292,63 @@ export function gate13AcceptanceInputPreflight(
     executionProfile:
       actualProfile
   };
+}
+
+export function assertGate13CanonicalApprovalBatch(
+  batch:
+    ResearchApprovalBatch,
+  manifest:
+    Gate13CanonicalApprovalManifest,
+  expectedTargets:
+    ResearchApprovalBatch[
+      "targets"
+    ]
+): void {
+  if (
+    batch.sourceManifestId !==
+      manifest.id ||
+    batch.sourceManifestSha256 !==
+      manifest.sha256
+  ) {
+    throw new Error(
+      "Gate 13 durable approval batch is not bound to the canonical candidate manifest."
+    );
+  }
+
+  assertExactMembership(
+    manifest.targetIds,
+    batch.targets.map(
+      (target) =>
+        target.id
+    )
+  );
+
+  if (
+    expectedTargets.length !==
+      batch.targets.length ||
+    expectedTargets.some(
+      (expected) => {
+        const actual =
+          batch.targets.find(
+            (target) =>
+              target.id ===
+              expected.id
+          );
+
+        return (
+          actual === undefined ||
+          !sameApprovedResearchTarget(
+            expected,
+            actual
+          )
+        );
+      }
+    )
+  ) {
+    throw new Error(
+      "Gate 13 durable approval batch target snapshots differ from the canonical manifest-derived approvals."
+    );
+  }
 }
 
 export function gate13PreflightReadiness(
