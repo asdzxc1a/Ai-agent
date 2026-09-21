@@ -11,6 +11,7 @@ import {
   ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
+  canonicalizeProspectResearchSampleFreeze,
   type ApprovedResearchTarget,
   type ResearchApprovalBatch,
   type ProspectResearchAttempt,
@@ -104,9 +105,10 @@ export interface ProspectResearchRepository {
   >;
 
   saveSample(
-    sample:
-      ProspectResearchSample
-  ): Promise<void>;
+    sample: unknown
+  ): Promise<
+    ProspectResearchSample
+  >;
 
   getSample(
     sampleId: string
@@ -770,12 +772,15 @@ export class InMemoryProspectResearchRepository
   }
 
   public async saveSample(
-    input:
-      ProspectResearchSample
-  ): Promise<void> {
+    input: unknown
+  ): Promise<
+    ProspectResearchSample
+  > {
     const sample =
-      ProspectResearchSampleSchema
-        .parse(input);
+      canonicalizeProspectResearchSampleFreeze(
+        input,
+        this.#now()
+      );
 
     if (
       this.#samples.has(
@@ -852,6 +857,10 @@ export class InMemoryProspectResearchRepository
     this.#samples.set(
       sample.id,
       structuredClone(sample)
+    );
+
+    return structuredClone(
+      sample
     );
   }
 
