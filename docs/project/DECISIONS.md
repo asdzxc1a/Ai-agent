@@ -1413,7 +1413,7 @@ After the frozen sample and that target's durable `MEASURED_HUMAN` baseline exis
 
 The first durable run created under that reservation is the measured attempt for the target whether it completes, fails, or is cancelled. A second run for the same frozen acceptance target is rejected even while the first terminal run is still awaiting human review/attempt persistence. The reviewed outcome must reference the reserved run ID.
 
-A reservation may be released only as recovery when run creation failed before any durable run record existed and no attempt/outcome was persisted. The operator recovery command must independently prove the exact run ID is absent from the durable run repository before releasing it.
+A reservation may be released only as recovery when run creation failed before any durable run record existed and no attempt/outcome was persisted. The operator recovery command must first acquire the same database-scoped Gate 13 live-ownership lock as `run-target`, then independently prove the exact run ID is absent from the durable run repository before releasing it.
 
 **Why**
 
@@ -1430,7 +1430,7 @@ Reserving the run identity before execution closes that loophole without treatin
 - attempt `startedAt` cannot predate the durable reservation;
 - outcomes must reference the reserved run ID;
 - reservations remain as audit evidence after attempt/outcome persistence;
-- a process crash that leaves a reservation but no run requires explicit orphan-reservation recovery rather than automatic retry;
+- a process crash that leaves a reservation but no run requires explicit orphan-reservation recovery rather than automatic retry; recovery is serialized against live execution by the same PostgreSQL ownership lock;
 - calibration and future separately versioned protocols may study retry-assisted success, but they must report it separately from first-attempt acceptance and must not rewrite historical v7 results.
 
 **Revisit when**
