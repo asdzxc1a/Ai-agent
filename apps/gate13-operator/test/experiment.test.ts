@@ -573,7 +573,7 @@ describe(
             rateId:
               "cost.operator.browser.minute",
             measuredQuantity:
-              45_000,
+              60_000,
             billedUnits:
               1,
             amountUsd:
