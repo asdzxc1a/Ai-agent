@@ -256,6 +256,168 @@ export async function withGate13FailureContext<T>(
   );
 }
 
+export async function withGate13ExclusiveFailureContext<T>(
+  operation:
+    (
+      context: {
+        repository:
+          PostgresProspectResearchRepository;
+        runRepository:
+          PostgresRunRepository;
+        service:
+          ProspectResearchService;
+      }
+    ) => Promise<T>
+): Promise<T> {
+  const pool =
+    gate13Pool();
+  let ownershipClient:
+    Gate13OwnershipClient |
+    undefined;
+  let ownsRun =
+    false;
+  let completed =
+    false;
+  let result:
+    T | undefined;
+  let primaryError:
+    unknown;
+  let releaseError:
+    unknown;
+  let clientReleaseError:
+    unknown;
+  let poolEndError:
+    unknown;
+
+  try {
+    await migrateGate13(
+      pool
+    );
+
+    ownershipClient =
+      await pool.connect();
+
+    await acquireGate13RunOwnership(
+      (
+        sql,
+        values
+      ) =>
+        ownershipClient!
+          .query(
+            sql,
+            [
+              ...values
+            ]
+          )
+    );
+    ownsRun = true;
+
+    const context =
+      databaseContext(
+        pool
+      );
+    const service =
+      new ProspectResearchService(
+        context.repository,
+        new InMemoryArtifactStore(),
+        context.runRepository
+      );
+
+    result =
+      await operation({
+        ...context,
+        service
+      });
+    completed = true;
+  } catch (error) {
+    primaryError =
+      error;
+  }
+
+  if (
+    ownershipClient !==
+      undefined
+  ) {
+    if (ownsRun) {
+      try {
+        await releaseGate13RunOwnership(
+          (
+            sql,
+            values
+          ) =>
+            ownershipClient!
+              .query(
+                sql,
+                [
+                  ...values
+                ]
+              )
+        );
+      } catch (error) {
+        releaseError =
+          error;
+      }
+    }
+
+    try {
+      ownershipClient.release();
+    } catch (error) {
+      clientReleaseError =
+        error;
+    }
+  }
+
+  try {
+    await pool.end();
+  } catch (error) {
+    poolEndError =
+      error;
+  }
+
+  const errors =
+    [
+      primaryError,
+      releaseError,
+      clientReleaseError,
+      poolEndError
+    ].filter(
+      (
+        error
+      ): error is {} =>
+        error !==
+          undefined
+    );
+
+  if (
+    errors.length ===
+      1
+  ) {
+    throw errors[0];
+  }
+
+  if (
+    errors.length >
+      1
+  ) {
+    throw new AggregateError(
+      errors,
+      "Gate 13 exclusive recovery operation and/or ownership cleanup failed.",
+      {
+        cause:
+          errors[0]
+      }
+    );
+  }
+
+  if (!completed) {
+    throw new Error(
+      "Gate 13 exclusive recovery operation ended without a result or error."
+    );
+  }
+
+  return result as T;
+}
+
 interface Gate13OwnershipClient {
   query(
     sql: string,
