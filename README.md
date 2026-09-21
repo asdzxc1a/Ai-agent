@@ -82,6 +82,8 @@ The acceptance experiment must:
 - produce an accepted or corrected brief without contacting the prospect;
 - measure **total Astra-side human preparation time** (setup + evidence audit + corrections/finalization + failure triage + other operator work), coverage, duration, failures, and complete delivery cost against the existing human workflow.
 
+The internal approval surface is intentionally narrow. `pnpm gate13:approval -- preview` reads the exact checked-in 43-target candidate manifest, validates that it is still `NOT_APPROVED` with every row `PENDING_OPERATOR_APPROVAL`, and prints the exact manifest SHA-256 without mutating durable state. The `approve` command derives every `ApprovedResearchTarget` from those exact manifest bytes and refuses persistence unless the operator explicitly confirms the manifest ID, exact SHA-256, and `--authorize-all-43`. Do not run the approval mutation without explicit operator authorization.
+
 See [STATE.md](./docs/project/STATE.md) for the current verified truth. `pnpm check:memory` enforces that this README gate matches it.
 
 ## Persistent project memory
