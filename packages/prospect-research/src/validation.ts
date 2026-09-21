@@ -593,6 +593,32 @@ export function validateProspectResearchAttemptForPersistence(
       .parse(input);
 
   if (
+    attempt.runDurationMs !==
+      undefined
+  ) {
+    const expectedDuration =
+      Date.parse(
+        attempt.createdAt
+      ) -
+      Date.parse(
+        attempt.startedAt
+      );
+
+    if (
+      !Number.isFinite(
+        expectedDuration
+      ) ||
+      expectedDuration < 0 ||
+      attempt.runDurationMs !==
+        expectedDuration
+    ) {
+      throw new Error(
+        "Research attempt runDurationMs must equal the server-owned run timestamp delta."
+      );
+    }
+  }
+
+  if (
     attempt.status ===
     "COMPLETED"
   ) {
@@ -802,6 +828,8 @@ export interface BuildCompletedProspectResearchAttemptInput {
   runId: string;
   startedAt: string;
   researchedAt: string;
+  runDurationMs: number;
+  unauthorizedActions: number;
   capturedAtByEvidenceId:
     ReadonlyMap<string, string>;
   artifactIdsByEvidenceId:
@@ -822,6 +850,8 @@ export function buildCompletedProspectResearchAttempt({
   runId,
   startedAt,
   researchedAt,
+  runDurationMs,
+  unauthorizedActions,
   capturedAtByEvidenceId,
   artifactIdsByEvidenceId,
   captureReceiptsByEvidenceId,
@@ -880,6 +910,8 @@ export function buildCompletedProspectResearchAttempt({
         startedAt,
         createdAt:
           researchedAt,
+        runDurationMs,
+        unauthorizedActions,
         status: "COMPLETED",
         report: {
           id: runId,
