@@ -276,6 +276,11 @@ export function gate13PreflightReadiness(
     input.outcomeCount >
       input.baselineCount ||
     (
+      input.sampleFrozen &&
+      !input
+        .approvalBatchPresent
+    ) ||
+    (
       !input.sampleFrozen &&
       (
         input.baselineCount !==
