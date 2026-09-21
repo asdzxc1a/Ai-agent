@@ -10,6 +10,7 @@ import {
   ProspectResearchAttemptSchema,
   ProspectResearchSampleOutcomeSchema,
   calculateProspectResearchDeliveryCost,
+  calculateProspectResearchDeliveryCostFromAttempt,
   deriveProspectResearchRequestedFieldCoverage,
   ProspectResearchSampleSchema,
   evaluateProspectResearchSample,
@@ -1770,6 +1771,189 @@ describe(
               0.2
           }
         ]);
+      }
+    );
+
+    it(
+      "binds internally consistent token-priced cost evidence to durable attempt usage",
+      () => {
+        const baseSample =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const plan = {
+          version:
+            "gate13-delivery-cost-v1" as const,
+          methodologyDescription:
+            "Prompt-token model rate plus browser duration.",
+          rates: [
+            {
+              id:
+                "cost.bound.model.prompt",
+              category:
+                "MODEL" as const,
+              label:
+                "Prompt tokens",
+              meter:
+                "PROMPT_TOKENS" as const,
+              unitsPerBillingUnit:
+                1_000_000,
+              usdPerBillingUnit:
+                2,
+              rounding:
+                "NONE" as const,
+              sourceDescription:
+                "Fixture model price.",
+              sourceUrl:
+                "https://example.test/model-pricing",
+              sourceAsOfDate:
+                "2026-09-20"
+            },
+            {
+              id:
+                "cost.bound.browser.minute",
+              category:
+                "BROWSER_PROVIDER" as const,
+              label:
+                "Browser minute",
+              meter:
+                "RUN_DURATION_MS" as const,
+              unitsPerBillingUnit:
+                60_000,
+              usdPerBillingUnit:
+                0.1,
+              rounding:
+                "CEIL" as const,
+              sourceDescription:
+                "Fixture browser allocation.",
+              sourceUrl:
+                "https://example.test/browser-pricing",
+              sourceAsOfDate:
+                "2026-09-20"
+            }
+          ]
+        };
+        const acceptance =
+          ProspectResearchSampleSchema
+            .parse({
+              ...baseSample,
+              deliveryCostPlan:
+                plan
+            });
+        const originalAttempt =
+          completedAttempt(1);
+
+        if (
+          originalAttempt.status !==
+            "COMPLETED"
+        ) {
+          throw new Error(
+            "Fixture attempt must be completed."
+          );
+        }
+
+        const attempt =
+          ProspectResearchAttemptSchema
+            .parse({
+              ...originalAttempt,
+              modelUsage: {
+                promptTokens:
+                  500_000,
+                completionTokens:
+                  100,
+                reasoningTokens:
+                  10,
+                cachedInputTokens:
+                  50_000,
+                inferenceTimeMs:
+                  1_500
+              }
+            });
+        const durableBaseline =
+          baseline({
+            sampleId:
+              acceptance.id,
+            targetIndex:
+              1,
+            recordedAt:
+              "2026-09-20T11:59:00.000Z"
+          });
+        const evidence =
+          calculateProspectResearchDeliveryCostFromAttempt(
+            plan,
+            attempt
+          );
+        const validOutcome =
+          ProspectResearchSampleOutcomeSchema
+            .parse({
+              ...outcome({
+                sampleId:
+                  acceptance.id,
+                targetIndex:
+                  1,
+                materialClaimsReviewed:
+                  2
+              }),
+              endToEndDurationMs:
+                attempt
+                  .runDurationMs!,
+              deliveryCostUsd:
+                evidence.totalUsd,
+              deliveryCostEvidence:
+                evidence
+            });
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            durableBaseline,
+            validOutcome
+          )
+        ).not.toThrow();
+
+        const forgedEvidence =
+          calculateProspectResearchDeliveryCost(
+            plan,
+            {
+              modelUsage: {
+                promptTokens:
+                  250_000,
+                completionTokens:
+                  100,
+                reasoningTokens:
+                  10,
+                cachedInputTokens:
+                  50_000
+              },
+              runDurationMs:
+                attempt
+                  .runDurationMs!
+            },
+            attempt.id
+          );
+        const forgedOutcome =
+          ProspectResearchSampleOutcomeSchema
+            .parse({
+              ...validOutcome,
+              deliveryCostUsd:
+                forgedEvidence
+                  .totalUsd,
+              deliveryCostEvidence:
+                forgedEvidence
+            });
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            durableBaseline,
+            forgedOutcome
+          )
+        ).toThrow(
+          "differs from durable attempt measurements"
+        );
       }
     );
 
