@@ -20,6 +20,7 @@ import {
 import {
   GATE13_UNIVERSE_PATH,
   buildGate13AcceptanceSample,
+  buildGate13DeliveryCostEvidenceFromRunSummary,
   buildGate13HumanBaselineInput,
   buildGate13SampleOutcome,
   parseGate13OutcomeReview
@@ -29,6 +30,61 @@ const approvedAt =
   "2026-09-21T12:00:00.000Z";
 const frozenAt =
   "2026-09-21T12:01:00.000Z";
+
+function costPlan() {
+  return {
+    version:
+      "gate13-delivery-cost-v1" as const,
+    methodologyDescription:
+      "Fixture model prompt-token rate plus browser minute allocation.",
+    rates: [
+      {
+        id:
+          "cost.operator.model.prompt",
+        category:
+          "MODEL" as const,
+        label:
+          "Fixture prompt tokens",
+        meter:
+          "PROMPT_TOKENS" as const,
+        unitsPerBillingUnit:
+          1_000_000,
+        usdPerBillingUnit:
+          2,
+        rounding:
+          "NONE" as const,
+        sourceDescription:
+          "Fixture official-model rate card.",
+        sourceUrl:
+          "https://example.test/model-pricing",
+        sourceAsOfDate:
+          "2026-09-21"
+      },
+      {
+        id:
+          "cost.operator.browser.minute",
+        category:
+          "BROWSER_PROVIDER" as const,
+        label:
+          "Fixture browser minute",
+        meter:
+          "RUN_DURATION_MS" as const,
+        unitsPerBillingUnit:
+          60_000,
+        usdPerBillingUnit:
+          0.1,
+        rounding:
+          "CEIL" as const,
+        sourceDescription:
+          "Fixture self-hosted browser allocation.",
+        sourceUrl:
+          "https://example.test/browser-allocation",
+        sourceAsOfDate:
+          "2026-09-21"
+      }
+    ]
+  };
+}
 
 async function fixtures() {
   const [
@@ -83,6 +139,8 @@ describe(
             frozenAt,
             maxDeliveryCostUsdPerBrief:
               12.5,
+            deliveryCostPlan:
+              costPlan(),
             costCeilingRationale:
               "Pre-frozen business ceiling.",
             humanBaselineDescription:
@@ -175,6 +233,8 @@ describe(
             frozenAt,
             maxDeliveryCostUsdPerBrief:
               12.5,
+            deliveryCostPlan:
+              costPlan(),
             costCeilingRationale:
               "Pre-frozen business ceiling.",
             humanBaselineDescription:
@@ -250,6 +310,8 @@ describe(
             frozenAt,
             maxDeliveryCostUsdPerBrief:
               12.5,
+            deliveryCostPlan:
+              costPlan(),
             costCeilingRationale:
               "Pre-frozen business ceiling.",
             humanBaselineDescription:
@@ -341,12 +403,84 @@ describe(
               },
               endToEndDurationMs:
                 45000,
-              deliveryCostUsd:
-                0.4,
               unauthorizedActions:
                 0,
               notes:
                 "Blocked target retained in denominator."
+            })
+          );
+        expect(() =>
+          parseGate13OutcomeReview(
+            JSON.stringify({
+              reviewedBy:
+                "reviewer@example",
+              reviewMode:
+                "UNBLINDED",
+              unsupportedMaterialClaims:
+                0,
+              corrections: {
+                minor:
+                  0,
+                major:
+                  0,
+                critical:
+                  0
+              },
+              requestedFieldsTotal:
+                4,
+              requestedFieldsCovered:
+                0,
+              astraHumanTime: {
+                targetSetupMinutes:
+                  1,
+                evidenceMappingAndAuditMinutes:
+                  0,
+                correctionAndFinalizationMinutes:
+                  0,
+                failureTriageMinutes:
+                  2,
+                otherMinutes:
+                  0,
+                measurementMethod:
+                  "STOPWATCH",
+                otherDescription:
+                  null
+              },
+              endToEndDurationMs:
+                45000,
+              deliveryCostUsd:
+                999,
+              unauthorizedActions:
+                0,
+              notes:
+                "Reviewer must not own the delivery cost scalar."
+            })
+          )
+        ).toThrow();
+
+        const deliveryCostEvidence =
+          buildGate13DeliveryCostEvidenceFromRunSummary(
+            sample,
+            attempt,
+            JSON.stringify({
+              runId:
+                "run.failed.example",
+              timings: {
+                totalMs:
+                  45_000
+              },
+              modelUsage: {
+                promptTokens:
+                  500_000,
+                completionTokens:
+                  0,
+                reasoningTokens:
+                  0,
+                cachedInputTokens:
+                  0,
+                inferenceTimeMs:
+                  10_000
+              }
             })
           );
         const outcome =
@@ -355,6 +489,7 @@ describe(
             attempt,
             baseline,
             review,
+            deliveryCostEvidence,
             reviewedAt:
               "2026-09-21T12:05:00.000Z"
           });
@@ -389,6 +524,52 @@ describe(
           outcome
             .baselineHumanPreparationMinutes
         ).toBe(20);
+        expect(
+          outcome
+            .deliveryCostUsd
+        ).toBeCloseTo(
+          1.1,
+          10
+        );
+        expect(
+          outcome
+            .deliveryCostEvidence
+            ?.components.map(
+              (component) => ({
+                rateId:
+                  component.rateId,
+                measuredQuantity:
+                  component
+                    .measuredQuantity,
+                billedUnits:
+                  component
+                    .billedUnits,
+                amountUsd:
+                  component.amountUsd
+              })
+            )
+        ).toEqual([
+          {
+            rateId:
+              "cost.operator.model.prompt",
+            measuredQuantity:
+              500_000,
+            billedUnits:
+              0.5,
+            amountUsd:
+              1
+          },
+          {
+            rateId:
+              "cost.operator.browser.minute",
+            measuredQuantity:
+              45_000,
+            billedUnits:
+              1,
+            amountUsd:
+              0.1
+          }
+        ]);
       }
     );
   }
