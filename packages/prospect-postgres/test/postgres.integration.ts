@@ -922,6 +922,16 @@ test(
           notes: null
         });
 
+    await expect(
+      repository.saveAttempt(
+        acceptanceAttempt(
+          sample
+        )
+      )
+    ).rejects.toThrow(
+      "requires the exact reserved measured run"
+    );
+
     const reservation =
       await repository
         .reserveAcceptanceAttempt({
