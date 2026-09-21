@@ -20,6 +20,14 @@ export interface AgentUsageMeter {
     | Promise<AgentUsageSnapshot>;
 }
 
+export interface AgentModelUsageSnapshot {
+  promptTokens: number;
+  completionTokens: number;
+  reasoningTokens: number;
+  cachedInputTokens: number;
+  inferenceTimeMs: number;
+}
+
 export interface AgentOperationOptions {
   signal?: AbortSignal;
 }
@@ -70,6 +78,9 @@ export interface AgentSession {
   capturePageEvidence?(
     options?: AgentOperationOptions
   ): Promise<AgentPageEvidenceSnapshot>;
+
+  getModelUsage?():
+    Promise<AgentModelUsageSnapshot>;
 
   close(): Promise<void>;
 }
