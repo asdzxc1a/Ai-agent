@@ -7,6 +7,7 @@ import { z } from "zod";
 import {
   ProspectResearchAstraHumanTimeSchema,
   ProspectResearchDeliveryCostPlanSchema,
+  ProspectResearchExecutionProfileSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
@@ -18,6 +19,7 @@ import {
   type ProspectResearchAttempt,
   type ProspectResearchDeliveryCostEvidence,
   type ProspectResearchDeliveryCostPlan,
+  type ProspectResearchExecutionProfile,
   type ProspectResearchHumanBaseline,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome,
@@ -33,6 +35,21 @@ import {
 
 export const GATE13_UNIVERSE_PATH =
   "docs/project/data/gate13-us-transportation-universe-2026-09-17.json";
+
+export const GATE13_STAGEHAND_VERSION =
+  "3.7.0";
+
+const Gate13ExecutionProfileInputSchema =
+  z.object({
+    modelName:
+      z.string().trim().min(1).max(240),
+    modelBaseUrl:
+      z.string()
+        .url()
+        .nullable(),
+    steelBaseUrl:
+      z.string().url()
+  }).strict();
 
 const UniverseMemberSchema =
   z.object({
@@ -122,6 +139,8 @@ export interface BuildGate13AcceptanceSampleInput {
   frozenBy: string;
   frozenAt: string;
   maxDeliveryCostUsdPerBrief: number;
+  executionProfile:
+    ProspectResearchExecutionProfile;
   deliveryCostPlan:
     ProspectResearchDeliveryCostPlan;
   costCeilingRationale: string;
@@ -241,6 +260,110 @@ export function parseGate13Universe(
         "Gate 13 universe"
       )
     );
+}
+
+function canonicalEndpoint(
+  value: string
+): string {
+  return new URL(
+    value
+  ).href;
+}
+
+export function buildGate13ExecutionProfile(
+  input: {
+    modelName: string;
+    modelBaseUrl:
+      string | null;
+    steelBaseUrl: string;
+  }
+): ProspectResearchExecutionProfile {
+  return ProspectResearchExecutionProfileSchema
+    .parse({
+      version:
+        "gate13-execution-profile-v1",
+      agentRuntime:
+        "STAGEHAND",
+      agentRuntimeVersion:
+        GATE13_STAGEHAND_VERSION,
+      modelName:
+        input.modelName.trim(),
+      modelBaseUrl:
+        input.modelBaseUrl ===
+          null
+          ? null
+          : canonicalEndpoint(
+              input.modelBaseUrl
+            ),
+      browserRuntime:
+        "STEEL",
+      browserBaseUrl:
+        canonicalEndpoint(
+          input.steelBaseUrl
+        )
+    });
+}
+
+export function parseGate13ExecutionProfile(
+  profileText: string
+): ProspectResearchExecutionProfile {
+  const input =
+    Gate13ExecutionProfileInputSchema
+      .parse(
+        parseJson(
+          profileText,
+          "Gate 13 execution profile"
+        )
+      );
+
+  return buildGate13ExecutionProfile({
+    modelName:
+      input.modelName,
+    modelBaseUrl:
+      input.modelBaseUrl,
+    steelBaseUrl:
+      input.steelBaseUrl
+  });
+}
+
+export function assertGate13ExecutionProfile(
+  sample:
+    ProspectResearchSample,
+  actual:
+    ProspectResearchExecutionProfile
+): void {
+  const expected =
+    sample.executionProfile;
+
+  if (
+    expected ===
+      undefined
+  ) {
+    throw new Error(
+      "Frozen Gate 13 sample does not contain an execution profile."
+    );
+  }
+
+  if (
+    expected.version !==
+      actual.version ||
+    expected.agentRuntime !==
+      actual.agentRuntime ||
+    expected.agentRuntimeVersion !==
+      actual.agentRuntimeVersion ||
+    expected.modelName !==
+      actual.modelName ||
+    expected.modelBaseUrl !==
+      actual.modelBaseUrl ||
+    expected.browserRuntime !==
+      actual.browserRuntime ||
+    expected.browserBaseUrl !==
+      actual.browserBaseUrl
+  ) {
+    throw new Error(
+      "Live Gate 13 execution profile differs from the frozen acceptance profile."
+    );
+  }
 }
 
 export function parseGate13DeliveryCostPlan(
@@ -499,6 +622,8 @@ export function buildGate13AcceptanceSample(
           input
             .maxDeliveryCostUsdPerBrief
       },
+      executionProfile:
+        input.executionProfile,
       deliveryCostPlan:
         input.deliveryCostPlan,
       costCeilingRationale:
