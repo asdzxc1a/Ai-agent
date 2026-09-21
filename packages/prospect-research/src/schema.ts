@@ -1847,6 +1847,14 @@ export type ProspectResearchSampleOutcome =
   z.infer<
     typeof ProspectResearchSampleOutcomeSchema
   >;
+export type ResearchApprovalCandidate =
+  z.infer<
+    typeof ResearchApprovalCandidateSchema
+  >;
+export type ResearchApprovalCandidateManifest =
+  z.infer<
+    typeof ResearchApprovalCandidateManifestSchema
+  >;
 export type ResearchApprovalBatch =
   z.infer<
     typeof ResearchApprovalBatchSchema
