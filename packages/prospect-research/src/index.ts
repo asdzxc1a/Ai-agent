@@ -67,6 +67,7 @@ export type {
 
 export {
   evaluateProspectResearchSample,
+  requiredMaterialClaimAuditCount,
   totalAstraHumanPreparationMinutes,
   validateProspectResearchSampleOutcomeContext
 } from "./measurement.js";
