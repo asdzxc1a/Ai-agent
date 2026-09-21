@@ -1071,6 +1071,56 @@ describe(
             completeAudit
           )
         ).not.toThrow();
+
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            durableBaseline,
+            {
+              ...completeAudit,
+              deliveryCostEvidence: {
+                ...completeAudit
+                  .deliveryCostEvidence!,
+                runId:
+                  "run.other"
+              }
+            }
+          )
+        ).toThrow(
+          "must reference the durable research run"
+        );
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            durableBaseline,
+            {
+              ...completeAudit,
+              deliveryCostEvidence: {
+                ...completeAudit
+                  .deliveryCostEvidence!,
+                components:
+                  completeAudit
+                    .deliveryCostEvidence!
+                    .components.map(
+                      (component, index) =>
+                        index === 0
+                          ? {
+                              ...component,
+                              sourceDescription:
+                                "Drifted post-hoc source."
+                            }
+                          : component
+                    )
+              }
+            }
+          )
+        ).toThrow(
+          "differs from the frozen cost plan"
+        );
       }
     );
 
