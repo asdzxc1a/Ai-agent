@@ -31,6 +31,7 @@ import {
   ApprovedResearchTargetSchema,
   InMemoryProspectResearchRepository,
   ProspectResearchSampleSchema,
+  ProspectResearchService,
   ProspectResearchWorkflow,
   ResearchApprovalBatchSchema,
   ProspectResearchValidationError,
@@ -1071,13 +1072,16 @@ describe(
           );
         const agent =
           new BlockingResearchRuntime();
+        const runRepository =
+          new InMemoryRunRepository();
+        const artifacts =
+          new InMemoryArtifactStore();
         const workflow =
           new ProspectResearchWorkflow({
             repository,
-            runRepository:
-              new InMemoryRunRepository(),
+            runRepository,
             artifactStore:
-              new InMemoryArtifactStore(),
+              artifacts,
             browserRuntime:
               new ReadOnlyBrowserRuntime(),
             agentRuntime:
@@ -1198,6 +1202,26 @@ describe(
           runId:
             started.id
         });
+
+
+        const recoveryService =
+          new ProspectResearchService(
+            repository,
+            artifacts,
+            runRepository
+          );
+
+        await expect(
+          recoveryService
+            .releaseAcceptanceAttemptReservation(
+              acceptance.id,
+              acceptance.targets[0]!
+                .id,
+              started.id
+            )
+        ).rejects.toThrow(
+          "cannot be released because its durable run exists"
+        );
       }
     );
 
