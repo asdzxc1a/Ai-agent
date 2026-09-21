@@ -466,6 +466,20 @@ export class ProspectResearchService {
     runId: string
   ): Promise<void> {
     try {
+      const run =
+        await this.#runs
+          .getRun(
+            runId
+          );
+
+      if (
+        run !== undefined
+      ) {
+        throw new Error(
+          "Gate 13 measured-attempt reservation cannot be released because its durable run exists."
+        );
+      }
+
       await this.#repository
         .releaseAcceptanceAttemptReservation(
           sampleId,
