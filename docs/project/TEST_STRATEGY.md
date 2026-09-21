@@ -278,6 +278,7 @@ Before the first measured sample:
 - durably freeze decision thresholds and a cost-ceiling rationale before results; the quality/time minimums cannot be weakened;
 - for acceptance targets, persist a measured human baseline as separate server-timestamped durable state before the Astra attempt is allowed to start; fixed-cap estimates are calibration-only;
 - record blind versus unblinded review and use blind review where practical;
+- derive completed-outcome `materialClaimsReviewed` from the durable attempt evidence count; tests must reject both under-counting and over-counting, while failed/not-produced outcomes remain zero;
 - freeze the brief-review rubric before results; reviewers record correction severities, while the schema derives the allowed brief disposition;
 - do not report an acceptance pass/fail verdict until every frozen target has exactly one recorded outcome.
 
@@ -285,7 +286,7 @@ For every research attempt record:
 
 - target/sample identity, sample purpose, cohort definition, frozen selection method, candidate-universe source/date/membership/strategy, market scope/description, durable attempt ID/status, and reviewed brief disposition;
 - durable human-baseline ID, mode/provenance/server timestamp, preparation minutes/tooling description, and blind/unblinded review mode;
-- material source/evidence receipts and manual audit result;
+- material source/evidence receipts and manual audit result, with completed audit-count coverage exactly equal to the durable observed-evidence set rather than a reviewer-entered count;
 - requested-field coverage and explicit unknowns;
 - frozen review-rubric version plus unsupported-claim/correction count and severity;
 - total Astra-side human preparation minutes, broken down into target setup, evidence mapping/source audit, corrections/finalization, failure triage, and other measured operator work;
