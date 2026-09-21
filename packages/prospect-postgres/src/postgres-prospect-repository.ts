@@ -408,6 +408,31 @@ export class PostgresProspectResearchRepository
         );
       }
 
+      const priorAttemptResult =
+        await client.query(
+          `
+            SELECT 1
+            FROM prospect_research_attempts
+            WHERE target_id = $1
+              AND (attempt->>'startedAt')::timestamptz >= $2
+            LIMIT 1
+            FOR SHARE
+          `,
+          [
+            parsed.targetId,
+            sample.frozenAt
+          ]
+        );
+
+      if (
+        priorAttemptResult.rowCount !==
+          0
+      ) {
+        throw new Error(
+          "Gate 13 acceptance target already has an unreserved post-freeze research attempt."
+        );
+      }
+
       const insert =
         await client.query(
           `
@@ -618,35 +643,72 @@ export class PostgresProspectResearchRepository
         attempt
       );
 
-      const reservationResult =
+      const acceptanceSampleResult =
         await client.query(
           `
-            SELECT run_id
-            FROM prospect_research_acceptance_attempt_reservations
-            WHERE target_id = $1
+            SELECT id
+            FROM prospect_research_samples
+            WHERE sample->>'purpose' = 'ACCEPTANCE'
+              AND frozen_at <= $2
+              AND EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements(sample->'targets') AS target
+                WHERE target->>'id' = $1
+              )
             FOR SHARE
           `,
           [
-            attempt.target.id
+            attempt.target.id,
+            attempt.startedAt
           ]
         );
-
-      if (
-        reservationResult.rows.length >
-          0 &&
-        !reservationResult.rows.some(
+      const acceptanceSampleIds =
+        acceptanceSampleResult.rows.map(
           (row) =>
             (
               row as {
-                run_id: string;
+                id: string;
               }
-            ).run_id ===
-              attempt.id
-        )
-      ) {
-        throw new Error(
-          "Research attempt does not match the reserved Gate 13 acceptance run."
+            ).id
         );
+
+      if (
+        acceptanceSampleIds.length >
+          0
+      ) {
+        const reservationResult =
+          await client.query(
+            `
+              SELECT
+                sample_id,
+                run_id
+              FROM prospect_research_acceptance_attempt_reservations
+              WHERE target_id = $1
+                AND sample_id = ANY($2::text[])
+              FOR SHARE
+            `,
+            [
+              attempt.target.id,
+              acceptanceSampleIds
+            ]
+          );
+
+        if (
+          !reservationResult.rows.some(
+            (row) =>
+              (
+                row as {
+                  run_id:
+                    string;
+                }
+              ).run_id ===
+                attempt.id
+          )
+        ) {
+          throw new Error(
+            "Gate 13 acceptance-era research attempt requires the exact reserved measured run."
+          );
+        }
       }
 
       await this.#insertAttempt(
