@@ -13,6 +13,7 @@ import {
   ApprovedResearchTargetSchema,
   ResearchApprovalBatchSchema,
   FailedProspectResearchAttemptSchema,
+  ProspectResearchAttemptReservationInputSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
@@ -21,6 +22,7 @@ import {
   type CompletedProspectResearchAttempt,
   type FailedProspectResearchAttempt,
   type LiveResearchFailureCode,
+  type ProspectResearchAttemptReservation,
   type ProspectResearchCaptureReceipt,
   type ProspectResearchHumanBaseline,
   type ProspectResearchSample,
@@ -430,6 +432,64 @@ export class ProspectResearchService {
   > {
     return this.#repository
       .getHumanBaselineForTarget(
+        sampleId,
+        targetId
+      );
+  }
+
+  public async reserveAcceptanceAttempt(
+    input: unknown
+  ): Promise<
+    ProspectResearchAttemptReservation
+  > {
+    const parsed =
+      ProspectResearchAttemptReservationInputSchema
+        .parse(input);
+
+    try {
+      return await this.#repository
+        .reserveAcceptanceAttempt(
+          parsed
+        );
+    } catch (error) {
+      throw new ProspectResearchValidationError([
+        error instanceof Error
+          ? error.message
+          : "Gate 13 acceptance attempt could not be reserved"
+      ]);
+    }
+  }
+
+  public async releaseAcceptanceAttemptReservation(
+    sampleId: string,
+    targetId: string,
+    runId: string
+  ): Promise<void> {
+    try {
+      await this.#repository
+        .releaseAcceptanceAttemptReservation(
+          sampleId,
+          targetId,
+          runId
+        );
+    } catch (error) {
+      throw new ProspectResearchValidationError([
+        error instanceof Error
+          ? error.message
+          : "Gate 13 acceptance attempt reservation could not be released"
+      ]);
+    }
+  }
+
+  public getAcceptanceAttemptReservation(
+    sampleId: string,
+    targetId: string
+  ): Promise<
+    ProspectResearchAttemptReservation |
+    undefined
+  > {
+    return this.#repository
+      .getAcceptanceAttemptReservation(
         sampleId,
         targetId
       );
