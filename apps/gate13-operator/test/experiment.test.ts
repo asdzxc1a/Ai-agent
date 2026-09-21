@@ -25,11 +25,35 @@ import {
   buildGate13SampleOutcome,
   parseGate13OutcomeReview
 } from "../src/experiment.js";
+import {
+  buildGate13ExecutionProfile
+} from "../src/execution-profile.js";
 
 const approvedAt =
   "2026-09-21T12:00:00.000Z";
 const frozenAt =
   "2026-09-21T12:01:00.000Z";
+
+function executionProfile() {
+  return buildGate13ExecutionProfile({
+    modelName:
+      "fixture/model-v1",
+    modelBaseUrl:
+      "http://127.0.0.1:4010/v1",
+    steelBaseUrl:
+      "http://127.0.0.1:3000",
+    stagehandPackageText:
+      JSON.stringify({
+        dependencies: {
+          "@browserbasehq/stagehand":
+            "3.7.0"
+        }
+      }),
+    steelImagePinText:
+      "ghcr.io/steel-dev/steel-browser@sha256:" +
+      "a".repeat(64)
+  });
+}
 
 function costPlan() {
   return {
@@ -139,6 +163,8 @@ describe(
             frozenAt,
             maxDeliveryCostUsdPerBrief:
               12.5,
+            executionProfile:
+              executionProfile(),
             deliveryCostPlan:
               costPlan(),
             costCeilingRationale:
@@ -233,6 +259,8 @@ describe(
             frozenAt,
             maxDeliveryCostUsdPerBrief:
               12.5,
+            executionProfile:
+              executionProfile(),
             deliveryCostPlan:
               costPlan(),
             costCeilingRationale:
@@ -310,6 +338,8 @@ describe(
             frozenAt,
             maxDeliveryCostUsdPerBrief:
               12.5,
+            executionProfile:
+              executionProfile(),
             deliveryCostPlan:
               costPlan(),
             costCeilingRationale:

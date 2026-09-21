@@ -33,6 +33,10 @@ import {
   parseGate13OutcomeReview
 } from "./experiment.js";
 import {
+  currentGate13ExecutionProfile,
+  parseGate13ExecutionProfile
+} from "./execution-profile.js";
+import {
   gate13ArtifactDir,
   withGate13Database,
   withGate13DatabaseReadOnly,
@@ -103,6 +107,9 @@ function usage(): string {
   return [
     "Gate 13 operator",
     "",
+    "Execution profile:",
+    "  GATE13_STEEL_BASE_URL=... GATE13_MODEL_NAME=... [GATE13_MODEL_BASE_URL=...] pnpm gate13:operator -- execution-profile-preview",
+    "",
     "Approval inspection/persistence:",
     "  pnpm gate13:operator -- preview",
     "  GATE13_DATABASE_URL=postgresql://... pnpm gate13:operator -- approve \\",
@@ -112,7 +119,8 @@ function usage(): string {
     "Acceptance sample:",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- sample-preview \\",
     "    --approval-batch-id <id> --sample-id <id> --operator <identity> \\",
-    "    --max-cost-usd <positive> --cost-plan-file <path> --cost-rationale-file <path> --human-baseline-file <path>",
+    "    --max-cost-usd <positive> --execution-profile-file <path> --cost-plan-file <path> \\",
+    "    --cost-rationale-file <path> --human-baseline-file <path>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- freeze-acceptance <same options> --confirm-complete-universe",
     "",
     "Measured human baseline:",
@@ -471,6 +479,10 @@ interface AcceptanceOptions {
   sampleId: string;
   operator: string;
   maxCostUsd: number;
+  executionProfile:
+    ReturnType<
+      typeof parseGate13ExecutionProfile
+    >;
   deliveryCostPlan:
     ReturnType<
       typeof parseGate13DeliveryCostPlan
@@ -495,6 +507,7 @@ async function acceptanceOptions(
         "--sample-id",
         "--operator",
         "--max-cost-usd",
+        "--execution-profile-file",
         "--cost-plan-file",
         "--cost-rationale-file",
         "--human-baseline-file"
@@ -540,6 +553,15 @@ async function acceptanceOptions(
           "--max-cost-usd"
         ),
         "--max-cost-usd"
+      ),
+    executionProfile:
+      parseGate13ExecutionProfile(
+        await readText(
+          requiredOption(
+            parsed,
+            "--execution-profile-file"
+          )
+        )
       ),
     deliveryCostPlan:
       parseGate13DeliveryCostPlan(
@@ -610,6 +632,8 @@ async function buildAcceptanceFromStoredBatch(
             .toISOString(),
         maxDeliveryCostUsdPerBrief:
           options.maxCostUsd,
+        executionProfile:
+          options.executionProfile,
         deliveryCostPlan:
           options.deliveryCostPlan,
         costCeilingRationale:
@@ -763,6 +787,30 @@ async function recordBaseline(
   });
 }
 
+async function executionProfilePreview(
+  args: string[]
+): Promise<void> {
+  if (
+    args.length >
+      0
+  ) {
+    throw new Error(
+      "Execution profile preview accepts no options."
+    );
+  }
+
+  const profile =
+    await currentGate13ExecutionProfile();
+
+  print({
+    action:
+      "EXECUTION_PROFILE_PREVIEW",
+    profile,
+    note:
+      "browserExpectedImagePin is the immutable Steel image expected by this checkout. EXPECTED_IMAGE_PIN_ONLY does not attest the digest of the already-running Steel endpoint."
+  });
+}
+
 function terminalStatus(
   status: string
 ): boolean {
@@ -795,7 +843,26 @@ async function runTarget(
       "--target-id"
     );
 
+  const sample =
+    await withGate13DatabaseReadOnly(
+      async (
+        context
+      ) =>
+        context.repository
+          .getSample(
+            sampleId
+          )
+    );
+
+  if (sample === undefined) {
+    throw new Error(
+      "Measured research sample does not exist: " +
+        sampleId
+    );
+  }
+
   await withGate13Workflow(
+    sample.executionProfile,
     async (
       context
     ) => {
@@ -805,6 +872,38 @@ async function runTarget(
             sampleId,
             targetId
           });
+
+      try {
+        await context.runRepository
+          .appendStep(
+            started.id,
+            "GATE13_EXECUTION_PROFILE",
+            context.executionProfile
+          );
+      } catch (error) {
+        try {
+          await context.workflow
+            .cancelRun(
+              started.id
+            );
+        } catch (
+          cancelError
+        ) {
+          throw new AggregateError(
+            [
+              error,
+              cancelError
+            ],
+            "Gate 13 execution-profile audit persistence failed and the owned run could not be cancelled.",
+            {
+              cause:
+                cancelError
+            }
+          );
+        }
+
+        throw error;
+      }
       let interruptRequested =
         false;
       const onInterrupt =
@@ -855,7 +954,9 @@ async function runTarget(
         runId:
           started.id,
         status:
-          started.status
+          started.status,
+        executionProfile:
+          context.executionProfile
       });
 
       try {
@@ -1073,16 +1174,39 @@ async function runStatus(
       parsed,
       "--run-id"
     );
-  const run =
+  const result =
     await withGate13DatabaseReadOnly(
       async (
         context
-      ) =>
-        context.runRepository
-          .getRun(
-            runId
-          )
+      ) => {
+        const [
+          run,
+          steps
+        ] =
+          await Promise.all([
+            context.runRepository
+              .getRun(
+                runId
+              ),
+            context.runRepository
+              .listSteps(
+                runId
+              )
+          ]);
+
+        return {
+          run,
+          executionProfiles:
+            steps.filter(
+              (step) =>
+                step.kind ===
+                  "GATE13_EXECUTION_PROFILE"
+            )
+        };
+      }
     );
+  const run =
+    result.run;
 
   if (run === undefined) {
     throw new Error(
@@ -1094,7 +1218,9 @@ async function runStatus(
   print({
     action:
       "RUN_STATUS",
-    run
+    run,
+    executionProfiles:
+      result.executionProfiles
   });
 }
 
@@ -1552,7 +1678,10 @@ async function sampleStatus(
               sample.targets.length,
             costCeilingUsd:
               sample.criteria
-                .maxDeliveryCostUsdPerBrief
+                .maxDeliveryCostUsdPerBrief,
+            executionProfile:
+              sample.executionProfile ??
+              null
           },
           outcomeCount:
             outcomes.length,
@@ -1651,6 +1780,11 @@ async function main():
   }
 
   switch (command) {
+    case "execution-profile-preview":
+      await executionProfilePreview(
+        args
+      );
+      return;
     case "preview":
       await previewApproval(
         args

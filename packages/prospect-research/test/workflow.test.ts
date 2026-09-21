@@ -221,6 +221,27 @@ function acceptanceSample() {
         maxDeliveryCostUsdPerBrief:
           25
       },
+      executionProfile: {
+        version:
+          "gate13-execution-profile-v1",
+        agentRuntime:
+          "STAGEHAND",
+        agentRuntimeVersion:
+          "3.7.0",
+        modelName:
+          "fixture/model-v1",
+        modelBaseUrl:
+          "http://127.0.0.1:4010/v1",
+        browserRuntime:
+          "STEEL",
+        browserBaseUrl:
+          "http://127.0.0.1:3000/",
+        browserExpectedImagePin:
+          "ghcr.io/steel-dev/steel-browser@sha256:" +
+          "a".repeat(64),
+        browserIdentityEvidence:
+          "EXPECTED_IMAGE_PIN_ONLY"
+      },
       deliveryCostPlan: {
         version:
           "gate13-delivery-cost-v1",

@@ -18,6 +18,7 @@ import {
   type ProspectResearchAttempt,
   type ProspectResearchDeliveryCostEvidence,
   type ProspectResearchDeliveryCostPlan,
+  type ProspectResearchExecutionProfile,
   type ProspectResearchHumanBaseline,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome,
@@ -122,6 +123,8 @@ export interface BuildGate13AcceptanceSampleInput {
   frozenBy: string;
   frozenAt: string;
   maxDeliveryCostUsdPerBrief: number;
+  executionProfile:
+    ProspectResearchExecutionProfile;
   deliveryCostPlan:
     ProspectResearchDeliveryCostPlan;
   costCeilingRationale: string;
@@ -499,6 +502,8 @@ export function buildGate13AcceptanceSample(
           input
             .maxDeliveryCostUsdPerBrief
       },
+      executionProfile:
+        input.executionProfile,
       deliveryCostPlan:
         input.deliveryCostPlan,
       costCeilingRationale:
