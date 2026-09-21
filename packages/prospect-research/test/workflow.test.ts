@@ -1157,6 +1157,30 @@ describe(
           status:
             "CANCELLED"
         });
+
+        await expect(
+          workflow.start({
+            sampleId:
+              acceptance.id,
+            targetId:
+              acceptance.targets[0]!
+                .id
+          })
+        ).rejects.toThrow(
+          "already has a measured attempt reservation"
+        );
+
+        await expect(
+          repository
+            .getAcceptanceAttemptReservation(
+              acceptance.id,
+              acceptance.targets[0]!
+                .id
+            )
+        ).resolves.toMatchObject({
+          runId:
+            started.id
+        });
       }
     );
 
