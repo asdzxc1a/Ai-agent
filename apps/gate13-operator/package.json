@@ -1,0 +1,19 @@
+{
+  "name": "@astra/gate13-operator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/cli.js",
+  "types": "./dist/cli.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@astra/prospect-postgres": "workspace:*",
+    "@astra/prospect-research": "workspace:*",
+    "zod": "4.4.3"
+  }
+}
