@@ -40,6 +40,7 @@ export {
   PROSPECT_RESEARCH_MARKET_SCOPES,
   PROSPECT_RESEARCH_REVIEW_MODES,
   PROSPECT_RESEARCH_REVIEW_RUBRIC_VERSION,
+  PROSPECT_RESEARCH_REQUESTED_FIELDS,
   PROSPECT_RESEARCH_SAMPLE_PURPOSES,
   PROSPECT_RESEARCH_SELECTION_STRATEGIES,
   RESEARCH_UNCERTAINTY,
@@ -72,6 +73,7 @@ export type {
   ProspectResearchHumanBaseline,
   ProspectResearchHumanBaselineInput,
   ProspectResearchReport,
+  ProspectResearchRequestedField,
   ProspectResearchResult,
   ProspectResearchSample,
   ProspectResearchSampleCriteria,
@@ -84,6 +86,7 @@ export type {
 
 export {
   calculateProspectResearchDeliveryCost,
+  deriveProspectResearchRequestedFieldCoverage,
   evaluateProspectResearchSample,
   requiredMaterialClaimAuditCount,
   totalAstraHumanPreparationMinutes,
@@ -91,6 +94,7 @@ export {
 } from "./measurement.js";
 
 export type {
+  ProspectResearchRequestedFieldCoverage,
   ProspectResearchSampleEvaluation,
   ProspectResearchSampleMetrics
 } from "./measurement.js";

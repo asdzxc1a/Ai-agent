@@ -8,10 +8,12 @@ import {
   ProspectResearchAstraHumanTimeSchema,
   ProspectResearchDeliveryCostPlanSchema,
   ProspectResearchHumanBaselineInputSchema,
+  PROSPECT_RESEARCH_REQUESTED_FIELDS,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   ResearchApprovalBatchSchema,
   calculateProspectResearchDeliveryCost,
+  deriveProspectResearchRequestedFieldCoverage,
   requiredMaterialClaimAuditCount,
   sameApprovedResearchTarget,
   validateProspectResearchSampleOutcomeContext,
@@ -168,14 +170,6 @@ const OutcomeReviewSchema =
             .int()
             .nonnegative()
       }).strict(),
-    requestedFieldsTotal:
-      z.number()
-        .int()
-        .positive(),
-    requestedFieldsCovered:
-      z.number()
-        .int()
-        .nonnegative(),
     astraHumanTime:
       ProspectResearchAstraHumanTimeSchema,
     notes:
@@ -489,6 +483,9 @@ export function buildGate13AcceptanceSample(
         "NORMAL_TOOLS",
       targets:
         batch.targets,
+      requestedFields: [
+        ...PROSPECT_RESEARCH_REQUESTED_FIELDS
+      ],
       criteria: {
         maxUnsupportedMaterialClaims:
           0,
@@ -724,6 +721,11 @@ export function buildGate13SampleOutcome(
     );
   }
 
+  const requestedFieldCoverage =
+    deriveProspectResearchRequestedFieldCoverage(
+      input.sample,
+      input.attempt
+    );
   const outcome =
     ProspectResearchSampleOutcomeSchema
       .parse({
@@ -767,11 +769,17 @@ export function buildGate13SampleOutcome(
         corrections:
           input.review.corrections,
         requestedFieldsTotal:
-          input.review
-            .requestedFieldsTotal,
+          requestedFieldCoverage
+            .requestedFields
+            .length,
         requestedFieldsCovered:
-          input.review
-            .requestedFieldsCovered,
+          requestedFieldCoverage
+            .coveredFields
+            .length,
+        requestedFieldsCoveredIds: [
+          ...requestedFieldCoverage
+            .coveredFields
+        ],
         baselineSource:
           input.baseline.source,
         baselineMeasuredAt:

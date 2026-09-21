@@ -1,4 +1,5 @@
 import {
+  PROSPECT_RESEARCH_REQUESTED_FIELDS,
   ProspectResearchCostMeasurementsSchema,
   ProspectResearchDeliveryCostEvidenceSchema,
   ProspectResearchDeliveryCostPlanSchema,
@@ -11,6 +12,7 @@ import {
   type ProspectResearchDeliveryCostRate,
   type ProspectResearchAttempt,
   type ProspectResearchHumanBaseline,
+  type ProspectResearchRequestedField,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome
 } from "./schema.js";
@@ -369,6 +371,137 @@ export function requiredMaterialClaimAuditCount(
     : 0;
 }
 
+export interface ProspectResearchRequestedFieldCoverage {
+  requestedFields:
+    readonly ProspectResearchRequestedField[];
+  coveredFields:
+    readonly ProspectResearchRequestedField[];
+}
+
+function completedFieldCovered(
+  attempt:
+    Extract<
+      ProspectResearchAttempt,
+      {
+        status: "COMPLETED";
+      }
+    >,
+  field:
+    ProspectResearchRequestedField
+): boolean {
+  const unknownFields =
+    new Set(
+      attempt.report
+        .unknowns.map(
+          (unknown) =>
+            unknown.field
+        )
+    );
+
+  if (
+    unknownFields.has(
+      field
+    )
+  ) {
+    return true;
+  }
+
+  switch (field) {
+    case "companyName":
+      return (
+        attempt.report
+          .prospect
+          .companyName !==
+          null
+      );
+    case "companySummary":
+      return (
+        attempt.report
+          .companySummary
+          .length >
+          0
+      );
+    case "transformationOpportunities":
+      return (
+        attempt.report
+          .transformationOpportunities
+          .length >
+          0
+      );
+    case "buyingSignals":
+      return (
+        attempt.report
+          .buyingSignals
+          .length >
+          0
+      );
+  }
+
+  const unsupported:
+    never = field;
+
+  throw new Error(
+    "Unsupported requested research field: " +
+      String(
+        unsupported
+      )
+  );
+}
+
+export function deriveProspectResearchRequestedFieldCoverage(
+  sample:
+    ProspectResearchSample,
+  attempt:
+    ProspectResearchAttempt
+): ProspectResearchRequestedFieldCoverage {
+  const requestedFields =
+    sample.requestedFields ??
+    [];
+
+  if (
+    sample.purpose ===
+      "ACCEPTANCE" &&
+    (
+      requestedFields.length !==
+        PROSPECT_RESEARCH_REQUESTED_FIELDS
+          .length ||
+      PROSPECT_RESEARCH_REQUESTED_FIELDS
+        .some(
+          (field) =>
+            !requestedFields.includes(
+              field
+            )
+        )
+    )
+  ) {
+    throw new Error(
+      "Gate 13 acceptance sample is missing the exact frozen requested-field set."
+    );
+  }
+
+  if (
+    attempt.status ===
+      "FAILED"
+  ) {
+    return {
+      requestedFields,
+      coveredFields: []
+    };
+  }
+
+  return {
+    requestedFields,
+    coveredFields:
+      requestedFields.filter(
+        (field) =>
+          completedFieldCovered(
+            attempt,
+            field
+          )
+      )
+  };
+}
+
 export function validateProspectResearchSampleOutcomeContext(
   sampleInput:
     ProspectResearchSample,
@@ -483,6 +616,51 @@ export function validateProspectResearchSampleOutcomeContext(
       "Measured research outcome materialClaimsReviewed must equal the durable observed-evidence audit count: " +
         requiredAuditCount
     );
+  }
+
+  if (
+    sample.purpose ===
+      "ACCEPTANCE"
+  ) {
+    const coverage =
+      deriveProspectResearchRequestedFieldCoverage(
+        sample,
+        attempt
+      );
+    const coveredIds =
+      outcome
+        .requestedFieldsCoveredIds;
+
+    if (
+      coveredIds ===
+        undefined ||
+      outcome
+        .requestedFieldsTotal !==
+        coverage
+          .requestedFields
+          .length ||
+      outcome
+        .requestedFieldsCovered !==
+        coverage
+          .coveredFields
+          .length ||
+      coveredIds.length !==
+        coverage
+          .coveredFields
+          .length ||
+      coverage
+        .coveredFields
+        .some(
+          (field) =>
+            !coveredIds.includes(
+              field
+            )
+        )
+    ) {
+      throw new Error(
+        "Gate 13 requested-field coverage must match the frozen field set and durable research attempt."
+      );
+    }
   }
 
   if (
@@ -644,6 +822,45 @@ export function evaluateProspectResearchSample(
     failures.push(
       "sample outcome references a different sample or target outside the frozen cohort"
     );
+  }
+
+  if (
+    sample.purpose ===
+      "ACCEPTANCE"
+  ) {
+    const requestedFields =
+      sample.requestedFields!;
+
+    for (
+      const outcome of
+      outcomes
+    ) {
+      const coveredIds =
+        outcome
+          .requestedFieldsCoveredIds;
+
+      if (
+        outcome
+          .requestedFieldsTotal !==
+          requestedFields.length ||
+        coveredIds ===
+          undefined ||
+        outcome
+          .requestedFieldsCovered !==
+          coveredIds.length ||
+        coveredIds.some(
+          (field) =>
+            !requestedFields.includes(
+              field
+            )
+        )
+      ) {
+        failures.push(
+          "acceptance outcome requested-field coverage differs from the frozen field ledger"
+        );
+        break;
+      }
+    }
   }
 
   if (

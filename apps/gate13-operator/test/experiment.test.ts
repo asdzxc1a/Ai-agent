@@ -415,10 +415,6 @@ describe(
                 critical:
                   0
               },
-              requestedFieldsTotal:
-                4,
-              requestedFieldsCovered:
-                0,
               astraHumanTime: {
                 targetSetupMinutes:
                   1,
@@ -476,14 +472,8 @@ describe(
                 otherDescription:
                   null
               },
-              endToEndDurationMs:
-                45_000,
-              deliveryCostUsd:
-                999,
-              unauthorizedActions:
-                7,
               notes:
-                "Reviewer must not own the delivery cost scalar."
+                "Reviewer must not own requested-field coverage."
             })
           )
         ).toThrow();
@@ -554,6 +544,18 @@ describe(
           outcome
             .baselineHumanPreparationMinutes
         ).toBe(20);
+        expect(
+          outcome
+            .requestedFieldsTotal
+        ).toBe(4);
+        expect(
+          outcome
+            .requestedFieldsCovered
+        ).toBe(0);
+        expect(
+          outcome
+            .requestedFieldsCoveredIds
+        ).toEqual([]);
         expect(
           outcome
             .endToEndDurationMs

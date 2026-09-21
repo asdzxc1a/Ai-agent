@@ -10,6 +10,7 @@ import {
   ProspectResearchAttemptSchema,
   ProspectResearchSampleOutcomeSchema,
   calculateProspectResearchDeliveryCost,
+  deriveProspectResearchRequestedFieldCoverage,
   ProspectResearchSampleSchema,
   evaluateProspectResearchSample,
   validateProspectResearchSampleOutcomeContext,
@@ -262,6 +263,12 @@ function sample(
       ...(purpose ===
         "ACCEPTANCE"
         ? {
+            requestedFields: [
+              "companyName",
+              "companySummary",
+              "transformationOpportunities",
+              "buyingSignals"
+            ],
             executionProfile:
               executionProfile(),
             deliveryCostPlan:
@@ -392,6 +399,15 @@ function outcome(input: {
         notProduced
           ? 0
           : 4,
+      requestedFieldsCoveredIds:
+        notProduced
+          ? []
+          : [
+              "companyName",
+              "companySummary",
+              "transformationOpportunities",
+              "buyingSignals"
+            ],
       baselineHumanPreparationMinutes:
         input.baselineMinutes ??
         20,
@@ -581,7 +597,28 @@ function completedAttempt(
         transformationOpportunities:
           [],
         buyingSignals: [],
-        unknowns: [],
+        unknowns: [
+          {
+            id:
+              "unknown." +
+              suffix +
+              ".opportunities",
+            field:
+              "transformationOpportunities",
+            reason:
+              "No transformation opportunity was supported by the fixture evidence."
+          },
+          {
+            id:
+              "unknown." +
+              suffix +
+              ".signals",
+            field:
+              "buyingSignals",
+            reason:
+              "No buying signal was supported by the fixture evidence."
+          }
+        ],
         evidence: [
           {
             id:
@@ -794,6 +831,92 @@ describe(
             },
             failures: []
           });
+      }
+    );
+
+    it(
+      "refuses an acceptance verdict when outcome coverage denominator or ledger presence drifts",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const outcomes =
+          acceptance.targets.map(
+            (_target, index) =>
+              outcome({
+                sampleId:
+                  acceptance.id,
+                targetIndex:
+                  index + 1
+              })
+          );
+
+        outcomes[0] = {
+          ...outcomes[0]!,
+          requestedFieldsTotal:
+            3,
+          requestedFieldsCovered:
+            3,
+          requestedFieldsCoveredIds: [
+            "companyName",
+            "companySummary",
+            "buyingSignals"
+          ]
+        };
+
+        const denominatorDrift =
+          evaluateProspectResearchSample(
+            acceptance,
+            outcomes
+          );
+
+        expect(
+          denominatorDrift.complete
+        ).toBe(false);
+        expect(
+          denominatorDrift.passed
+        ).toBeNull();
+        expect(
+          denominatorDrift.failures
+        ).toContain(
+          "acceptance outcome requested-field coverage differs from the frozen field ledger"
+        );
+
+        const missingLedger =
+          acceptance.targets.map(
+            (_target, index) =>
+              outcome({
+                sampleId:
+                  acceptance.id,
+                targetIndex:
+                  index + 1
+              })
+          );
+
+        missingLedger[0] = {
+          ...missingLedger[0]!,
+          requestedFieldsCoveredIds:
+            undefined
+        };
+
+        const missingLedgerEvaluation =
+          evaluateProspectResearchSample(
+            acceptance,
+            missingLedger
+          );
+
+        expect(
+          missingLedgerEvaluation
+            .complete
+        ).toBe(false);
+        expect(
+          missingLedgerEvaluation
+            .failures
+        ).toContain(
+          "acceptance outcome requested-field coverage differs from the frozen field ledger"
+        );
       }
     );
 
@@ -1101,6 +1224,124 @@ describe(
         ).toThrow(
           "differs from durable baseline truth"
         );
+      }
+    );
+
+    it(
+      "derives requested-field coverage from durable values or explicit unknowns",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const addressed =
+          completedAttempt(1);
+
+        if (
+          addressed.status !==
+            "COMPLETED"
+        ) {
+          throw new Error(
+            "Fixture completed attempt must be COMPLETED."
+          );
+        }
+
+        const full =
+          deriveProspectResearchRequestedFieldCoverage(
+            acceptance,
+            addressed
+          );
+
+        expect(
+          full.requestedFields
+        ).toEqual([
+          "companyName",
+          "companySummary",
+          "transformationOpportunities",
+          "buyingSignals"
+        ]);
+        expect(
+          full.coveredFields
+        ).toEqual([
+          "companyName",
+          "companySummary",
+          "transformationOpportunities",
+          "buyingSignals"
+        ]);
+
+        const incomplete =
+          ProspectResearchAttemptSchema
+            .parse({
+              ...addressed,
+              report: {
+                ...addressed.report,
+                unknowns: []
+              }
+            });
+        const partial =
+          deriveProspectResearchRequestedFieldCoverage(
+            acceptance,
+            incomplete
+          );
+
+        expect(
+          partial.coveredFields
+        ).toEqual([
+          "companyName",
+          "companySummary"
+        ]);
+
+        const durableBaseline =
+          baseline({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            recordedAt:
+              "2026-09-20T11:59:00.000Z"
+          });
+        const forgedFullCoverage =
+          outcome({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            materialClaimsReviewed:
+              2,
+            baselineRecordedAt:
+              durableBaseline
+                .recordedAt,
+            baselineMinutes:
+              durableBaseline
+                .humanPreparationMinutes
+          });
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            incomplete,
+            durableBaseline,
+            forgedFullCoverage
+          )
+        ).toThrow(
+          "requested-field coverage must match the frozen field set and durable research attempt"
+        );
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            incomplete,
+            durableBaseline,
+            {
+              ...forgedFullCoverage,
+              requestedFieldsCovered:
+                2,
+              requestedFieldsCoveredIds: [
+                "companyName",
+                "companySummary"
+              ]
+            }
+          )
+        ).not.toThrow();
       }
     );
 
@@ -1646,6 +1887,31 @@ describe(
             })
         ).toThrow(
           "must compare against the human workflow using its normal tools"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              requestedFields:
+                undefined
+            })
+        ).toThrow(
+          "requires the exact frozen requested-field set"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              requestedFields: [
+                "companyName",
+                "companySummary",
+                "buyingSignals"
+              ]
+            })
+        ).toThrow(
+          "requires the exact frozen requested-field set"
         );
 
         expect(() =>
