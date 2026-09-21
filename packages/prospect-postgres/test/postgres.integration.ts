@@ -544,14 +544,18 @@ function acceptanceAttempt(
   sample:
     ProspectResearchSample,
   runId =
-    "run.pg.acceptance.01"
+    "run.pg.acceptance.01",
+  startedAt =
+    "2026-09-19T12:16:00Z"
 ): CompletedProspectResearchAttempt {
   const target =
     sample.targets[0]!;
-  const startedAt =
-    "2026-09-19T12:16:00Z";
   const researchedAt =
-    "2026-09-19T12:16:05Z";
+    new Date(
+      Date.parse(
+        startedAt
+      ) + 5_000
+    ).toISOString();
 
   return {
     id:
@@ -722,7 +726,11 @@ function acceptanceOutcome(
     reviewedBy:
       "operator",
     reviewedAt:
-      "2026-09-19T12:17:00Z",
+      new Date(
+        Date.parse(
+          attempt.createdAt
+        ) + 60_000
+      ).toISOString(),
     reviewMode:
       "UNBLINDED",
     baselineSource:
@@ -983,11 +991,19 @@ test(
       reservation
     );
 
+    const measuredStartedAt =
+      new Date(
+        Date.parse(
+          reservation.reservedAt
+        ) + 1_000
+      ).toISOString();
+
     await expect(
       repository.saveAttempt(
         acceptanceAttempt(
           sample,
-          "run.pg.acceptance.retry"
+          "run.pg.acceptance.retry",
+          measuredStartedAt
         )
       )
     ).rejects.toThrow(
@@ -996,7 +1012,9 @@ test(
 
     const attempt =
       acceptanceAttempt(
-        sample
+        sample,
+        "run.pg.acceptance.01",
+        measuredStartedAt
       );
 
     await expect(
