@@ -32,6 +32,7 @@ import {
   InMemoryProspectResearchRepository,
   ProspectResearchSampleSchema,
   ProspectResearchWorkflow,
+  ResearchApprovalBatchSchema,
   ProspectResearchValidationError,
   type ProspectResearchResult
 } from "../src/index.js";
@@ -232,6 +233,27 @@ function acceptanceSample() {
         "operator",
       frozenAt:
         "2026-09-20T12:10:00.000Z"
+    });
+}
+
+function acceptanceApprovalBatch(
+  targets =
+    acceptanceSample()
+      .targets
+) {
+  return ResearchApprovalBatchSchema
+    .parse({
+      id:
+        "approval-batch.acceptance.workflow",
+      sourceManifestId:
+        "manifest.acceptance.workflow",
+      sourceManifestSha256:
+        "c".repeat(64),
+      approvedBy:
+        "operator",
+      approvedAt:
+        timestamp,
+      targets
     });
 }
 
@@ -876,6 +898,60 @@ describe(
     );
 
     it(
+      "rejects an acceptance freeze assembled from individual approvals instead of one batch",
+      async () => {
+        const repository =
+          new InMemoryProspectResearchRepository();
+        const workflow =
+          new ProspectResearchWorkflow({
+            repository,
+            runRepository:
+              new InMemoryRunRepository(),
+            artifactStore:
+              new InMemoryArtifactStore(),
+            browserRuntime:
+              new ReadOnlyBrowserRuntime(),
+            agentRuntime:
+              new ReadOnlyResearchRuntime(),
+            sandboxRuntimeFactory(
+              policy
+            ) {
+              return new LocalSandboxRuntime({
+                ...policy,
+                resolver: {
+                  async resolve() {
+                    return [
+                      "93.184.216.34"
+                    ];
+                  }
+                }
+              });
+            }
+          });
+        const acceptance =
+          acceptanceSample();
+
+        for (
+          const approved of
+          acceptance.targets
+        ) {
+          await workflow
+            .approveTarget(
+              approved
+            );
+        }
+
+        await expect(
+          workflow.freezeSample(
+            acceptance
+          )
+        ).rejects.toThrow(
+          "must come from one atomic approval batch"
+        );
+      }
+    );
+
+    it(
       "requires a durable human baseline before an acceptance target can start",
       async () => {
         const repository =
@@ -914,15 +990,12 @@ describe(
         const acceptance =
           acceptanceSample();
 
-        for (
-          const approved of
-          acceptance.targets
-        ) {
-          await workflow
-            .approveTarget(
-              approved
-            );
-        }
+        await workflow
+          .approveTargetBatch(
+            acceptanceApprovalBatch(
+              acceptance.targets
+            )
+          );
 
         await workflow
           .freezeSample(

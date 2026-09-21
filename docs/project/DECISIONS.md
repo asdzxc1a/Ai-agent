@@ -1083,3 +1083,40 @@ The Gate 13 threshold requires at least 90% of briefs to be usable with only a m
 
 Only through a new versioned rubric and protocol with explicit migration/benchmark rationale. Historical v7 outcomes retain their original rubric.
 
+---
+
+## D-036 — Acceptance-target authorization is one atomic manifest-bound batch
+
+**Date:** 2026-09-20
+**Status:** Accepted
+
+**Decision**
+
+When the operator authorizes the first Gate 13 acceptance universe, Astra records the authorization as one atomic approval batch rather than 43 unrelated target writes.
+
+The batch owns:
+
+- one batch ID;
+- the exact approval-candidate manifest ID;
+- the SHA-256 of the exact manifest bytes reviewed by the operator;
+- one operator identity and approval timestamp;
+- the full set of approved target records.
+
+Every target's approval provenance must match the batch operator/timestamp, target IDs and approval IDs must be unique, and the repository either persists the batch plus every target or persists nothing.
+
+**Why**
+
+The acceptance cohort is a complete frozen universe. Partial success during approval could leave an ambiguous state where some companies are authorized and others are not because of a typo, duplicate, or transient storage failure. Separate target writes also make it harder to prove which version of the candidate manifest the operator actually reviewed.
+
+**Consequences**
+
+- metadata enrichment remains non-authoritative until the batch transition occurs;
+- PostgreSQL stores an approval-batch audit row and links batch-approved targets through `approval_batch_id`;
+- duplicate/existing target failure rolls the entire batch back;
+- single-target approval remains available for calibration/other controlled use, but the 43-member acceptance transition uses the batch path;
+- the batch stores manifest hash provenance but does not itself browse or contact any company.
+
+**Revisit when**
+
+If a future operator UI introduces signed approvals, the signature may extend this batch record; the atomic all-or-none authorization boundary remains.
+

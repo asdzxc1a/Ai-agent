@@ -6,6 +6,7 @@ import {
 
 import {
   ApprovedResearchTargetSchema,
+  ResearchApprovalBatchSchema,
   ProspectResearchAttemptSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchHumanBaselineSchema,
@@ -15,6 +16,7 @@ import {
   validateProspectResearchAttemptForPersistence,
   validateProspectResearchSampleOutcomeContext,
   type ApprovedResearchTarget,
+  type ResearchApprovalBatch,
   type ProspectResearchAttempt,
   type ProspectResearchHumanBaseline,
   type ProspectResearchHumanBaselineInput,
@@ -29,6 +31,12 @@ import {
 
 interface TargetRow {
   target: unknown;
+  approval_batch_id?:
+    string | null;
+}
+
+interface ApprovalBatchRow {
+  batch: unknown;
 }
 
 interface AttemptRow {
@@ -91,6 +99,102 @@ export class PostgresProspectResearchRepository
           .approvedAt
       ]
     );
+  }
+
+  public async saveTargetBatch(
+    input:
+      ResearchApprovalBatch
+  ): Promise<void> {
+    const batch =
+      ResearchApprovalBatchSchema
+        .parse(input);
+    const client =
+      await this.#pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      await client.query(
+        `
+          INSERT INTO prospect_research_approval_batches (
+            id,
+            source_manifest_id,
+            source_manifest_sha256,
+            batch,
+            approved_at
+          )
+          VALUES ($1, $2, $3, $4::jsonb, $5)
+        `,
+        [
+          batch.id,
+          batch.sourceManifestId,
+          batch.sourceManifestSha256,
+          JSON.stringify(batch),
+          batch.approvedAt
+        ]
+      );
+
+      for (
+        const target of
+        batch.targets
+      ) {
+        await client.query(
+          `
+            INSERT INTO approved_research_targets (
+              id,
+              target,
+              approved_at,
+              approval_batch_id
+            )
+            VALUES ($1, $2::jsonb, $3, $4)
+          `,
+          [
+            target.id,
+            JSON.stringify(target),
+            target.approval
+              .approvedAt,
+            batch.id
+          ]
+        );
+      }
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query(
+        "ROLLBACK"
+      ).catch(
+        () => undefined
+      );
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async getApprovalBatch(
+    batchId: string
+  ): Promise<
+    ResearchApprovalBatch |
+    undefined
+  > {
+    const result =
+      await this.#pool.query(
+        `
+          SELECT batch
+          FROM prospect_research_approval_batches
+          WHERE id = $1
+        `,
+        [batchId]
+      );
+    const row =
+      result.rows[0] as
+        | ApprovalBatchRow
+        | undefined;
+
+    return row === undefined
+      ? undefined
+      : ResearchApprovalBatchSchema
+          .parse(row.batch);
   }
 
   public async getTarget(
@@ -401,6 +505,8 @@ export class PostgresProspectResearchRepository
 
     try {
       await client.query("BEGIN");
+      const approvalBatchIds =
+        new Set<string>();
 
       for (
         const target of
@@ -409,7 +515,9 @@ export class PostgresProspectResearchRepository
         const result =
           await client.query(
             `
-              SELECT target
+              SELECT
+                target,
+                approval_batch_id
               FROM approved_research_targets
               WHERE id = $1
               FOR SHARE
@@ -443,6 +551,82 @@ export class PostgresProspectResearchRepository
           throw new Error(
             "Measured research sample target differs from the stored approval: " +
               target.id
+          );
+        }
+
+        if (
+          row.approval_batch_id !==
+          undefined &&
+          row.approval_batch_id !==
+          null
+        ) {
+          approvalBatchIds.add(
+            row.approval_batch_id
+          );
+        }
+      }
+
+      if (
+        sample.purpose ===
+        "ACCEPTANCE"
+      ) {
+        if (
+          approvalBatchIds.size !== 1
+        ) {
+          throw new Error(
+            "Gate 13 acceptance sample targets must come from one atomic approval batch."
+          );
+        }
+
+        const [
+          approvalBatchId
+        ] =
+          approvalBatchIds;
+        const batchResult =
+          await client.query(
+            `
+              SELECT batch
+              FROM prospect_research_approval_batches
+              WHERE id = $1
+              FOR SHARE
+            `,
+            [
+              approvalBatchId
+            ]
+          );
+        const batchRow =
+          batchResult.rows[0] as
+            | ApprovalBatchRow
+            | undefined;
+
+        if (batchRow === undefined) {
+          throw new Error(
+            "Gate 13 acceptance approval batch does not exist."
+          );
+        }
+
+        const batch =
+          ResearchApprovalBatchSchema
+            .parse(
+              batchRow.batch
+            );
+
+        if (
+          batch.targets.length !==
+            sample.targets.length ||
+          !sample.targets.every(
+            (target) =>
+              batch.targets.some(
+                (approved) =>
+                  sameApprovedResearchTarget(
+                    approved,
+                    target
+                  )
+              )
+          )
+        ) {
+          throw new Error(
+            "Gate 13 acceptance sample differs from its approval batch."
           );
         }
       }

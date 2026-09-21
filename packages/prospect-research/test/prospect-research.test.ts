@@ -18,6 +18,7 @@ import {
   InMemoryProspectResearchRepository,
   ProspectResearchResultSchema,
   ProspectResearchService,
+  ResearchApprovalBatchSchema,
   ProspectResearchValidationError,
   isApprovedResearchUrl,
   toSalesEvidence,
@@ -94,6 +95,43 @@ function target():
       approvedAt: timestamp
     }
   });
+}
+
+function secondTarget():
+  ApprovedResearchTarget {
+  return ApprovedResearchTargetSchema
+    .parse({
+      ...target(),
+      id:
+        "target.second",
+      companyNameHint:
+        "Second Systems",
+      approval: {
+        ...target().approval,
+        id:
+          "approval.second"
+      }
+    });
+}
+
+function approvalBatch() {
+  return ResearchApprovalBatchSchema
+    .parse({
+      id:
+        "approval-batch.example",
+      sourceManifestId:
+        "manifest.example",
+      sourceManifestSha256:
+        "c".repeat(64),
+      approvedBy:
+        "operator",
+      approvedAt:
+        timestamp,
+      targets: [
+        target(),
+        secondTarget()
+      ]
+    });
 }
 
 function completedAttempt(
@@ -498,6 +536,131 @@ function service(
 describe(
   "approved live research boundary",
   () => {
+    it(
+      "rejects approval batches whose target provenance differs from the batch",
+      () => {
+        const batch =
+          approvalBatch();
+
+        expect(() =>
+          ResearchApprovalBatchSchema
+            .parse({
+              ...batch,
+              approvedBy:
+                "different-operator"
+            })
+        ).toThrow(
+          "target approvedBy must match approval batch"
+        );
+
+        expect(() =>
+          ResearchApprovalBatchSchema
+            .parse({
+              ...batch,
+              approvedAt:
+                "2026-09-19T12:01:00.000Z"
+            })
+        ).toThrow(
+          "target approvedAt must match approval batch"
+        );
+      }
+    );
+
+    it(
+      "approves a batch atomically and leaves no partial state when one target already exists",
+      async () => {
+        const artifacts =
+          new InMemoryArtifactStore();
+        const successRepository =
+          new InMemoryProspectResearchRepository();
+        const success =
+          service(
+            successRepository,
+            artifacts
+          );
+        const batch =
+          approvalBatch();
+
+        await expect(
+          success.approveTargetBatch(
+            batch
+          )
+        ).resolves.toEqual(
+          batch
+        );
+        expect(
+          (
+            await successRepository
+              .listTargets()
+          ).map(
+            (approved) =>
+              approved.id
+          )
+        ).toEqual([
+          "target.example",
+          "target.second"
+        ]);
+        await expect(
+          successRepository
+            .getApprovalBatch(
+              batch.id
+            )
+        ).resolves.toEqual(
+          batch
+        );
+
+        const rollbackRepository =
+          new InMemoryProspectResearchRepository();
+        const rollback =
+          service(
+            rollbackRepository,
+            artifacts
+          );
+
+        await rollback
+          .approveTarget(
+            target()
+          );
+
+        const rollbackBatch = {
+          ...batch,
+          id:
+            "approval-batch.rollback",
+          targets: [
+            secondTarget(),
+            target()
+          ]
+        };
+
+        await expect(
+          rollback
+            .approveTargetBatch(
+              rollbackBatch
+            )
+        ).rejects.toThrow(
+          "Research target already exists: target.example"
+        );
+
+        expect(
+          (
+            await rollbackRepository
+              .listTargets()
+          ).map(
+            (approved) =>
+              approved.id
+          )
+        ).toEqual([
+          "target.example"
+        ]);
+        await expect(
+          rollbackRepository
+            .getApprovalBatch(
+              rollbackBatch.id
+            )
+        ).resolves.toBeUndefined();
+      }
+    );
+
     it("allows only the pre-approved company domain and its subdomains", () => {
       const approved =
         target();

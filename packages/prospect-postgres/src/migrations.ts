@@ -84,6 +84,27 @@ CREATE INDEX prospect_research_human_baseline_order
   ON prospect_research_human_baselines(sample_id, recorded_at, id);
 `;
 
+const MIGRATION_FOUR = `
+CREATE TABLE prospect_research_approval_batches (
+  id TEXT PRIMARY KEY,
+  source_manifest_id TEXT NOT NULL,
+  source_manifest_sha256 TEXT NOT NULL,
+  batch JSONB NOT NULL,
+  approved_at TIMESTAMPTZ NOT NULL,
+  CONSTRAINT prospect_research_approval_manifest_sha256
+    CHECK (source_manifest_sha256 ~ '^[a-f0-9]{64}$')
+);
+
+ALTER TABLE approved_research_targets
+  ADD COLUMN approval_batch_id TEXT
+  REFERENCES prospect_research_approval_batches(id);
+
+CREATE INDEX prospect_research_approval_batch_time
+  ON prospect_research_approval_batches(approved_at, id);
+
+CREATE INDEX approved_research_target_batch
+  ON approved_research_targets(approval_batch_id, id);
+`;
 async function applyMigration(
   client: PoolClient,
   version: number,
@@ -139,6 +160,11 @@ export async function runProspectPostgresMigrations(
       client,
       3,
       MIGRATION_THREE
+    );
+    await applyMigration(
+      client,
+      4,
+      MIGRATION_FOUR
     );
 
     await client.query("COMMIT");
