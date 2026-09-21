@@ -47,6 +47,7 @@ import {
   gate13ArtifactDir,
   withGate13Database,
   withGate13DatabaseReadOnly,
+  withGate13ExclusiveFailureContext,
   withGate13FailureContext,
   withGate13ReviewContext,
   withGate13Workflow,
@@ -1686,7 +1687,7 @@ async function releaseOrphanAttemptReservation(
       "--run-id"
     );
 
-  await withGate13FailureContext(
+  await withGate13ExclusiveFailureContext(
     async (
       context
     ) => {
