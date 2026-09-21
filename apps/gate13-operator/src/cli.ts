@@ -1170,16 +1170,39 @@ async function runStatus(
       parsed,
       "--run-id"
     );
-  const run =
+  const result =
     await withGate13DatabaseReadOnly(
       async (
         context
-      ) =>
-        context.runRepository
-          .getRun(
-            runId
-          )
+      ) => {
+        const [
+          run,
+          steps
+        ] =
+          await Promise.all([
+            context.runRepository
+              .getRun(
+                runId
+              ),
+            context.runRepository
+              .listSteps(
+                runId
+              )
+          ]);
+
+        return {
+          run,
+          executionProfiles:
+            steps.filter(
+              (step) =>
+                step.kind ===
+                  "GATE13_EXECUTION_PROFILE"
+            )
+        };
+      }
     );
+  const run =
+    result.run;
 
   if (run === undefined) {
     throw new Error(
@@ -1191,7 +1214,9 @@ async function runStatus(
   print({
     action:
       "RUN_STATUS",
-    run
+    run,
+    executionProfiles:
+      result.executionProfiles
   });
 }
 
@@ -1649,7 +1674,10 @@ async function sampleStatus(
               sample.targets.length,
             costCeilingUsd:
               sample.criteria
-                .maxDeliveryCostUsdPerBrief
+                .maxDeliveryCostUsdPerBrief,
+            executionProfile:
+              sample.executionProfile ??
+              null
           },
           outcomeCount:
             outcomes.length,
