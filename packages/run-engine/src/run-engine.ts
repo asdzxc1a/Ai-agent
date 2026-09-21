@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import type {
   AgentAction,
+  AgentModelUsageSnapshot,
   AgentRuntime,
   AgentSession,
   AgentUsageMeter,
@@ -876,6 +877,9 @@ export class RunEngine implements RunService {
     selectedAction: AgentAction | undefined,
     timings: Record<string, number>,
     diagnosticCount: number,
+    modelUsage:
+      AgentModelUsageSnapshot |
+      undefined,
     artifactErrors: string[]
   ): Promise<void> {
     if (this.#artifactStore === undefined) {
@@ -898,6 +902,11 @@ export class RunEngine implements RunService {
           action: actionSummary(selectedAction),
           timings,
           diagnosticCount,
+          ...(modelUsage === undefined
+            ? {}
+            : {
+                modelUsage
+              }),
           ...(terminal.failure === undefined
             ? {}
             : {
@@ -1093,6 +1102,9 @@ export class RunEngine implements RunService {
     let pendingLoopScreenshotIteration:
       number | undefined;
     let diagnosticCount: number;
+    let modelUsage:
+      AgentModelUsageSnapshot |
+      undefined;
 
     try {
       throwIfAborted(signal);
@@ -1623,6 +1635,34 @@ export class RunEngine implements RunService {
       let agentClosed = false;
       let browserClosed = false;
 
+      if (
+        agent?.getModelUsage !==
+          undefined
+      ) {
+        try {
+          modelUsage =
+            await withDeadline(
+              agent.getModelUsage(),
+              this.#diagnosticsTimeoutMs,
+              "Agent model usage capture"
+            );
+
+          await this.#repository
+            .appendStep(
+              runId,
+              "AGENT_MODEL_USAGE",
+              modelUsage
+            );
+        } catch (error) {
+          artifactErrors.push(
+            "agent-model-usage: " +
+              errorMessage(
+                error
+              )
+          );
+        }
+      }
+
       const diagnostics =
         await this.#captureDiagnostics(
           runId,
@@ -1807,6 +1847,7 @@ export class RunEngine implements RunService {
         selectedAction,
         timings,
         diagnosticCount,
+        modelUsage,
         artifactErrors
       );
 
