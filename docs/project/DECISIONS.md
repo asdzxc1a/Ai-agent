@@ -1396,3 +1396,43 @@ Separating preparation from authorization makes the operator boundary explicit: 
 **Revisit when**
 
 A future operator UI can present the same preflight/readiness contracts interactively. The separation between preparation, authorization, and durable execution must remain explicit.
+
+
+---
+
+## D-044 — First Gate 13 acceptance uses one measured Astra attempt per frozen target
+
+**Date:** 2026-09-21
+**Status:** Accepted
+
+**Decision**
+
+For the first Gate 13 acceptance cohort, every frozen target has exactly one measured Astra run identity.
+
+After the frozen sample and that target's durable `MEASURED_HUMAN` baseline exist, Astra must reserve one server-timestamped `runId` for the exact `(sampleId, targetId)` pair **before** live browser execution begins. The reservation is durable and unique by sample/target and by run ID.
+
+The first durable run created under that reservation is the measured attempt for the target whether it completes, fails, or is cancelled. A second run for the same frozen acceptance target is rejected even while the first terminal run is still awaiting human review/attempt persistence. The reviewed outcome must reference the reserved run ID.
+
+A reservation may be released only as recovery when run creation failed before any durable run record existed and no attempt/outcome was persisted. The operator recovery command must independently prove the exact run ID is absent from the durable run repository before releasing it.
+
+**Why**
+
+The v7 protocol keeps failed attempts in the denominator, but previously the workflow could start the same target again after a terminal run and the final outcome could reference whichever persisted attempt the operator chose. That created a best-of-many retry/cherry-picking degree of freedom before the first live acceptance result.
+
+Reserving the run identity before execution closes that loophole without treating a pre-run persistence failure as a phantom measured attempt.
+
+**Consequences**
+
+- no retry-until-good behavior in the first Gate 13 acceptance;
+- failed, cancelled, blocked, or completed first measured runs remain the target's only acceptance run;
+- a terminal run awaiting review still blocks a second start;
+- direct repository callers cannot persist a post-freeze acceptance attempt without the exact reservation;
+- attempt `startedAt` cannot predate the durable reservation;
+- outcomes must reference the reserved run ID;
+- reservations remain as audit evidence after attempt/outcome persistence;
+- a process crash that leaves a reservation but no run requires explicit orphan-reservation recovery rather than automatic retry;
+- calibration and future separately versioned protocols may study retry-assisted success, but they must report it separately from first-attempt acceptance and must not rewrite historical v7 results.
+
+**Revisit when**
+
+A future acceptance protocol deliberately includes retries. Freeze the retry budget, retry-trigger rules, attempt-selection/evaluation rule, and first-attempt versus retry-assisted reporting before results.
