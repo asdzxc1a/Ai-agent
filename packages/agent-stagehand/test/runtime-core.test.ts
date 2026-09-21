@@ -534,3 +534,67 @@ test(
     await session.close();
   }
 );
+
+
+test(
+  "rejects invalid Stagehand model-usage metrics instead of persisting false measurement evidence",
+  async () => {
+    const page = {
+      url() {
+        return "https://example.com/";
+      }
+    };
+    const stagehand = {
+      init:
+        vi.fn(
+          async () => undefined
+        ),
+      close:
+        vi.fn(
+          async () => undefined
+        ),
+      metrics:
+        Promise.resolve({
+          totalPromptTokens: -1,
+          totalCompletionTokens: 0,
+          totalReasoningTokens: 0,
+          totalCachedInputTokens: 0,
+          totalInferenceTimeMs: 0
+        }),
+      context: {
+        pages() {
+          return [page];
+        },
+        activePage() {
+          return page;
+        }
+      }
+    } as unknown as Stagehand;
+    const runtime =
+      new StagehandRuntimeCore(
+        () =>
+          stagehand as
+            StagehandType
+      );
+    const browser:
+      BrowserSession = {
+        id:
+          "invalid-usage-browser",
+        cdpUrl:
+          "ws://fixture/invalid-usage",
+        async close() {}
+      };
+    const session =
+      await runtime.openSession({
+        browser
+      });
+
+    await expect(
+      session.getModelUsage?.()
+    ).rejects.toThrow(
+      "totalPromptTokens"
+    );
+
+    await session.close();
+  }
+);
