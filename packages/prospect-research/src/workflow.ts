@@ -528,7 +528,14 @@ export class ProspectResearchWorkflow {
         true;
     }
 
-    let started;
+    let started:
+      Awaited<
+        ReturnType<
+          RunEngine[
+            "createRun"
+          ]
+        >
+      >;
 
     try {
       started =
