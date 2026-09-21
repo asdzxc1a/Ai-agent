@@ -620,6 +620,26 @@ export const ProspectResearchFailureSchema =
       TextSchema.max(2000)
   }).strict();
 
+export const ProspectResearchAttemptReservationInputSchema =
+  z.object({
+    sampleId:
+      IdentifierSchema,
+    targetId:
+      IdentifierSchema,
+    runId:
+      IdentifierSchema
+  }).strict();
+
+export const ProspectResearchAttemptReservationSchema =
+  ProspectResearchAttemptReservationInputSchema
+    .extend({
+      reservedAt:
+        z.string().datetime({
+          offset: true
+        })
+    })
+    .strict();
+
 const AttemptBase = {
   id: IdentifierSchema,
   target:
@@ -2176,6 +2196,14 @@ export type ProspectResearchReport =
 export type ProspectResearchFailure =
   z.infer<
     typeof ProspectResearchFailureSchema
+  >;
+export type ProspectResearchAttemptReservationInput =
+  z.infer<
+    typeof ProspectResearchAttemptReservationInputSchema
+  >;
+export type ProspectResearchAttemptReservation =
+  z.infer<
+    typeof ProspectResearchAttemptReservationSchema
   >;
 export type LiveResearchFailureCode =
   typeof LIVE_RESEARCH_FAILURE_CODES[number];
