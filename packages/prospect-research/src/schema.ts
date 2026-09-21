@@ -689,6 +689,12 @@ export const PROSPECT_RESEARCH_BRIEF_DISPOSITIONS =
 export const PROSPECT_RESEARCH_REVIEW_RUBRIC_VERSION =
   "gate13-brief-review-v1" as const;
 
+export const PROSPECT_RESEARCH_PROTOCOL_VERSIONS =
+  [
+    "gate13-measured-research-v7",
+    "gate13-measured-research-v8"
+  ] as const;
+
 export const PROSPECT_RESEARCH_SAMPLE_PURPOSES =
   [
     "CALIBRATION",
@@ -1220,8 +1226,8 @@ export const ProspectResearchSampleSchema =
     status:
       z.literal("FROZEN"),
     protocolVersion:
-      z.literal(
-        "gate13-measured-research-v7"
+      z.enum(
+        PROSPECT_RESEARCH_PROTOCOL_VERSIONS
       ),
     purpose:
       z.enum(
@@ -1298,6 +1304,22 @@ export const ProspectResearchSampleSchema =
             path: ["targets"],
             message:
               "calibration samples may contain at most 10 targets"
+          });
+        }
+
+        if (
+          sample.purpose ===
+            "ACCEPTANCE" &&
+          sample.protocolVersion !==
+            "gate13-measured-research-v8"
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "protocolVersion"
+            ],
+            message:
+              "Gate 13 acceptance requires protocol gate13-measured-research-v8"
           });
         }
 
@@ -1658,6 +1680,9 @@ export const ProspectResearchHumanBaselineInputSchema =
         .positive(),
     toolingDescription:
       TextSchema.max(4000),
+    brief:
+      ProspectResearchResultSchema
+        .optional(),
     notes:
       z.string()
         .trim()
@@ -1749,6 +1774,158 @@ export const ProspectResearchAstraHumanTimeSchema =
       }
     );
 
+export const ProspectResearchHumanComparisonSchema =
+  z.object({
+    briefDisposition:
+      z.enum([
+        "accepted",
+        "minor_edit",
+        "major_edit",
+        "rejected"
+      ]),
+    materialClaimsReviewed:
+      z.number()
+        .int()
+        .nonnegative(),
+    unsupportedMaterialClaims:
+      z.number()
+        .int()
+        .nonnegative(),
+    corrections:
+      z.object({
+        minor:
+          z.number()
+            .int()
+            .nonnegative(),
+        major:
+          z.number()
+            .int()
+            .nonnegative(),
+        critical:
+          z.number()
+            .int()
+            .nonnegative()
+      }).strict(),
+    requestedFieldsTotal:
+      z.number()
+        .int()
+        .positive(),
+    requestedFieldsCovered:
+      z.number()
+        .int()
+        .nonnegative(),
+    requestedFieldsCoveredIds:
+      z.array(
+        z.enum(
+          PROSPECT_RESEARCH_REQUESTED_FIELDS
+        )
+      ).max(
+        PROSPECT_RESEARCH_REQUESTED_FIELDS
+          .length
+      )
+  }).strict()
+    .superRefine(
+      (comparison, context) => {
+        const expectedDisposition =
+          comparison
+            .unsupportedMaterialClaims >
+              0 ||
+          comparison.corrections
+            .critical > 0
+            ? "rejected"
+            : comparison.corrections
+                .major > 0
+              ? "major_edit"
+              : comparison.corrections
+                  .minor > 0
+                ? "minor_edit"
+                : "accepted";
+
+        if (
+          comparison
+            .briefDisposition !==
+          expectedDisposition
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "briefDisposition"
+            ],
+            message:
+              "human brief disposition must match the frozen Gate 13 review rubric"
+          });
+        }
+
+        if (
+          comparison
+            .unsupportedMaterialClaims >
+          comparison
+            .materialClaimsReviewed
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "unsupportedMaterialClaims"
+            ],
+            message:
+              "human unsupported material claims cannot exceed reviewed material claims"
+          });
+        }
+
+        if (
+          new Set(
+            comparison
+              .requestedFieldsCoveredIds
+          ).size !==
+            comparison
+              .requestedFieldsCoveredIds
+              .length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "requestedFieldsCoveredIds"
+            ],
+            message:
+              "human covered requested-field IDs must be unique"
+          });
+        }
+
+        if (
+          comparison
+            .requestedFieldsCovered !==
+          comparison
+            .requestedFieldsCoveredIds
+            .length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "requestedFieldsCovered"
+            ],
+            message:
+              "human requestedFieldsCovered must equal the covered requested-field ID count"
+          });
+        }
+
+        if (
+          comparison
+            .requestedFieldsCovered >
+          comparison
+            .requestedFieldsTotal
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "requestedFieldsCovered"
+            ],
+            message:
+              "human covered fields cannot exceed requested fields"
+          });
+        }
+      }
+    );
+
 export const ProspectResearchSampleOutcomeSchema =
   z.object({
     id: IdentifierSchema,
@@ -1775,6 +1952,9 @@ export const ProspectResearchSampleOutcomeSchema =
       z.string().datetime({
         offset: true
       }),
+    humanComparison:
+      ProspectResearchHumanComparisonSchema
+        .optional(),
     materialClaimsReviewed:
       z.number()
         .int()
