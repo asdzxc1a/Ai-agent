@@ -17,7 +17,6 @@ import {
   ProspectResearchModelUsageSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchSampleOutcomeSchema,
-  ProspectResearchSampleSchema,
   type ApprovedResearchTarget,
   type ResearchApprovalBatch,
   type CompletedProspectResearchAttempt,
