@@ -725,6 +725,66 @@ export const PROSPECT_RESEARCH_SELECTION_STRATEGIES =
     "DETERMINISTIC_SUBSET"
   ] as const;
 
+export const PROSPECT_RESEARCH_EXECUTION_PROFILE_VERSION =
+  "gate13-execution-profile-v1" as const;
+
+const ProspectResearchExecutionEndpointSchema =
+  z.string().url()
+    .superRefine(
+      (value, context) => {
+        const url =
+          new URL(value);
+
+        if (
+          (
+            url.protocol !==
+              "http:" &&
+            url.protocol !==
+              "https:"
+          ) ||
+          url.username.length >
+            0 ||
+          url.password.length >
+            0 ||
+          url.search.length >
+            0 ||
+          url.hash.length >
+            0
+        ) {
+          context.addIssue({
+            code: "custom",
+            message:
+              "execution-profile endpoints must be credential-free HTTP(S) base URLs without query or fragment"
+          });
+        }
+      }
+    );
+
+export const ProspectResearchExecutionProfileSchema =
+  z.object({
+    version:
+      z.literal(
+        PROSPECT_RESEARCH_EXECUTION_PROFILE_VERSION
+      ),
+    agentRuntime:
+      z.literal(
+        "STAGEHAND"
+      ),
+    agentRuntimeVersion:
+      TextSchema.max(120),
+    modelName:
+      TextSchema.max(240),
+    modelBaseUrl:
+      ProspectResearchExecutionEndpointSchema
+        .nullable(),
+    browserRuntime:
+      z.literal(
+        "STEEL"
+      ),
+    browserBaseUrl:
+      ProspectResearchExecutionEndpointSchema
+  }).strict();
+
 export const PROSPECT_RESEARCH_COST_CATEGORIES =
   [
     "MODEL",
@@ -1174,6 +1234,9 @@ export const ProspectResearchSampleSchema =
       ).min(1).max(50),
     criteria:
       ProspectResearchSampleCriteriaSchema,
+    executionProfile:
+      ProspectResearchExecutionProfileSchema
+        .optional(),
     deliveryCostPlan:
       ProspectResearchDeliveryCostPlanSchema
         .optional(),
@@ -1258,6 +1321,22 @@ export const ProspectResearchSampleSchema =
             ],
             message:
               "Gate 13 acceptance must compare against the human workflow using its normal tools"
+          });
+        }
+
+        if (
+          sample.purpose ===
+            "ACCEPTANCE" &&
+          sample.executionProfile ===
+            undefined
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "executionProfile"
+            ],
+            message:
+              "Gate 13 acceptance requires a frozen execution profile"
           });
         }
 
@@ -1878,6 +1957,10 @@ export const ProspectResearchSampleOutcomeSchema =
       }
     );
 
+export type ProspectResearchExecutionProfile =
+  z.infer<
+    typeof ProspectResearchExecutionProfileSchema
+  >;
 export type ProspectResearchDeliveryCostRate =
   z.infer<
     typeof ProspectResearchDeliveryCostRateSchema
