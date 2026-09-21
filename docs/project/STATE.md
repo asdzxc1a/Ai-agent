@@ -1,6 +1,6 @@
 # Current Project State
 
-**Last updated:** 2026-09-20  
+**Last updated:** 2026-09-21  
 **Repository:** `asdzxc1a/Ai-agent`  
 **Phase:** Sandbox/network isolation → controlled live prospect research
 **Current gate:** Gate 13 — Evidence-backed live prospect research
@@ -104,7 +104,7 @@ September audit hardening is now merged:
 - PR #77 composes the smallest complete Gate 13 operator workflow: stored approval only, target-scoped sandbox policy/verifier, serial read-only execution that never calls `act()`, settled final evidence capture, rejection of unobserved page citations, and operator-reviewed evidence mapping before persistence;
 - PR #78 makes the measured experiment durable and pre-registered: frozen approved-target snapshots, non-weakenable quality/time thresholds, operator-supplied cost ceiling, per-target human-review outcomes, failed-attempt denominator preservation, deterministic sample evaluation, and PostgreSQL restart persistence.
 
-Capture receipts prove which semantically settled page/screenshot bytes were recorded; they do **not** independently prove that a natural-language observation is semantically supported by the page. Gate 13 therefore still requires a human source-page/screenshot audit for every material observed fact in the measured sample.
+Capture receipts prove which semantically settled page/screenshot bytes were recorded; they do **not** independently prove that a natural-language observation is semantically supported by the page. Gate 13 therefore still requires a human source-page/screenshot audit for every durable observed evidence item in the measured sample. Completed outcome persistence derives the required `materialClaimsReviewed` count from the durable attempt evidence set and rejects any mismatch, so audit coverage cannot be entered as a free lower count.
 
 The complete 43-member U.S. transportation acceptance universe also has a separately versioned **approval-candidate enrichment manifest** at `docs/project/data/gate13-us-transportation-approval-candidates-2026-09-20.json`. It maps every frozen ticker/target ID to a proposed canonical domain, official public start URL, approved-domain candidate, and verification source. This is metadata preparation only: every row remains `PENDING_OPERATOR_APPROVAL`, the manifest is top-level `NOT_APPROVED`, and it contains no approval IDs/timestamps or `approvedBy` fields.
 
@@ -273,7 +273,7 @@ pnpm check:memory
 ## Known risks
 
 1. **Product/value risk — current Gate 13 blocker:** the complete 43-member U.S. transportation acceptance universe is frozen and every member now has verified official public domain/start-page **candidate** metadata. The manifest-bound approval command is available, but candidate enrichment/tooling is not authorization and no real approval batch has been persisted. Gate 13 still needs explicit operator authorization for one atomic durable approval batch, one durable pre-run measured-human baseline per accepted target, the serial live run, and a complete reviewed outcome set under the frozen v7 total-labor/usability protocol before any value claim.
-2. **Semantic-support risk — measured-sample control:** capture receipts prove source-page/screenshot identity and hashes, not whether a natural-language claim is actually supported. Every material observed fact still requires human source-page/screenshot review in Gate 13.
+2. **Semantic-support risk — measured-sample control:** capture receipts prove source-page/screenshot identity and hashes, not whether a natural-language claim is actually supported. Every durable observed evidence item still requires human source-page/screenshot review in Gate 13; audit-count completeness is now derived and enforced, but the semantic support judgment remains human.
 3. **Scale ownership risk:** Gate 13 live operator commands now enforce one database-scoped cross-process owner, but cancellation intent and worker ownership are not durable leased/fenced state. Gate 13 therefore stays serial/single-owner; multiple workers still require durable ownership/fencing and centralized endpoint allocation.
 4. **Future renderer/state-update risk:** PR #74 closes the current `SalesDecision` buyer-visible prose loophole, but any future shipped final-response renderer and durable conversation state update need their own independent output evaluation before release claims.
 5. **Agency boundary risk:** authentication, tenant/client ownership, per-client offer/claim configuration, budgets, retention/export/deletion, audit, and recovery must exist before accepting another organization's data.

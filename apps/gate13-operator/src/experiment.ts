@@ -10,6 +10,7 @@ import {
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   ResearchApprovalBatchSchema,
+  requiredMaterialClaimAuditCount,
   sameApprovedResearchTarget,
   validateProspectResearchSampleOutcomeContext,
   type ProspectResearchAttempt,
@@ -139,10 +140,6 @@ const OutcomeReviewSchema =
         "BLIND",
         "UNBLINDED"
       ]),
-    materialClaimsReviewed:
-      z.number()
-        .int()
-        .nonnegative(),
     unsupportedMaterialClaims:
       z.number()
         .int()
@@ -603,8 +600,9 @@ export function buildGate13SampleOutcome(
         reviewedAt:
           input.reviewedAt,
         materialClaimsReviewed:
-          input.review
-            .materialClaimsReviewed,
+          requiredMaterialClaimAuditCount(
+            input.attempt
+          ),
         unsupportedMaterialClaims:
           input.review
             .unsupportedMaterialClaims,

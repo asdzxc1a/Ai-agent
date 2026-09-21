@@ -309,8 +309,6 @@ describe(
                 "reviewer@example",
               reviewMode:
                 "UNBLINDED",
-              materialClaimsReviewed:
-                0,
               unsupportedMaterialClaims:
                 0,
               corrections: {
@@ -367,6 +365,10 @@ describe(
         ).toBe(
           "not_produced"
         );
+        expect(
+          outcome
+            .materialClaimsReviewed
+        ).toBe(0);
         expect(
           outcome.baselineId
         ).toBe(
