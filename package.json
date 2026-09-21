@@ -24,7 +24,7 @@
     "check:gate13-approval": "node scripts/gate13-approval-preflight.mjs",
     "gate13:approval-preflight": "node scripts/gate13-approval-preflight.mjs",
     "gate13:approval-batch": "node scripts/gate13-approval-preflight.mjs --build-batch",
-    "gate13:approval-apply": "pnpm --filter @astra/prospect-research build && pnpm --filter @astra/prospect-postgres build && node scripts/gate13-apply-approval-batch.mjs"
+    "gate13:approval-apply": "pnpm build && node scripts/gate13-apply-approval-batch.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
