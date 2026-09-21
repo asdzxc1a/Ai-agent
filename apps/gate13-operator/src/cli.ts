@@ -626,7 +626,10 @@ async function acceptancePreflight(
         options.costRationale,
       humanBaselineDescription:
         options
-          .humanBaselineDescription
+          .humanBaselineDescription,
+      preflightAt:
+        new Date()
+          .toISOString()
     });
 
   print({
