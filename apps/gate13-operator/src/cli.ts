@@ -60,6 +60,43 @@ const FailureCodeSchema =
     LIVE_RESEARCH_FAILURE_CODES
   );
 
+const RunSummaryUsageSchema =
+  z.object({
+    runId:
+      z.string().trim().min(1),
+    modelUsage:
+      z.object({
+        promptTokens:
+          z.number()
+            .finite()
+            .nonnegative(),
+        completionTokens:
+          z.number()
+            .finite()
+            .nonnegative(),
+        reasoningTokens:
+          z.number()
+            .finite()
+            .nonnegative(),
+        cachedInputTokens:
+          z.number()
+            .finite()
+            .nonnegative(),
+        inferenceTimeMs:
+          z.number()
+            .finite()
+            .nonnegative()
+      }).strict()
+        .optional(),
+    timings:
+      z.record(
+        z.string(),
+        z.number()
+          .finite()
+          .nonnegative()
+      ).optional()
+  }).passthrough();
+
 function usage(): string {
   return [
     "Gate 13 operator",
@@ -85,6 +122,7 @@ function usage(): string {
     "  GATE13_DATABASE_URL=... GATE13_ARTIFACT_DIR=... GATE13_STEEL_BASE_URL=... GATE13_MODEL_NAME=... \\",
     "    pnpm gate13:operator -- run-target --sample-id <id> --target-id <id>",
     "  pnpm gate13:operator -- artifacts --run-id <id>",
+    "  GATE13_ARTIFACT_DIR=... pnpm gate13:operator -- run-usage --run-id <id>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- run-status --run-id <id>",
     "",
     "Attempt review/persistence:",
@@ -849,8 +887,8 @@ async function runTarget(
           next:
             current.status ===
               "COMPLETED"
-              ? "Human-audit every material observed claim, map each evidence ID to the settled screenshot artifact(s), then use review-completed."
-              : "Persist the failure with record-failure; generic FAILED runs require an explicit live-research failure code."
+              ? "Inspect run-usage and artifacts, human-audit every material observed claim, map each evidence ID to the settled screenshot artifact(s), then use review-completed."
+              : "Inspect run-usage, then persist the failure with record-failure; generic FAILED runs require an explicit live-research failure code."
         });
 
         if (
@@ -901,6 +939,104 @@ async function artifacts(
       records,
     note:
       "Capture receipts prove captured bytes/provenance, not semantic truth. Human source/screenshot audit remains required."
+  });
+}
+
+async function runUsage(
+  args: string[]
+): Promise<void> {
+  const parsed =
+    parseOptions(
+      args,
+      [
+        "--run-id"
+      ]
+    );
+  const runId =
+    requiredOption(
+      parsed,
+      "--run-id"
+    );
+  const store =
+    new LocalArtifactStore(
+      gate13ArtifactDir()
+    );
+  const records =
+    await store.listArtifacts(
+      runId
+    );
+  const summaryRecord =
+    records.find(
+      (record) =>
+        record.name ===
+          "run-summary.json" &&
+        record.kind ===
+          "RUN_SUMMARY"
+    );
+
+  if (
+    summaryRecord ===
+      undefined
+  ) {
+    throw new Error(
+      "Gate 13 run summary artifact does not exist: " +
+        runId
+    );
+  }
+
+  const artifact =
+    await store.readArtifact(
+      runId,
+      summaryRecord.id
+    );
+
+  if (
+    artifact ===
+      undefined
+  ) {
+    throw new Error(
+      "Gate 13 run summary artifact content is unavailable: " +
+        runId
+    );
+  }
+
+  let raw: unknown;
+
+  try {
+    raw =
+      JSON.parse(
+        new TextDecoder()
+          .decode(
+            artifact.data
+          )
+      ) as unknown;
+  } catch {
+    throw new Error(
+      "Gate 13 run summary artifact is not valid JSON: " +
+        runId
+    );
+  }
+
+  const summary =
+    RunSummaryUsageSchema
+      .parse(raw);
+
+  print({
+    action:
+      "RUN_MODEL_USAGE",
+    runId:
+      summary.runId,
+    modelUsage:
+      summary.modelUsage ??
+      null,
+    timings:
+      summary.timings ??
+      null,
+    note:
+      summary.modelUsage ===
+        undefined
+        ? "This run has no captured model-usage evidence."
+        : "Token metrics are measured usage evidence. Dollar cost must be derived separately from the exact model/provider pricing source used for the run."
   });
 }
 
@@ -1463,6 +1599,11 @@ async function main():
       return;
     case "artifacts":
       await artifacts(
+        args
+      );
+      return;
+    case "run-usage":
+      await runUsage(
         args
       );
       return;
