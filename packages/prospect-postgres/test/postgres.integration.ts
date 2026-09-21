@@ -351,6 +351,58 @@ function acceptanceSample():
       maxDeliveryCostUsdPerBrief:
         20
     },
+    deliveryCostPlan: {
+      version:
+        "gate13-delivery-cost-v1",
+      methodologyDescription:
+        "Deterministic persistence fixture allocation.",
+      rates: [
+        {
+          id:
+            "cost.pg.model",
+          category:
+            "MODEL",
+          label:
+            "Fixture model",
+          meter:
+            "FIXED_PER_RUN",
+          unitsPerBillingUnit:
+            1,
+          usdPerBillingUnit:
+            1,
+          rounding:
+            "NONE",
+          sourceDescription:
+            "Deterministic persistence fixture model rate.",
+          sourceUrl:
+            "https://example.test/model-pricing",
+          sourceAsOfDate:
+            "2026-09-20"
+        },
+        {
+          id:
+            "cost.pg.browser",
+          category:
+            "BROWSER_PROVIDER",
+          label:
+            "Fixture browser",
+          meter:
+            "FIXED_PER_RUN",
+          unitsPerBillingUnit:
+            1,
+          usdPerBillingUnit:
+            1,
+          rounding:
+            "NONE",
+          sourceDescription:
+            "Deterministic persistence fixture browser allocation.",
+          sourceUrl:
+            "https://example.test/browser-pricing",
+          sourceAsOfDate:
+            "2026-09-20"
+        }
+      ]
+    },
     costCeilingRationale:
       "Acceptance persistence fixture ceiling.",
     humanBaselineDescription:
