@@ -1248,7 +1248,7 @@ describe(
         runDurationMs:
           60_000,
         unauthorizedActions:
-          0,
+          1,
         status: "COMPLETED",
         report: {
           id: runId,
