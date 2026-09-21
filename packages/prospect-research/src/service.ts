@@ -410,13 +410,9 @@ export class ProspectResearchService {
   ): Promise<
     ProspectResearchSample
   > {
-    const sample =
-      ProspectResearchSampleSchema
-        .parse(input);
-
     try {
-      await this.#repository
-        .saveSample(sample);
+      return await this.#repository
+        .saveSample(input);
     } catch (error) {
       throw new ProspectResearchValidationError([
         error instanceof Error
@@ -424,8 +420,6 @@ export class ProspectResearchService {
           : "measured research sample could not be frozen"
       ]);
     }
-
-    return sample;
   }
 
   public async getSample(
