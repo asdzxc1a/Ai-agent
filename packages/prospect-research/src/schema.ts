@@ -635,7 +635,7 @@ const AttemptBase = {
   runDurationMs:
     z.number()
       .int()
-      .nonnegative()
+      .positive()
       .optional(),
   unauthorizedActions:
     z.number()
