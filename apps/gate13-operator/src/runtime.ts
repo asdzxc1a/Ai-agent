@@ -24,9 +24,6 @@ import {
 } from "@astra/run-postgres";
 
 import {
-  buildGate13ExecutionProfile
-} from "./experiment.js";
-import {
   assertGate13ExecutionProfileMatches,
   currentGate13ExecutionProfile
 } from "./execution-profile.js";
@@ -53,9 +50,7 @@ export interface Gate13ReviewContext
 export interface Gate13WorkflowContext
   extends Gate13ReviewContext {
   executionProfile:
-    ReturnType<
-      typeof buildGate13ExecutionProfile
-    >;
+    ProspectResearchExecutionProfile;
   workflow:
     ProspectResearchWorkflow;
 }
@@ -317,39 +312,24 @@ export async function withGate13Workflow<T>(
       .modelBaseUrl ??
     undefined;
   const executionProfile =
-    buildGate13ExecutionProfile({
-      modelName,
-      modelBaseUrl:
-        baseURL ??
-        null,
-      steelBaseUrl
-    });
-  const canonicalModelBaseUrl =
-    executionProfile
-      .modelBaseUrl ??
-    undefined;
+    actualExecutionProfile;
   const model =
     apiKey === undefined &&
-    canonicalModelBaseUrl ===
-      undefined
-      ? executionProfile
-          .modelName
+    baseURL === undefined
+      ? modelName
       : {
-          modelName:
-            executionProfile
-              .modelName,
+          modelName,
           ...(apiKey ===
             undefined
             ? {}
             : {
                 apiKey
               }),
-          ...(canonicalModelBaseUrl ===
+          ...(baseURL ===
             undefined
             ? {}
             : {
-                baseURL:
-                  canonicalModelBaseUrl
+                baseURL
               })
         };
   const pool =
