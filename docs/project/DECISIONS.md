@@ -1294,9 +1294,11 @@ The profile records:
 - exact model name;
 - exact credential-free model base URL, or `null` when Stagehand/provider defaults are intentionally used;
 - owned browser runtime (`STEEL`);
-- exact credential-free Steel base URL.
+- exact credential-free Steel base URL;
+- the immutable Steel image pin expected by the current checkout;
+- browser identity evidence mode `EXPECTED_IMAGE_PIN_ONLY`, which explicitly does **not** claim the already-running endpoint's container digest was attested.
 
-The Gate 13 operator constructs the actual runtime profile from `GATE13_MODEL_NAME`, optional `GATE13_MODEL_BASE_URL`, and `GATE13_STEEL_BASE_URL`. Before `workflow.start()`, it requires exact equality with the frozen sample profile. A mismatch creates no research run and opens no browser session.
+The Gate 13 operator constructs the actual runtime profile from `GATE13_MODEL_NAME`, optional `GATE13_MODEL_BASE_URL`, `GATE13_STEEL_BASE_URL`, the checked-in Stagehand dependency version, and `infra/steel-image.txt`. Before `workflow.start()`, it requires exact equality with the frozen sample profile. A mismatch creates no research run and opens no browser session. API keys are excluded from the profile.
 
 After the profile passes, the operator persists the matched profile as a `GATE13_EXECUTION_PROFILE` run step. If that audit write fails, the owned run is cancelled; cancellation failure is surfaced together with the audit failure.
 
@@ -1307,8 +1309,9 @@ D-039 makes delivery cost reproducible from frozen rates plus measured usage, bu
 **Consequences**
 
 - acceptance sample preview/freeze requires an operator-supplied execution-profile file;
-- Stagehand remains pinned at the repository's exact package version and tests verify the profile constant matches that dependency;
-- model name/base URL and Steel base URL cannot change between freeze and live execution without an explicit new frozen sample/profile;
+- Stagehand remains pinned at the repository's exact dependency version and the live profile resolves that value from the checkout rather than a duplicated constant;
+- model name/base URL, Steel base URL, Stagehand dependency version, and expected Steel image pin cannot change between freeze and live execution without an explicit new frozen sample/profile;
+- Steel health proves endpoint availability, not container-digest identity; stronger runtime attestation remains future work;
 - API keys are never placed in the execution profile;
 - endpoint URLs must be credential-free HTTP(S) base URLs without query strings or fragments;
 - the execution profile does not authorize the target cohort and does not weaken any Gate 13 v7 threshold;
