@@ -394,7 +394,7 @@ function outcome(input: {
             : null
       },
       endToEndDurationMs:
-        5_000,
+        300_000,
       deliveryCostUsd:
         input.costUsd ??
         4,
@@ -493,6 +493,10 @@ function completedAttempt(
         "2026-09-20T12:00:00.000Z",
       createdAt:
         researchedAt,
+      runDurationMs:
+        300_000,
+      unauthorizedActions:
+        0,
       status:
         "COMPLETED",
       report: {
@@ -902,6 +906,10 @@ describe(
               "2026-09-20T12:00:00.000Z",
             createdAt:
               "2026-09-20T12:05:00.000Z",
+            runDurationMs:
+              300_000,
+            unauthorizedActions:
+              0,
             status:
               "FAILED",
             runId:
@@ -1022,6 +1030,36 @@ describe(
             validOutcome
           )
         ).not.toThrow();
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            validBaseline,
+            {
+              ...validOutcome,
+              endToEndDurationMs:
+                1
+            }
+          )
+        ).toThrow(
+          "run duration/action audit differs from durable attempt truth"
+        );
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            attempt,
+            validBaseline,
+            {
+              ...validOutcome,
+              unauthorizedActions:
+                1
+            }
+          )
+        ).toThrow(
+          "run duration/action audit differs from durable attempt truth"
+        );
 
         expect(() =>
           validateProspectResearchSampleOutcomeContext(
