@@ -5,6 +5,7 @@ import type {
 import {
   ApprovedResearchTargetSchema,
   ResearchApprovalBatchSchema,
+  ProspectResearchDeliveryCostInputSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
@@ -12,12 +13,15 @@ import {
   type ApprovedResearchTarget,
   type ResearchApprovalBatch,
   type ProspectResearchAttempt,
+  type ProspectResearchDeliveryCost,
+  type ProspectResearchDeliveryCostInput,
   type ProspectResearchHumanBaseline,
   type ProspectResearchHumanBaselineInput,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome
 } from "./schema.js";
 import {
+  buildProspectResearchDeliveryCost,
   validateProspectResearchSampleOutcomeContext
 } from "./measurement.js";
 import {
@@ -112,6 +116,29 @@ export interface ProspectResearchRepository {
     undefined
   >;
 
+  saveDeliveryCost(
+    cost:
+      ProspectResearchDeliveryCostInput
+  ): Promise<
+    ProspectResearchDeliveryCost
+  >;
+
+  getDeliveryCost(
+    costId: string
+  ): Promise<
+    ProspectResearchDeliveryCost |
+    undefined
+  >;
+
+  getDeliveryCostForAttempt(
+    sampleId: string,
+    targetId: string,
+    attemptId: string
+  ): Promise<
+    ProspectResearchDeliveryCost |
+    undefined
+  >;
+
   saveSampleOutcome(
     outcome:
       ProspectResearchSampleOutcome
@@ -154,6 +181,11 @@ export class InMemoryProspectResearchRepository
     new Map<
       string,
       ProspectResearchHumanBaseline
+    >();
+  readonly #deliveryCosts =
+    new Map<
+      string,
+      ProspectResearchDeliveryCost
     >();
   readonly #sampleOutcomes =
     new Map<
@@ -660,6 +692,140 @@ export class InMemoryProspectResearchRepository
         );
   }
 
+  public async saveDeliveryCost(
+    input:
+      ProspectResearchDeliveryCostInput
+  ): Promise<
+    ProspectResearchDeliveryCost
+  > {
+    const parsed =
+      ProspectResearchDeliveryCostInputSchema
+        .parse(input);
+    const sample =
+      this.#samples.get(
+        parsed.sampleId
+      );
+    const attempt =
+      this.#attempts.get(
+        parsed.attemptId
+      );
+
+    if (sample === undefined) {
+      throw new Error(
+        "Measured research sample does not exist: " +
+          parsed.sampleId
+      );
+    }
+
+    if (
+      !sample.targets.some(
+        (target) =>
+          target.id ===
+          parsed.targetId
+      )
+    ) {
+      throw new Error(
+        "Delivery-cost target is outside the frozen sample."
+      );
+    }
+
+    if (
+      attempt === undefined ||
+      attempt.target.id !==
+        parsed.targetId
+    ) {
+      throw new Error(
+        "Delivery-cost record does not match a durable research attempt for the frozen target."
+      );
+    }
+
+    if (
+      this.#deliveryCosts.has(
+        parsed.id
+      ) ||
+      [
+        ...this.#deliveryCosts
+          .values()
+      ].some(
+        (cost) =>
+          cost.sampleId ===
+            parsed.sampleId &&
+          (
+            cost.targetId ===
+              parsed.targetId ||
+            cost.attemptId ===
+              parsed.attemptId
+          )
+      )
+    ) {
+      throw new Error(
+        "Frozen research sample already has delivery-cost accounting for this target or attempt."
+      );
+    }
+
+    const cost =
+      buildProspectResearchDeliveryCost(
+        parsed,
+        this.#now()
+      );
+
+    this.#deliveryCosts.set(
+      cost.id,
+      structuredClone(cost)
+    );
+
+    return structuredClone(
+      cost
+    );
+  }
+
+  public async getDeliveryCost(
+    costId: string
+  ): Promise<
+    ProspectResearchDeliveryCost |
+    undefined
+  > {
+    const cost =
+      this.#deliveryCosts.get(
+        costId
+      );
+
+    return cost === undefined
+      ? undefined
+      : structuredClone(
+          cost
+        );
+  }
+
+  public async getDeliveryCostForAttempt(
+    sampleId: string,
+    targetId: string,
+    attemptId: string
+  ): Promise<
+    ProspectResearchDeliveryCost |
+    undefined
+  > {
+    const cost =
+      [
+        ...this.#deliveryCosts
+          .values()
+      ].find(
+        (candidate) =>
+          candidate.sampleId ===
+            sampleId &&
+          candidate.targetId ===
+            targetId &&
+          candidate.attemptId ===
+            attemptId
+      );
+
+    return cost === undefined
+      ? undefined
+      : structuredClone(
+          cost
+        );
+  }
+
   public async saveSampleOutcome(
     input:
       ProspectResearchSampleOutcome
@@ -679,6 +845,13 @@ export class InMemoryProspectResearchRepository
       this.#humanBaselines.get(
         outcome.baselineId
       );
+    const deliveryCost =
+      outcome.costRecordId ===
+        undefined
+        ? undefined
+        : this.#deliveryCosts.get(
+            outcome.costRecordId
+          );
 
     if (sample === undefined) {
       throw new Error(
@@ -705,7 +878,8 @@ export class InMemoryProspectResearchRepository
       sample,
       attempt,
       baseline,
-      outcome
+      outcome,
+      deliveryCost
     );
 
     if (
