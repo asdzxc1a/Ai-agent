@@ -351,6 +351,12 @@ function acceptanceSample():
       maxDeliveryCostUsdPerBrief:
         20
     },
+    requestedFields: [
+      "companyName",
+      "companySummary",
+      "transformationOpportunities",
+      "buyingSignals"
+    ],
     executionProfile: {
       version:
         "gate13-execution-profile-v1",
@@ -500,8 +506,14 @@ function measuredOutcome(
       major: 0,
       critical: 0
     },
-    requestedFieldsTotal: 3,
-    requestedFieldsCovered: 3,
+    requestedFieldsTotal: 4,
+    requestedFieldsCovered: 4,
+    requestedFieldsCoveredIds: [
+      "companyName",
+      "companySummary",
+      "transformationOpportunities",
+      "buyingSignals"
+    ],
     baselineHumanPreparationMinutes:
       baseline
         .humanPreparationMinutes,
