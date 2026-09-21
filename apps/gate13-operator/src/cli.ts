@@ -30,12 +30,17 @@ import {
   buildGate13HumanBaselineInput,
   buildGate13SampleOutcome,
   parseGate13DeliveryCostPlan,
-  parseGate13OutcomeReview
+  parseGate13OutcomeReview,
+  parseGate13Universe
 } from "./experiment.js";
 import {
   currentGate13ExecutionProfile,
   parseGate13ExecutionProfile
 } from "./execution-profile.js";
+import {
+  gate13AcceptanceInputPreflight,
+  gate13PreflightReadiness
+} from "./preflight.js";
 import {
   gate13ArtifactDir,
   withGate13Database,
@@ -115,6 +120,15 @@ function usage(): string {
     "  GATE13_DATABASE_URL=postgresql://... pnpm gate13:operator -- approve \\",
     "    --batch-id <id> --operator <identity> \\",
     "    --confirm-manifest-id <id> --confirm-sha <sha256> --authorize-all-43",
+    "",
+    "Acceptance preflight (no DB/browser/mutation):",
+    "  GATE13_STEEL_BASE_URL=... GATE13_MODEL_NAME=... [GATE13_MODEL_BASE_URL=...] pnpm gate13:operator -- acceptance-preflight \\",
+    "    --max-cost-usd <positive> --execution-profile-file <path> --cost-plan-file <path> \\",
+    "    --cost-rationale-file <path> --human-baseline-file <path>",
+    "",
+    "Acceptance durable readiness (read-only DB):",
+    "  GATE13_DATABASE_URL=... pnpm gate13:operator -- acceptance-readiness \\",
+    "    --sample-id <id> [--approval-batch-id <id>]",
     "",
     "Acceptance sample:",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- sample-preview \\",
@@ -471,6 +485,315 @@ async function approve(
       batch.approvedAt,
     targetCount:
       batch.targets.length
+  });
+}
+
+interface AcceptanceInputPreflightOptions {
+  maxCostUsd: number;
+  executionProfile:
+    ReturnType<
+      typeof parseGate13ExecutionProfile
+    >;
+  deliveryCostPlan:
+    ReturnType<
+      typeof parseGate13DeliveryCostPlan
+    >;
+  costRationale: string;
+  humanBaselineDescription:
+    string;
+}
+
+async function acceptanceInputPreflightOptions(
+  args: string[]
+): Promise<
+  AcceptanceInputPreflightOptions
+> {
+  const parsed =
+    parseOptions(
+      args,
+      [
+        "--max-cost-usd",
+        "--execution-profile-file",
+        "--cost-plan-file",
+        "--cost-rationale-file",
+        "--human-baseline-file"
+      ]
+    );
+
+  return {
+    maxCostUsd:
+      positiveNumber(
+        requiredOption(
+          parsed,
+          "--max-cost-usd"
+        ),
+        "--max-cost-usd"
+      ),
+    executionProfile:
+      parseGate13ExecutionProfile(
+        await readText(
+          requiredOption(
+            parsed,
+            "--execution-profile-file"
+          )
+        )
+      ),
+    deliveryCostPlan:
+      parseGate13DeliveryCostPlan(
+        await readText(
+          requiredOption(
+            parsed,
+            "--cost-plan-file"
+          )
+        )
+      ),
+    costRationale:
+      await readText(
+        requiredOption(
+          parsed,
+          "--cost-rationale-file"
+        )
+      ),
+    humanBaselineDescription:
+      await readText(
+        requiredOption(
+          parsed,
+          "--human-baseline-file"
+        )
+      )
+  };
+}
+
+async function acceptancePreflight(
+  args: string[]
+): Promise<void> {
+  const options =
+    await acceptanceInputPreflightOptions(
+      args
+    );
+  const [
+    manifestText,
+    universeText,
+    actualExecutionProfile
+  ] =
+    await Promise.all([
+      canonicalManifest(),
+      canonicalUniverse(),
+      currentGate13ExecutionProfile()
+    ]);
+  const manifest =
+    previewGate13ApprovalManifest(
+      manifestText
+    );
+  const universe =
+    parseGate13Universe(
+      universeText
+    );
+  const result =
+    gate13AcceptanceInputPreflight({
+      manifest: {
+        id:
+          manifest.manifest.id,
+        sha256:
+          manifest.sha256,
+        status:
+          manifest.manifest.status,
+        targetIds:
+          manifest.manifest
+            .targets.map(
+              (target) =>
+                target.targetId
+            )
+      },
+      universe: {
+        id:
+          universe.id,
+        targetIds:
+          universe.members.map(
+            (member) =>
+              member.targetId
+          )
+      },
+      expectedExecutionProfile:
+        options.executionProfile,
+      actualExecutionProfile,
+      deliveryCostPlan:
+        options.deliveryCostPlan,
+      maxDeliveryCostUsdPerBrief:
+        options.maxCostUsd,
+      costCeilingRationale:
+        options.costRationale,
+      humanBaselineDescription:
+        options
+          .humanBaselineDescription
+    });
+
+  print({
+    action:
+      "ACCEPTANCE_PREFLIGHT",
+    mutation:
+      "NONE",
+    ...result,
+    note:
+      "Preflight validates preparation only. PREPARED_NOT_AUTHORIZED is not approval and creates no durable state."
+  });
+}
+
+async function acceptanceReadiness(
+  args: string[]
+): Promise<void> {
+  const parsed =
+    parseOptions(
+      args,
+      [
+        "--sample-id",
+        "--approval-batch-id"
+      ]
+    );
+  const sampleId =
+    requiredOption(
+      parsed,
+      "--sample-id"
+    );
+  const approvalBatchId =
+    optionalOption(
+      parsed,
+      "--approval-batch-id"
+    );
+  const manifest =
+    previewGate13ApprovalManifest(
+      await canonicalManifest()
+    );
+  const durable =
+    await withGate13DatabaseReadOnly(
+      async (
+        context
+      ) => {
+        const [
+          sample,
+          approvalBatch
+        ] =
+          await Promise.all([
+            context.repository
+              .getSample(
+                sampleId
+              ),
+            approvalBatchId ===
+              undefined
+              ? Promise.resolve(
+                  undefined
+                )
+              : context.repository
+                  .getApprovalBatch(
+                    approvalBatchId
+                  )
+          ]);
+
+        if (
+          approvalBatchId !==
+            undefined &&
+          approvalBatch ===
+            undefined
+        ) {
+          throw new Error(
+            "Gate 13 approval batch does not exist: " +
+              approvalBatchId
+          );
+        }
+
+        if (
+          sample === undefined
+        ) {
+          return {
+            sample:
+              undefined,
+            approvalBatch,
+            targetCount:
+              manifest.manifest
+                .targets.length,
+            baselineCount: 0,
+            outcomeCount: 0
+          };
+        }
+
+        const [
+          baselines,
+          outcomes
+        ] =
+          await Promise.all([
+            Promise.all(
+              sample.targets.map(
+                (target) =>
+                  context.repository
+                    .getHumanBaselineForTarget(
+                      sample.id,
+                      target.id
+                    )
+              )
+            ),
+            context.repository
+              .listSampleOutcomes(
+                sample.id
+              )
+          ]);
+
+        return {
+          sample,
+          approvalBatch,
+          targetCount:
+            sample.targets.length,
+          baselineCount:
+            baselines.filter(
+              (baseline) =>
+                baseline !==
+                  undefined
+            ).length,
+          outcomeCount:
+            outcomes.length
+        };
+      }
+    );
+  const readiness =
+    gate13PreflightReadiness({
+      approvalBatchPresent:
+        durable.sample !==
+          undefined ||
+        durable.approvalBatch !==
+          undefined,
+      sampleFrozen:
+        durable.sample !==
+          undefined,
+      targetCount:
+        durable.targetCount,
+      baselineCount:
+        durable.baselineCount,
+      outcomeCount:
+        durable.outcomeCount
+    });
+
+  print({
+    action:
+      "ACCEPTANCE_READINESS",
+    mutation:
+      "NONE",
+    durableState: {
+      approvalBatchId:
+        durable.approvalBatch
+          ?.id ??
+        null,
+      sampleId:
+        durable.sample?.id ??
+        null,
+      targetCount:
+        durable.targetCount,
+      baselineCount:
+        durable.baselineCount,
+      outcomeCount:
+        durable.outcomeCount
+    },
+    readiness,
+    note:
+      "Readiness is read-only. It reports the next durable transition but does not authorize or execute it."
   });
 }
 
@@ -1782,6 +2105,16 @@ async function main():
   switch (command) {
     case "execution-profile-preview":
       await executionProfilePreview(
+        args
+      );
+      return;
+    case "acceptance-preflight":
+      await acceptancePreflight(
+        args
+      );
+      return;
+    case "acceptance-readiness":
+      await acceptanceReadiness(
         args
       );
       return;
