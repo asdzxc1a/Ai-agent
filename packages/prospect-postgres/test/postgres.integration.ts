@@ -877,18 +877,29 @@ test(
         batch
       );
 
-    await expect(
-      repository.saveSample(
-        sample
+    const frozen =
+      await repository
+        .saveSample(
+          sample
+        );
+
+    expect(
+      frozen.frozenAt
+    ).not.toBe(
+      sample.frozenAt
+    );
+    expect(
+      Date.parse(
+        frozen.frozenAt
       )
-    ).resolves.toBeUndefined();
+    ).not.toBeNaN();
 
     await expect(
       repository.getSample(
         sample.id
       )
     ).resolves.toEqual(
-      sample
+      frozen
     );
   }
 );
@@ -913,10 +924,11 @@ test(
       .saveTargetBatch(
         batch
       );
-    await repository
-      .saveSample(
-        sample
-      );
+    const frozen =
+      await repository
+        .saveSample(
+          sample
+        );
     const baseline =
       await repository
         .saveHumanBaseline({
@@ -940,7 +952,13 @@ test(
     await expect(
       repository.saveAttempt(
         acceptanceAttempt(
-          sample
+          frozen,
+          "run.pg.acceptance.unreserved",
+          new Date(
+            Date.parse(
+              frozen.frozenAt
+            ) + 1_000
+          ).toISOString()
         )
       )
     ).rejects.toThrow(
@@ -1001,7 +1019,7 @@ test(
     await expect(
       repository.saveAttempt(
         acceptanceAttempt(
-          sample,
+          frozen,
           reservation.runId,
           new Date(
             Date.parse(
@@ -1024,7 +1042,7 @@ test(
     await expect(
       repository.saveAttempt(
         acceptanceAttempt(
-          sample,
+          frozen,
           "run.pg.acceptance.retry",
           measuredStartedAt
         )
@@ -1035,7 +1053,7 @@ test(
 
     const attempt =
       acceptanceAttempt(
-        sample,
+        frozen,
         "run.pg.acceptance.01",
         measuredStartedAt
       );
@@ -1060,13 +1078,13 @@ test(
 
     const measured =
       acceptanceOutcome(
-        sample,
+        frozen,
         baseline,
         attempt
       );
     const forgedEvidence =
       calculateProspectResearchDeliveryCost(
-        sample
+        frozen
           .deliveryCostPlan!,
         {
           modelUsage: {
@@ -1305,9 +1323,10 @@ test(
     await first.saveTarget(
       completed.target
     );
-    await first.saveSample(
-      frozenSample()
-    );
+    const persistedSample =
+      await first.saveSample(
+        frozenSample()
+      );
     const baseline =
       await first
         .saveHumanBaseline(
@@ -1371,7 +1390,7 @@ test(
         "sample.pg"
       )
     ).toEqual(
-      frozenSample()
+      persistedSample
     );
     expect(
       await second.getHumanBaseline(
