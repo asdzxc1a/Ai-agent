@@ -351,6 +351,22 @@ function acceptanceSample():
       maxDeliveryCostUsdPerBrief:
         20
     },
+    executionProfile: {
+      version:
+        "gate13-execution-profile-v1",
+      agentRuntime:
+        "STAGEHAND",
+      agentRuntimeVersion:
+        "3.7.0",
+      modelName:
+        "fixture/model-v1",
+      modelBaseUrl:
+        "http://127.0.0.1:4010/v1",
+      browserRuntime:
+        "STEEL",
+      browserBaseUrl:
+        "http://127.0.0.1:3000/"
+    },
     deliveryCostPlan: {
       version:
         "gate13-delivery-cost-v1",
