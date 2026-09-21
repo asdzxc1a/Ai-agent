@@ -1155,3 +1155,40 @@ A database-scoped advisory lock closes that accidental cross-process concurrency
 **Revisit when**
 
 Replace or subsume this advisory lock only when Astra has durable leased/fenced run ownership, durable cancellation intent, reconciliation, and centrally owned browser-endpoint allocation that can safely support more than one worker.
+
+
+---
+
+## D-038 — Gate 13 human-audit completeness is derived from durable observed evidence
+
+**Date:** 2026-09-21
+**Status:** Accepted
+
+**Decision**
+
+For a completed Gate 13 research attempt, the required human source/screenshot audit count is the number of durable observed evidence records in the persisted attempt report.
+
+A reviewed completed outcome is valid only when `materialClaimsReviewed` exactly equals `attempt.report.evidence.length`. A failed/not-produced attempt requires zero reviewed material claims.
+
+The Gate 13 operator review payload does not accept `materialClaimsReviewed` as free operator input. The operator surface derives the value from the durable attempt, and repository context validation independently rechecks it before outcome persistence.
+
+Each durable evidence observation is one audit unit. This is intentionally evidence-based rather than claim-object-based: one observed source statement can ground multiple claims, while `Prospect.evidenceIds` already equals the complete durable observed-evidence set and observed claims must exactly match referenced observations.
+
+**Why**
+
+Before the first live acceptance run, the v7 outcome schema allowed a completed brief to report zero reviewed material claims while still receiving an `accepted` disposition if corrections and unsupported-claim counts were zero. That made the requirement to human-audit every material observed fact procedural rather than fail-closed.
+
+Counting durable observed evidence closes that gap without inventing model-based semantic verification or double-counting the same observation when it supports multiple claim objects.
+
+**Consequences**
+
+- completed outcomes cannot persist unless every durable observed evidence item is represented in the human-audit count;
+- direct PostgreSQL repository callers are subject to the same context check as the operator surface;
+- failed/not-produced outcomes retain a zero audit count;
+- unsupported material claims still force `rejected` under the unchanged `gate13-brief-review-v1` disposition rubric;
+- capture receipts still prove provenance/bytes, not semantic truth; a human still performs the source/screenshot support judgment;
+- the v7 usability labels and frozen acceptance thresholds are unchanged; this is a pre-result completeness hardening, not a rubric relaxation or post-hoc threshold change.
+
+**Revisit when**
+
+A later protocol may replace the aggregate audit count with durable per-claim/per-evidence human-review receipts. Any replacement must preserve full coverage of the durable observed-evidence set and must not weaken historical acceptance requirements.
