@@ -186,6 +186,44 @@ export function gate13AcceptanceInputPreflight(
       .parse(
         input.deliveryCostPlan
       );
+  const preflightDate =
+    new Date(
+      input.preflightAt
+    );
+
+  if (
+    Number.isNaN(
+      preflightDate.getTime()
+    )
+  ) {
+    throw new Error(
+      "Gate 13 preflight timestamp is invalid."
+    );
+  }
+
+  const preflightDay =
+    preflightDate
+      .toISOString()
+      .slice(
+        0,
+        10
+      );
+
+  for (
+    const rate of
+    plan.rates
+  ) {
+    if (
+      rate.sourceAsOfDate >
+        preflightDay
+    ) {
+      throw new Error(
+        "Gate 13 cost-rate source date cannot be in the future: " +
+          rate.id
+      );
+    }
+  }
+
   const preflightAt =
     Date.parse(
       input.preflightAt
