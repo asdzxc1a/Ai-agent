@@ -192,13 +192,6 @@ const Gate13RunSummaryCostSchema =
   z.object({
     runId:
       z.string().trim().min(1),
-    timings:
-      z.object({
-        totalMs:
-          z.number()
-            .int()
-            .positive()
-      }).passthrough(),
     modelUsage:
       z.object({
         promptTokens:
@@ -643,6 +636,17 @@ export function buildGate13DeliveryCostEvidenceFromRunSummary(
     gate13AttemptRunId(
       attempt
     );
+  const runDurationMs =
+    attempt.runDurationMs;
+
+  if (
+    runDurationMs ===
+      undefined
+  ) {
+    throw new Error(
+      "Gate 13 delivery cost accounting requires server-derived run duration on the durable attempt."
+    );
+  }
 
   if (
     summary.runId !==
@@ -674,9 +678,7 @@ export function buildGate13DeliveryCostEvidenceFromRunSummary(
                 summary.modelUsage
                   .cachedInputTokens
             },
-      runDurationMs:
-        summary.timings
-          .totalMs
+      runDurationMs
     },
     runId
   );
