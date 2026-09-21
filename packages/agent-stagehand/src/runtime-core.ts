@@ -9,6 +9,7 @@ import { z } from "zod";
 import type {
   AgentAction,
   AgentActionResult,
+  AgentModelUsageSnapshot,
   AgentOperationOptions,
   AgentPageEvidenceSnapshot,
   AgentRuntime,
@@ -502,6 +503,25 @@ class StagehandAgentSession implements AgentSession {
       },
       options.signal
     );
+  }
+
+  public async getModelUsage():
+    Promise<AgentModelUsageSnapshot> {
+    const metrics =
+      await this.#stagehand.metrics;
+
+    return {
+      promptTokens:
+        metrics.totalPromptTokens,
+      completionTokens:
+        metrics.totalCompletionTokens,
+      reasoningTokens:
+        metrics.totalReasoningTokens,
+      cachedInputTokens:
+        metrics.totalCachedInputTokens,
+      inferenceTimeMs:
+        metrics.totalInferenceTimeMs
+    };
   }
 
   public close(): Promise<void> {
