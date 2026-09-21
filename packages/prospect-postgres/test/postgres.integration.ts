@@ -991,6 +991,22 @@ test(
       reservation
     );
 
+    await expect(
+      repository.saveAttempt(
+        acceptanceAttempt(
+          sample,
+          reservation.runId,
+          new Date(
+            Date.parse(
+              reservation.reservedAt
+            ) - 1_000
+          ).toISOString()
+        )
+      )
+    ).rejects.toThrow(
+      "cannot start before its durable reservation"
+    );
+
     const measuredStartedAt =
       new Date(
         Date.parse(
