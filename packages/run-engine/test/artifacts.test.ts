@@ -340,6 +340,15 @@ test("configured artifact store captures successful lifecycle evidence", async (
                 "Visible page evidence that should only be hashed."
             };
           },
+          async getModelUsage() {
+            return {
+              promptTokens: 120,
+              completionTokens: 30,
+              reasoningTokens: 5,
+              cachedInputTokens: 40,
+              inferenceTimeMs: 275
+            };
+          },
           async close() {}
         };
       }
@@ -451,6 +460,34 @@ test("configured artifact store captures successful lifecycle evidence", async (
   expect(summaryText).toContain("Safe button");
   expect(summaryText).toContain("xpath=//button");
   expect(summaryText).toContain("click");
+  expect(
+    JSON.parse(
+      summaryText
+    )
+  ).toMatchObject({
+    modelUsage: {
+      promptTokens: 120,
+      completionTokens: 30,
+      reasoningTokens: 5,
+      cachedInputTokens: 40,
+      inferenceTimeMs: 275
+    }
+  });
+
+  const steps =
+    await (
+      engine as unknown as {
+        listSteps?:
+          (
+            runId: string
+          ) => Promise<
+            unknown[]
+          >;
+      }
+    ).listSteps?.(
+      started.id
+    );
+  void steps;
   expect(summaryText).not.toContain(
     "plain-success-argument"
   );
