@@ -7,6 +7,8 @@ import {
 import {
   ApprovedResearchTargetSchema,
   ResearchApprovalBatchSchema,
+  ProspectResearchAttemptReservationInputSchema,
+  ProspectResearchAttemptReservationSchema,
   ProspectResearchAttemptSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchHumanBaselineSchema,
@@ -18,6 +20,8 @@ import {
   type ApprovedResearchTarget,
   type ResearchApprovalBatch,
   type ProspectResearchAttempt,
+  type ProspectResearchAttemptReservation,
+  type ProspectResearchAttemptReservationInput,
   type ProspectResearchHumanBaseline,
   type ProspectResearchHumanBaselineInput,
   type ProspectResearchRepository,
@@ -41,6 +45,14 @@ interface ApprovalBatchRow {
 
 interface AttemptRow {
   attempt: unknown;
+}
+
+interface AttemptReservationRow {
+  sample_id: string;
+  target_id: string;
+  run_id: string;
+  reserved_at:
+    Date | string;
 }
 
 interface ProspectRow {
@@ -247,6 +259,347 @@ export class PostgresProspectResearchRepository
     );
   }
 
+  public async reserveAcceptanceAttempt(
+    input:
+      ProspectResearchAttemptReservationInput
+  ): Promise<
+    ProspectResearchAttemptReservation
+  > {
+    const parsed =
+      ProspectResearchAttemptReservationInputSchema
+        .parse(input);
+    const client =
+      await this.#pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const sampleResult =
+        await client.query(
+          `
+            SELECT sample
+            FROM prospect_research_samples
+            WHERE id = $1
+            FOR SHARE
+          `,
+          [parsed.sampleId]
+        );
+      const sampleRow =
+        sampleResult.rows[0] as
+          | SampleRow
+          | undefined;
+
+      if (
+        sampleRow === undefined
+      ) {
+        throw new Error(
+          "Measured research sample does not exist: " +
+            parsed.sampleId
+        );
+      }
+
+      const sample =
+        ProspectResearchSampleSchema
+          .parse(
+            sampleRow.sample
+          );
+
+      if (
+        sample.purpose !==
+          "ACCEPTANCE"
+      ) {
+        throw new Error(
+          "Attempt reservations are only valid for Gate 13 acceptance samples."
+        );
+      }
+
+      if (
+        !sample.targets.some(
+          (target) =>
+            target.id ===
+            parsed.targetId
+        )
+      ) {
+        throw new Error(
+          "Acceptance attempt target is outside the frozen sample."
+        );
+      }
+
+      const baselineResult =
+        await client.query(
+          `
+            SELECT
+              baseline,
+              recorded_at
+            FROM prospect_research_human_baselines
+            WHERE sample_id = $1
+              AND target_id = $2
+            FOR SHARE
+          `,
+          [
+            parsed.sampleId,
+            parsed.targetId
+          ]
+        );
+      const baselineRow =
+        baselineResult.rows[0] as
+          | HumanBaselineRow
+          | undefined;
+
+      if (
+        baselineRow === undefined
+      ) {
+        throw new Error(
+          "Gate 13 acceptance attempt requires a durable measured-human baseline before reservation."
+        );
+      }
+
+      const baseline =
+        ProspectResearchHumanBaselineSchema
+          .parse({
+            ...(
+              baselineRow.baseline as
+                Record<
+                  string,
+                  unknown
+                >
+            ),
+            recordedAt:
+              baselineRow.recorded_at instanceof Date
+                ? baselineRow
+                    .recorded_at
+                    .toISOString()
+                : new Date(
+                    baselineRow
+                      .recorded_at
+                  ).toISOString()
+          });
+
+      if (
+        baseline.source !==
+          "MEASURED_HUMAN"
+      ) {
+        throw new Error(
+          "Gate 13 acceptance attempt requires a durable measured-human baseline before reservation."
+        );
+      }
+
+      const outcomeResult =
+        await client.query(
+          `
+            SELECT 1
+            FROM prospect_research_sample_outcomes
+            WHERE sample_id = $1
+              AND target_id = $2
+            FOR SHARE
+          `,
+          [
+            parsed.sampleId,
+            parsed.targetId
+          ]
+        );
+
+      if (
+        outcomeResult.rowCount !==
+          0
+      ) {
+        throw new Error(
+          "Gate 13 acceptance target already has a reviewed outcome."
+        );
+      }
+
+      const insert =
+        await client.query(
+          `
+            INSERT INTO prospect_research_acceptance_attempt_reservations (
+              sample_id,
+              target_id,
+              run_id
+            )
+            VALUES ($1, $2, $3)
+            ON CONFLICT DO NOTHING
+            RETURNING reserved_at
+          `,
+          [
+            parsed.sampleId,
+            parsed.targetId,
+            parsed.runId
+          ]
+        );
+
+      if (
+        insert.rowCount !== 1
+      ) {
+        throw new Error(
+          "Gate 13 acceptance target already has a measured attempt reservation or the run ID is already reserved."
+        );
+      }
+
+      const reservedAt =
+        (
+          insert.rows[0] as
+            {
+              reserved_at:
+                Date | string;
+            }
+        ).reserved_at;
+      const reservation =
+        ProspectResearchAttemptReservationSchema
+          .parse({
+            ...parsed,
+            reservedAt:
+              reservedAt instanceof Date
+                ? reservedAt
+                    .toISOString()
+                : new Date(
+                    reservedAt
+                  ).toISOString()
+          });
+
+      await client.query("COMMIT");
+      return reservation;
+    } catch (error) {
+      await client.query(
+        "ROLLBACK"
+      ).catch(
+        () => undefined
+      );
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async releaseAcceptanceAttemptReservation(
+    sampleId: string,
+    targetId: string,
+    runId: string
+  ): Promise<void> {
+    const client =
+      await this.#pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const measuredState =
+        await client.query(
+          `
+            SELECT 1
+            FROM prospect_research_attempts
+            WHERE id = $1
+            UNION ALL
+            SELECT 1
+            FROM prospect_research_sample_outcomes
+            WHERE sample_id = $2
+              AND target_id = $3
+            LIMIT 1
+          `,
+          [
+            runId,
+            sampleId,
+            targetId
+          ]
+        );
+
+      if (
+        measuredState.rowCount !==
+          0
+      ) {
+        throw new Error(
+          "Gate 13 acceptance attempt reservation cannot be released after measured state was persisted."
+        );
+      }
+
+      const removed =
+        await client.query(
+          `
+            DELETE FROM prospect_research_acceptance_attempt_reservations
+            WHERE sample_id = $1
+              AND target_id = $2
+              AND run_id = $3
+            RETURNING run_id
+          `,
+          [
+            sampleId,
+            targetId,
+            runId
+          ]
+        );
+
+      if (
+        removed.rowCount !== 1
+      ) {
+        throw new Error(
+          "Gate 13 acceptance attempt reservation does not match the requested release."
+        );
+      }
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query(
+        "ROLLBACK"
+      ).catch(
+        () => undefined
+      );
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async getAcceptanceAttemptReservation(
+    sampleId: string,
+    targetId: string
+  ): Promise<
+    ProspectResearchAttemptReservation |
+    undefined
+  > {
+    const result =
+      await this.#pool.query(
+        `
+          SELECT
+            sample_id,
+            target_id,
+            run_id,
+            reserved_at
+          FROM prospect_research_acceptance_attempt_reservations
+          WHERE sample_id = $1
+            AND target_id = $2
+        `,
+        [
+          sampleId,
+          targetId
+        ]
+      );
+    const row =
+      result.rows[0] as
+        | AttemptReservationRow
+        | undefined;
+
+    if (
+      row === undefined
+    ) {
+      return undefined;
+    }
+
+    return ProspectResearchAttemptReservationSchema
+      .parse({
+        sampleId:
+          row.sample_id,
+        targetId:
+          row.target_id,
+        runId:
+          row.run_id,
+        reservedAt:
+          row.reserved_at instanceof Date
+            ? row.reserved_at
+                .toISOString()
+            : new Date(
+                row.reserved_at
+              ).toISOString()
+      });
+  }
+
   public async saveAttempt(
     input:
       ProspectResearchAttempt
@@ -264,6 +617,38 @@ export class PostgresProspectResearchRepository
         client,
         attempt
       );
+
+      const reservationResult =
+        await client.query(
+          `
+            SELECT run_id
+            FROM prospect_research_acceptance_attempt_reservations
+            WHERE target_id = $1
+            FOR SHARE
+          `,
+          [
+            attempt.target.id
+          ]
+        );
+
+      if (
+        reservationResult.rows.length >
+          0 &&
+        !reservationResult.rows.some(
+          (row) =>
+            (
+              row as {
+                run_id: string;
+              }
+            ).run_id ===
+              attempt.id
+        )
+      ) {
+        throw new Error(
+          "Research attempt does not match the reserved Gate 13 acceptance run."
+        );
+      }
+
       await this.#insertAttempt(
         client,
         attempt
@@ -1004,11 +1389,53 @@ export class PostgresProspectResearchRepository
                   ).toISOString()
           });
 
-      validateProspectResearchSampleOutcomeContext(
+      const sample =
         ProspectResearchSampleSchema
           .parse(
             sampleRow.sample
-          ),
+          );
+
+      if (
+        sample.purpose ===
+          "ACCEPTANCE"
+      ) {
+        const reservationResult =
+          await client.query(
+            `
+              SELECT run_id
+              FROM prospect_research_acceptance_attempt_reservations
+              WHERE sample_id = $1
+                AND target_id = $2
+              FOR SHARE
+            `,
+            [
+              sample.id,
+              outcome.targetId
+            ]
+          );
+        const reservationRow =
+          reservationResult
+            .rows[0] as
+              | {
+                  run_id:
+                    string;
+                }
+              | undefined;
+
+        if (
+          reservationRow ===
+            undefined ||
+          reservationRow.run_id !==
+            outcome.attemptId
+        ) {
+          throw new Error(
+            "Gate 13 acceptance outcome must reference the single reserved measured attempt."
+          );
+        }
+      }
+
+      validateProspectResearchSampleOutcomeContext(
+        sample,
         ProspectResearchAttemptSchema
           .parse(
             attemptRow.attempt
