@@ -290,10 +290,10 @@ For every research attempt record:
 - requested-field coverage and explicit unknowns;
 - frozen review-rubric version plus unsupported-claim/correction count and severity;
 - total Astra-side human preparation minutes, broken down into target setup, evidence mapping/source audit, corrections/finalization, failure triage, and other measured operator work;
-- end-to-end duration;
+- end-to-end duration derived from terminal durable run timestamps rather than reviewer input;
 - measured Stagehand prompt/completion/reasoning/cached-token usage and inference time when available, captured before cleanup and retained for failed as well as completed runs;
 - complete model/token/browser/provider delivery cost, including failed attempts; acceptance outcome cost must be derived from the durable attempt run summary plus the frozen rate plan, preserving measured quantity, billed units, rounding, rate/source/date, component amount, and total; token usage alone must not be silently treated as dollar cost;
-- unauthorized-action count, which must remain zero.
+- unauthorized-action count derived from durable `ACT` / `AGENT_LOOP_ACTION` steps in the read-only Gate 13 run; acceptance outcome values must exactly match the persisted attempt and remain zero.
 
 Blind review where practical. Keep blocked/failed attempts in the denominator/report. A live-site failure is not a Gate 11 deterministic regression.
 
