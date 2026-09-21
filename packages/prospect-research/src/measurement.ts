@@ -141,6 +141,13 @@ function costMeterQuantity(
       }
     }
   }
+
+  throw new Error(
+    "Unsupported delivery cost meter: " +
+      String(
+        rate.meter
+      )
+  );
 }
 
 function billedUnits(
