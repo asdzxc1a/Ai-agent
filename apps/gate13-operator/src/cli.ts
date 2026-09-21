@@ -2036,11 +2036,17 @@ async function sampleStatus(
               ) => {
                 const [
                   baseline,
+                  reservation,
                   attempts
                 ] =
                   await Promise.all([
                     context.repository
                       .getHumanBaselineForTarget(
+                        sampleId,
+                        target.id
+                      ),
+                    context.repository
+                      .getAcceptanceAttemptReservation(
                         sampleId,
                         target.id
                       ),
@@ -2074,6 +2080,9 @@ async function sampleStatus(
                             baseline
                               .humanPreparationMinutes
                         },
+                  attemptReservation:
+                    reservation ??
+                    null,
                   attemptCount:
                     attempts.length,
                   latestAttempt:
