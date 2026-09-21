@@ -78,7 +78,7 @@ The acceptance experiment must:
 - record blind versus unblinded review;
 - use the frozen `gate13-brief-review-v1` rubric so accepted/minor/major/rejected outcomes are derived from correction severity rather than reviewer discretion;
 - run only frozen sample members through the bounded read-only research path;
-- manually audit every material observed fact against its source page/screenshot;
+- manually audit every durable observed evidence item against its source page/screenshot; completed outcomes derive `materialClaimsReviewed` from the durable attempt evidence count rather than reviewer input;
 - produce an accepted or corrected brief without contacting the prospect;
 - measure **total Astra-side human preparation time** (setup + evidence audit + corrections/finalization + failure triage + other operator work), coverage, duration, failures, and complete delivery cost against the existing human workflow.
 
