@@ -389,6 +389,7 @@ Build:
 - use small cross-region samples only for calibration/stress testing; they may not close Gate 13;
 - for the first Gate 13 acceptance, use the complete 43-equity IYT U.S. transportation holdings snapshot dated 2026-09-17 under D-033; source/methodology provenance and exact candidate target IDs are frozen before target enrichment, and cross-market U.S./China work remains calibration-only under D-031;
 - authorize the complete acceptance candidate manifest through one D-036 atomic approval batch tied to the exact manifest SHA-256; partial target approval is not valid acceptance state;
+- use the smallest internal Gate 13 operator surface to derive/freeze acceptance state from canonical manifest + universe + stored batch, record server-timestamped measured-human baselines, run exactly one frozen target at a time through the existing read-only workflow, require explicit human source/screenshot audit before completed-attempt persistence, derive outcome provenance/disposition from durable truth, and evaluate without weakening frozen criteria;
 - compare against the existing human researcher using normal tools; scope-matched human restrictions are calibration-only;
 - require a durable server-timestamped measured human baseline record for each acceptance target before its Astra attempt can start; fixed-cap baseline estimates are calibration-only;
 - record whether review was blind or unblinded and prefer blind review where practical;
