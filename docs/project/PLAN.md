@@ -388,7 +388,7 @@ Build:
 - keep the merged smallest complete operator workflow green: stored approval → frozen-sample membership → bounded read-only model-backed research on the approved start page → evidence/uncertainty review → accepted/corrected brief or explicit live failure;
 - use small cross-region samples only for calibration/stress testing; they may not close Gate 13;
 - for the first Gate 13 acceptance, use the complete 43-equity IYT U.S. transportation holdings snapshot dated 2026-09-17 under D-033; source/methodology provenance and exact candidate target IDs are frozen before target enrichment, and cross-market U.S./China work remains calibration-only under D-031;
-- authorize the complete acceptance candidate manifest through one D-036 atomic approval batch tied to the exact manifest SHA-256; partial target approval is not valid acceptance state;
+- authorize the complete acceptance candidate manifest through one D-036/D-037 atomic approval batch that carries the exact raw manifest, recomputes SHA-256, and proves every approved target matches its source candidate; partial target approval is not valid acceptance state;
 - compare against the existing human researcher using normal tools; scope-matched human restrictions are calibration-only;
 - require a durable server-timestamped measured human baseline record for each acceptance target before its Astra attempt can start; fixed-cap baseline estimates are calibration-only;
 - record whether review was blind or unblinded and prefer blind review where practical;
@@ -414,7 +414,7 @@ Acceptance:
 - current buyer-visible `SalesDecision` prose cannot pass prohibited-claim checks solely because structured `claims` is empty; any future shipped renderer/state-update pipeline requires an independent equivalent check;
 - the merged operator workflow remains read-only/action-free and can produce a reviewable accepted/corrected brief without contacting the prospect;
 - every measured run requires both stored approval and membership in the durable frozen sample;
-- acceptance-target approval is manifest-bound and all-or-none: one batch audit record plus all 43 target approvals commit atomically, and any duplicate/validation/storage failure leaves no partial batch state;
+- acceptance-target approval is self-verifying, manifest-bound, and all-or-none: raw manifest bytes must match the recorded SHA and approved target fields must exactly match source candidates; one batch audit record plus all 43 target approvals commit atomically, and any duplicate/validation/storage failure leaves no partial batch state;
 - the measured cohort contains only explicitly approved frozen targets, cannot be overwritten/widened after freeze, and is never broadened during the run;
 - calibration cohorts return no pass/fail verdict even when complete;
 - the first Gate 13 acceptance cohort contains exactly the complete 43-member frozen U.S. transportation universe; sample target IDs must equal the frozen universe membership, inaccessible members remain failures rather than exclusions, incomplete cohorts return no verdict, and exactly one outcome per frozen target is required;
