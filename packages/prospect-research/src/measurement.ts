@@ -489,6 +489,33 @@ export function validateProspectResearchSampleOutcomeContext(
     sample.purpose ===
       "ACCEPTANCE"
   ) {
+    if (
+      attempt.runDurationMs ===
+        undefined ||
+      attempt.unauthorizedActions ===
+        undefined
+    ) {
+      throw new Error(
+        "Gate 13 acceptance attempt is missing server-derived run measurements."
+      );
+    }
+
+    if (
+      outcome.endToEndDurationMs !==
+        attempt.runDurationMs ||
+      outcome.unauthorizedActions !==
+        attempt.unauthorizedActions
+    ) {
+      throw new Error(
+        "Gate 13 outcome run duration/action audit differs from durable attempt truth."
+      );
+    }
+  }
+
+  if (
+    sample.purpose ===
+      "ACCEPTANCE"
+  ) {
     const plan =
       sample.deliveryCostPlan;
     const evidence =
