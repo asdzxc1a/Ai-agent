@@ -105,6 +105,21 @@ CREATE INDEX prospect_research_approval_batch_time
 CREATE INDEX approved_research_target_batch
   ON approved_research_targets(approval_batch_id, id);
 `;
+const MIGRATION_FIVE = `
+CREATE TABLE prospect_research_acceptance_attempt_reservations (
+  sample_id TEXT NOT NULL
+    REFERENCES prospect_research_samples(id),
+  target_id TEXT NOT NULL
+    REFERENCES approved_research_targets(id),
+  run_id TEXT NOT NULL UNIQUE,
+  reserved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (sample_id, target_id)
+);
+
+CREATE INDEX prospect_research_acceptance_attempt_reservation_target
+  ON prospect_research_acceptance_attempt_reservations(target_id, reserved_at);
+`;
+
 async function applyMigration(
   client: PoolClient,
   version: number,
@@ -165,6 +180,11 @@ export async function runProspectPostgresMigrations(
       client,
       4,
       MIGRATION_FOUR
+    );
+    await applyMigration(
+      client,
+      5,
+      MIGRATION_FIVE
     );
 
     await client.query("COMMIT");

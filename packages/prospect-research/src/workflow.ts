@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   AgentLoopExecutor,
   type AgentLoopPolicy
@@ -505,20 +507,111 @@ export class ProspectResearchWorkflow {
                 this.#cleanupTimeoutMs
             })
       });
-    const started =
-      await runs.createRun({
-        request: {
-          url:
-            target.startUrl,
-          goal:
-            researchGoal(
-              target
-            )
-        },
-        outputSchema:
-          ProspectResearchResultSchema,
-        completionVerifier
-      });
+    const runId =
+      randomUUID();
+    let reservedAcceptanceAttempt =
+      false;
+
+    if (
+      sample.purpose ===
+        "ACCEPTANCE"
+    ) {
+      await this.#research
+        .reserveAcceptanceAttempt({
+          sampleId:
+            sample.id,
+          targetId:
+            target.id,
+          runId
+        });
+      reservedAcceptanceAttempt =
+        true;
+    }
+
+    let started:
+      Awaited<
+        ReturnType<
+          RunEngine[
+            "createRun"
+          ]
+        >
+      >;
+
+    try {
+      started =
+        await runs.createRun({
+          runId,
+          request: {
+            url:
+              target.startUrl,
+            goal:
+              researchGoal(
+                target
+              )
+          },
+          outputSchema:
+            ProspectResearchResultSchema,
+          completionVerifier
+        });
+    } catch (error) {
+      if (
+        reservedAcceptanceAttempt
+      ) {
+        let durableRun;
+
+        try {
+          durableRun =
+            await this.#runRepository
+              .getRun(
+                runId
+              );
+        } catch (
+          lookupError
+        ) {
+          throw new AggregateError(
+            [
+              error,
+              lookupError
+            ],
+            "Gate 13 run creation failed and durable run lookup could not determine whether the measured-attempt reservation is safe to release.",
+            {
+              cause:
+                lookupError
+            }
+          );
+        }
+
+        if (
+          durableRun ===
+            undefined
+        ) {
+          try {
+            await this.#research
+              .releaseAcceptanceAttemptReservation(
+                sample.id,
+                target.id,
+                runId
+              );
+          } catch (
+            releaseError
+          ) {
+            throw new AggregateError(
+              [
+                error,
+                releaseError
+              ],
+              "Gate 13 run creation failed before durable run creation and the measured-attempt reservation could not be released.",
+              {
+                cause:
+                  releaseError
+              }
+            );
+          }
+        }
+      }
+
+      throw error;
+    }
 
     this.#active = {
       runId:

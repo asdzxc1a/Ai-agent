@@ -6,6 +6,9 @@ import {
   test
 } from "vitest";
 
+import {
+  calculateProspectResearchDeliveryCost
+} from "@astra/prospect-research";
 import type {
   ApprovedResearchTarget,
   CompletedProspectResearchAttempt,
@@ -50,7 +53,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query(
-    "TRUNCATE prospect_research_sample_outcomes, prospect_research_human_baselines, prospect_research_samples, prospect_research_attempts, prospects, approved_research_targets, prospect_research_approval_batches RESTART IDENTITY CASCADE"
+    "TRUNCATE prospect_research_sample_outcomes, prospect_research_acceptance_attempt_reservations, prospect_research_human_baselines, prospect_research_samples, prospect_research_attempts, prospects, approved_research_targets, prospect_research_approval_batches RESTART IDENTITY CASCADE"
   );
 });
 
@@ -537,6 +540,248 @@ function measuredOutcome(
   };
 }
 
+function acceptanceAttempt(
+  sample:
+    ProspectResearchSample,
+  runId =
+    "run.pg.acceptance.01",
+  startedAt =
+    "2026-09-19T12:16:00Z"
+): CompletedProspectResearchAttempt {
+  const target =
+    sample.targets[0]!;
+  const researchedAt =
+    new Date(
+      Date.parse(
+        startedAt
+      ) + 5_000
+    ).toISOString();
+
+  return {
+    id:
+      runId,
+    target,
+    startedAt,
+    createdAt:
+      researchedAt,
+    runDurationMs:
+      5_000,
+    unauthorizedActions:
+      0,
+    status:
+      "COMPLETED",
+    report: {
+      id:
+        runId,
+      runId,
+      targetId:
+        target.id,
+      researchedAt,
+      prospect: {
+        id:
+          target.id,
+        domain:
+          target.domain,
+        companyName:
+          null,
+        fit: "unknown",
+        disqualifiers: [],
+        evidenceIds: [
+          "e.pg.acceptance"
+        ],
+        hypothesisIds: []
+      },
+      companySummary: [
+        {
+          id:
+            "claim.pg.acceptance",
+          kind:
+            "observed_fact",
+          statement:
+            "Acceptance Company has a public transportation operations page.",
+          evidenceIds: [
+            "e.pg.acceptance"
+          ]
+        }
+      ],
+      transformationOpportunities:
+        [],
+      buyingSignals: [],
+      unknowns: [
+        {
+          id:
+            "unknown.pg.acceptance.company",
+          field:
+            "companyName",
+          reason:
+            "No exact company name was supported by the fixture page."
+        },
+        {
+          id:
+            "unknown.pg.acceptance.opportunities",
+          field:
+            "transformationOpportunities",
+          reason:
+            "No transformation opportunity was supported by the fixture page."
+        },
+        {
+          id:
+            "unknown.pg.acceptance.signals",
+          field:
+            "buyingSignals",
+          reason:
+            "No buying signal was supported by the fixture page."
+        }
+      ],
+      evidence: [
+        {
+          id:
+            "e.pg.acceptance",
+          sourceUrl:
+            target.startUrl,
+          observation:
+            "Acceptance Company has a public transportation operations page.",
+          capturedAt:
+            researchedAt,
+          uncertainty:
+            "none",
+          uncertaintyNote:
+            null,
+          artifactIds: [
+            "artifact.pg.acceptance"
+          ],
+          captureReceipts: [
+            {
+              artifactId:
+                "artifact.pg.acceptance",
+              captureVersion:
+                "page-evidence-v1",
+              semanticSettled:
+                true,
+              pageUrl:
+                target.startUrl,
+              capturedAt:
+                researchedAt,
+              pageContentSha256:
+                "a".repeat(64),
+              screenshotSha256:
+                "b".repeat(64)
+            }
+          ]
+        }
+      ]
+    }
+  };
+}
+
+function acceptanceOutcome(
+  sample:
+    ProspectResearchSample,
+  baseline:
+    ProspectResearchHumanBaseline,
+  attempt:
+    CompletedProspectResearchAttempt
+):
+  ProspectResearchSampleOutcome {
+  const plan =
+    sample.deliveryCostPlan;
+
+  if (
+    plan === undefined
+  ) {
+    throw new Error(
+      "Acceptance fixture requires a cost plan."
+    );
+  }
+
+  const deliveryCostEvidence =
+    calculateProspectResearchDeliveryCost(
+      plan,
+      {
+        modelUsage:
+          null,
+        runDurationMs:
+          attempt.runDurationMs!
+      },
+      attempt.id
+    );
+
+  return {
+    id:
+      "outcome.pg.acceptance.01",
+    sampleId:
+      sample.id,
+    targetId:
+      attempt.target.id,
+    attemptId:
+      attempt.id,
+    baselineId:
+      baseline.id,
+    reviewRubricVersion:
+      sample.reviewRubricVersion,
+    attemptStatus:
+      "COMPLETED",
+    briefDisposition:
+      "accepted",
+    reviewedBy:
+      "operator",
+    reviewedAt:
+      new Date(
+        Date.parse(
+          attempt.createdAt
+        ) + 60_000
+      ).toISOString(),
+    reviewMode:
+      "UNBLINDED",
+    baselineSource:
+      baseline.source,
+    baselineMeasuredAt:
+      baseline.recordedAt,
+    materialClaimsReviewed:
+      1,
+    unsupportedMaterialClaims:
+      0,
+    corrections: {
+      minor: 0,
+      major: 0,
+      critical: 0
+    },
+    requestedFieldsTotal:
+      4,
+    requestedFieldsCovered:
+      4,
+    requestedFieldsCoveredIds: [
+      "companyName",
+      "companySummary",
+      "transformationOpportunities",
+      "buyingSignals"
+    ],
+    baselineHumanPreparationMinutes:
+      baseline
+        .humanPreparationMinutes,
+    astraHumanTime: {
+      targetSetupMinutes: 1,
+      evidenceMappingAndAuditMinutes:
+        3,
+      correctionAndFinalizationMinutes:
+        1,
+      failureTriageMinutes: 0,
+      otherMinutes: 0,
+      measurementMethod:
+        "STOPWATCH",
+      otherDescription: null
+    },
+    endToEndDurationMs:
+      attempt.runDurationMs!,
+    deliveryCostUsd:
+      deliveryCostEvidence.totalUsd,
+    deliveryCostEvidence,
+    unauthorizedActions:
+      attempt.unauthorizedActions!,
+    notes: null
+  };
+}
+
 function failedAttempt():
   FailedProspectResearchAttempt {
   return {
@@ -638,6 +883,280 @@ test(
     ).resolves.toEqual(
       sample
     );
+  }
+);
+
+test(
+  "PostgresProspectResearchRepository reserves exactly one measured acceptance run per target",
+  async () => {
+    const repository =
+      new PostgresProspectResearchRepository(
+        pool
+      );
+    const sample =
+      acceptanceSample();
+    const target =
+      sample.targets[0]!;
+    const batch =
+      approvalBatch(
+        sample.targets
+      );
+
+    await repository
+      .saveTargetBatch(
+        batch
+      );
+    await repository
+      .saveSample(
+        sample
+      );
+    const baseline =
+      await repository
+        .saveHumanBaseline({
+          id:
+            "baseline.pg.acceptance.01",
+          sampleId:
+            sample.id,
+          targetId:
+            target.id,
+          source:
+            "MEASURED_HUMAN",
+          preparedBy:
+            "human.researcher",
+          humanPreparationMinutes:
+            18,
+          toolingDescription:
+            "Normal human research tools.",
+          notes: null
+        });
+
+    await expect(
+      repository.saveAttempt(
+        acceptanceAttempt(
+          sample
+        )
+      )
+    ).rejects.toThrow(
+      "requires the exact reserved measured run"
+    );
+
+    const reservation =
+      await repository
+        .reserveAcceptanceAttempt({
+          sampleId:
+            sample.id,
+          targetId:
+            target.id,
+          runId:
+            "run.pg.acceptance.01"
+        });
+
+    expect(
+      reservation
+    ).toMatchObject({
+      sampleId:
+        sample.id,
+      targetId:
+        target.id,
+      runId:
+        "run.pg.acceptance.01"
+    });
+
+    await expect(
+      repository
+        .reserveAcceptanceAttempt({
+          sampleId:
+            sample.id,
+          targetId:
+            target.id,
+          runId:
+            "run.pg.acceptance.retry"
+        })
+    ).rejects.toThrow(
+      "already has a measured attempt reservation"
+    );
+
+    const second =
+      new PostgresProspectResearchRepository(
+        pool
+      );
+
+    await expect(
+      second
+        .getAcceptanceAttemptReservation(
+          sample.id,
+          target.id
+        )
+    ).resolves.toEqual(
+      reservation
+    );
+
+    await expect(
+      repository.saveAttempt(
+        acceptanceAttempt(
+          sample,
+          reservation.runId,
+          new Date(
+            Date.parse(
+              reservation.reservedAt
+            ) - 1_000
+          ).toISOString()
+        )
+      )
+    ).rejects.toThrow(
+      "cannot start before its durable reservation"
+    );
+
+    const measuredStartedAt =
+      new Date(
+        Date.parse(
+          reservation.reservedAt
+        ) + 1_000
+      ).toISOString();
+
+    await expect(
+      repository.saveAttempt(
+        acceptanceAttempt(
+          sample,
+          "run.pg.acceptance.retry",
+          measuredStartedAt
+        )
+      )
+    ).rejects.toThrow(
+      "requires the exact reserved measured run"
+    );
+
+    const attempt =
+      acceptanceAttempt(
+        sample,
+        "run.pg.acceptance.01",
+        measuredStartedAt
+      );
+
+    await expect(
+      repository.saveAttempt(
+        attempt
+      )
+    ).resolves.toBeUndefined();
+
+    await expect(
+      repository
+        .releaseAcceptanceAttemptReservation(
+          sample.id,
+          target.id,
+          attempt.id
+        )
+    ).rejects.toThrow(
+      "cannot be released after measured state was persisted"
+    );
+
+
+    const measured =
+      acceptanceOutcome(
+        sample,
+        baseline,
+        attempt
+      );
+
+    await expect(
+      repository
+        .saveSampleOutcome(
+          measured
+        )
+    ).resolves.toBeUndefined();
+
+    await expect(
+      new PostgresProspectResearchRepository(
+        pool
+      ).listSampleOutcomes(
+        sample.id
+      )
+    ).resolves.toEqual([
+      measured
+    ]);
+  }
+);
+
+test(
+  "PostgresProspectResearchRepository releases an unused acceptance reservation for a pre-run failure",
+  async () => {
+    const repository =
+      new PostgresProspectResearchRepository(
+        pool
+      );
+    const sample =
+      acceptanceSample();
+    const target =
+      sample.targets[0]!;
+
+    await repository
+      .saveTargetBatch(
+        approvalBatch(
+          sample.targets
+        )
+      );
+    await repository
+      .saveSample(
+        sample
+      );
+    await repository
+      .saveHumanBaseline({
+        id:
+          "baseline.pg.acceptance.release",
+        sampleId:
+          sample.id,
+        targetId:
+          target.id,
+        source:
+          "MEASURED_HUMAN",
+        preparedBy:
+          "human.researcher",
+        humanPreparationMinutes:
+          18,
+        toolingDescription:
+          "Normal human research tools.",
+        notes: null
+      });
+
+    await repository
+      .reserveAcceptanceAttempt({
+        sampleId:
+          sample.id,
+        targetId:
+          target.id,
+        runId:
+          "run.pg.acceptance.precreate"
+      });
+
+    await repository
+      .releaseAcceptanceAttemptReservation(
+        sample.id,
+        target.id,
+        "run.pg.acceptance.precreate"
+      );
+
+    await expect(
+      repository
+        .getAcceptanceAttemptReservation(
+          sample.id,
+          target.id
+        )
+    ).resolves.toBeUndefined();
+
+    await expect(
+      repository
+        .reserveAcceptanceAttempt({
+          sampleId:
+            sample.id,
+          targetId:
+            target.id,
+          runId:
+            "run.pg.acceptance.after-release"
+        })
+    ).resolves.toMatchObject({
+      runId:
+        "run.pg.acceptance.after-release"
+    });
   }
 );
 

@@ -5,6 +5,8 @@ import type {
 import {
   ApprovedResearchTargetSchema,
   ResearchApprovalBatchSchema,
+  ProspectResearchAttemptReservationInputSchema,
+  ProspectResearchAttemptReservationSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
@@ -12,6 +14,8 @@ import {
   type ApprovedResearchTarget,
   type ResearchApprovalBatch,
   type ProspectResearchAttempt,
+  type ProspectResearchAttemptReservation,
+  type ProspectResearchAttemptReservationInput,
   type ProspectResearchHumanBaseline,
   type ProspectResearchHumanBaselineInput,
   type ProspectResearchSample,
@@ -76,6 +80,27 @@ export interface ProspectResearchRepository {
     targetId: string
   ): Promise<
     ProspectResearchAttempt[]
+  >;
+
+  reserveAcceptanceAttempt(
+    input:
+      ProspectResearchAttemptReservationInput
+  ): Promise<
+    ProspectResearchAttemptReservation
+  >;
+
+  releaseAcceptanceAttemptReservation(
+    sampleId: string,
+    targetId: string,
+    runId: string
+  ): Promise<void>;
+
+  getAcceptanceAttemptReservation(
+    sampleId: string,
+    targetId: string
+  ): Promise<
+    ProspectResearchAttemptReservation |
+    undefined
   >;
 
   saveSample(
@@ -154,6 +179,11 @@ export class InMemoryProspectResearchRepository
     new Map<
       string,
       ProspectResearchHumanBaseline
+    >();
+  readonly #attemptReservations =
+    new Map<
+      string,
+      ProspectResearchAttemptReservation
     >();
   readonly #sampleOutcomes =
     new Map<
@@ -304,6 +334,244 @@ export class InMemoryProspectResearchRepository
       );
   }
 
+  #reservationKey(
+    sampleId: string,
+    targetId: string
+  ): string {
+    return (
+      sampleId +
+      "\u0000" +
+      targetId
+    );
+  }
+
+  public async reserveAcceptanceAttempt(
+    input:
+      ProspectResearchAttemptReservationInput
+  ): Promise<
+    ProspectResearchAttemptReservation
+  > {
+    const parsed =
+      ProspectResearchAttemptReservationInputSchema
+        .parse(input);
+    const sample =
+      this.#samples.get(
+        parsed.sampleId
+      );
+
+    if (
+      sample === undefined
+    ) {
+      throw new Error(
+        "Measured research sample does not exist: " +
+          parsed.sampleId
+      );
+    }
+
+    if (
+      sample.purpose !==
+        "ACCEPTANCE"
+    ) {
+      throw new Error(
+        "Attempt reservations are only valid for Gate 13 acceptance samples."
+      );
+    }
+
+    if (
+      !sample.targets.some(
+        (target) =>
+          target.id ===
+          parsed.targetId
+      )
+    ) {
+      throw new Error(
+        "Acceptance attempt target is outside the frozen sample."
+      );
+    }
+
+    const baseline =
+      [
+        ...this.#humanBaselines
+          .values()
+      ].find(
+        (candidate) =>
+          candidate.sampleId ===
+            parsed.sampleId &&
+          candidate.targetId ===
+            parsed.targetId
+      );
+
+    if (
+      baseline === undefined ||
+      baseline.source !==
+        "MEASURED_HUMAN"
+    ) {
+      throw new Error(
+        "Gate 13 acceptance attempt requires a durable measured-human baseline before reservation."
+      );
+    }
+
+    const key =
+      this.#reservationKey(
+        parsed.sampleId,
+        parsed.targetId
+      );
+
+    if (
+      this.#attemptReservations
+        .has(key)
+    ) {
+      throw new Error(
+        "Gate 13 acceptance target already has a measured attempt reservation."
+      );
+    }
+
+    if (
+      [
+        ...this.#sampleOutcomes
+          .values()
+      ].some(
+        (outcome) =>
+          outcome.sampleId ===
+            parsed.sampleId &&
+          outcome.targetId ===
+            parsed.targetId
+      )
+    ) {
+      throw new Error(
+        "Gate 13 acceptance target already has a reviewed outcome."
+      );
+    }
+
+    if (
+      [
+        ...this.#attempts
+          .values()
+      ].some(
+        (attempt) =>
+          attempt.target.id ===
+            parsed.targetId &&
+          Date.parse(
+            attempt.startedAt
+          ) >=
+            Date.parse(
+              sample.frozenAt
+            )
+      )
+    ) {
+      throw new Error(
+        "Gate 13 acceptance target already has an unreserved post-freeze research attempt."
+      );
+    }
+
+    if (
+      [
+        ...this.#attemptReservations
+          .values()
+      ].some(
+        (reservation) =>
+          reservation.runId ===
+            parsed.runId
+      )
+    ) {
+      throw new Error(
+        "Gate 13 acceptance run ID is already reserved."
+      );
+    }
+
+    const reservation =
+      ProspectResearchAttemptReservationSchema
+        .parse({
+          ...parsed,
+          reservedAt:
+            this.#now()
+        });
+
+    this.#attemptReservations
+      .set(
+        key,
+        structuredClone(
+          reservation
+        )
+      );
+
+    return structuredClone(
+      reservation
+    );
+  }
+
+  public async releaseAcceptanceAttemptReservation(
+    sampleId: string,
+    targetId: string,
+    runId: string
+  ): Promise<void> {
+    const key =
+      this.#reservationKey(
+        sampleId,
+        targetId
+      );
+    const reservation =
+      this.#attemptReservations
+        .get(key);
+
+    if (
+      reservation === undefined ||
+      reservation.runId !==
+        runId
+    ) {
+      throw new Error(
+        "Gate 13 acceptance attempt reservation does not match the requested release."
+      );
+    }
+
+    if (
+      this.#attempts.has(
+        runId
+      ) ||
+      [
+        ...this.#sampleOutcomes
+          .values()
+      ].some(
+        (outcome) =>
+          outcome.sampleId ===
+            sampleId &&
+          outcome.targetId ===
+            targetId
+      )
+    ) {
+      throw new Error(
+        "Gate 13 acceptance attempt reservation cannot be released after measured state was persisted."
+      );
+    }
+
+    this.#attemptReservations
+      .delete(key);
+  }
+
+  public async getAcceptanceAttemptReservation(
+    sampleId: string,
+    targetId: string
+  ): Promise<
+    ProspectResearchAttemptReservation |
+    undefined
+  > {
+    const reservation =
+      this.#attemptReservations
+        .get(
+          this.#reservationKey(
+            sampleId,
+            targetId
+          )
+        );
+
+    return reservation ===
+      undefined
+      ? undefined
+      : structuredClone(
+          reservation
+        );
+  }
+
   public async saveAttempt(
     attempt:
       ProspectResearchAttempt
@@ -333,6 +601,77 @@ export class InMemoryProspectResearchRepository
       throw new Error(
         "Research attempt target differs from the stored approval."
       );
+    }
+
+    const applicableAcceptanceSamples =
+      [
+        ...this.#samples.values()
+      ].filter(
+        (sample) =>
+          sample.purpose ===
+            "ACCEPTANCE" &&
+          Date.parse(
+            sample.frozenAt
+          ) <=
+            Date.parse(
+              parsed.startedAt
+            ) &&
+          sample.targets.some(
+            (target) =>
+              target.id ===
+                parsed.target.id
+          )
+      );
+    const acceptanceReservations =
+      [
+        ...this.#attemptReservations
+          .values()
+      ].filter(
+        (reservation) =>
+          applicableAcceptanceSamples
+            .some(
+              (sample) =>
+                reservation.sampleId ===
+                  sample.id &&
+                reservation.targetId ===
+                  parsed.target.id
+            )
+      );
+
+    if (
+      applicableAcceptanceSamples
+        .length >
+        0
+    ) {
+      const matchingReservation =
+        acceptanceReservations.find(
+          (reservation) =>
+            reservation.runId ===
+              parsed.id
+        );
+
+      if (
+        matchingReservation ===
+          undefined
+      ) {
+        throw new Error(
+          "Gate 13 acceptance-era research attempt requires the exact reserved measured run."
+        );
+      }
+
+      if (
+        Date.parse(
+          parsed.startedAt
+        ) <
+          Date.parse(
+            matchingReservation
+              .reservedAt
+          )
+      ) {
+        throw new Error(
+          "Gate 13 measured attempt cannot start before its durable reservation."
+        );
+      }
     }
 
     if (
@@ -699,6 +1038,30 @@ export class InMemoryProspectResearchRepository
         "Measured research outcome human baseline does not exist: " +
           outcome.baselineId
       );
+    }
+
+    if (
+      sample.purpose ===
+        "ACCEPTANCE"
+    ) {
+      const reservation =
+        this.#attemptReservations
+          .get(
+            this.#reservationKey(
+              sample.id,
+              outcome.targetId
+            )
+          );
+
+      if (
+        reservation === undefined ||
+        reservation.runId !==
+          outcome.attemptId
+      ) {
+        throw new Error(
+          "Gate 13 acceptance outcome must reference the single reserved measured attempt."
+        );
+      }
     }
 
     validateProspectResearchSampleOutcomeContext(

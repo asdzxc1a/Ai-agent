@@ -584,3 +584,57 @@ test("artifact-store failures do not change successful run result", async () => 
     "COMPLETED"
   );
 });
+
+
+test(
+  "caller-supplied internal run IDs are preserved and validated",
+  async () => {
+    const engine =
+      new RunEngine({
+        repository:
+          new InMemoryRunRepository(),
+        browserRuntime:
+          new EvidenceBrowserRuntime(),
+        agentRuntime:
+          new FailingAgentRuntime()
+      });
+
+    const started =
+      await engine.createRun({
+        runId:
+          "run.reserved.acceptance.01",
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Exercise the reserved run ID."
+        }
+      });
+
+    expect(
+      started.id
+    ).toBe(
+      "run.reserved.acceptance.01"
+    );
+
+    await waitForTerminal(
+      engine,
+      started.id
+    );
+
+    await expect(
+      engine.createRun({
+        runId:
+          " invalid run id ",
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "This must be rejected before persistence."
+        }
+      })
+    ).rejects.toThrow(
+      "owned identifier shape"
+    );
+  }
+);

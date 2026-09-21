@@ -50,6 +50,7 @@ import type {
 } from "./repository.js";
 
 export interface StartRunInput {
+  runId?: string;
   request: CreateRunRequest;
   outputSchema?: RuntimeSchema<Record<string, unknown>>;
   completionVerifier?: RunCompletionVerifier;
@@ -370,7 +371,20 @@ export class RunEngine implements RunService {
     input: StartRunInput
   ): Promise<RunSnapshot> {
     const now = new Date().toISOString();
-    const runId = randomUUID();
+    const runId =
+      input.runId ??
+      randomUUID();
+
+    if (
+      runId.length > 128 ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(
+        runId
+      )
+    ) {
+      throw new TypeError(
+        "Run ID must use the owned identifier shape and be no longer than 128 characters."
+      );
+    }
     const snapshot: RunSnapshot = {
       id: runId,
       status: "PENDING",

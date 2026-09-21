@@ -31,6 +31,7 @@ import {
   ApprovedResearchTargetSchema,
   InMemoryProspectResearchRepository,
   ProspectResearchSampleSchema,
+  ProspectResearchService,
   ProspectResearchWorkflow,
   ResearchApprovalBatchSchema,
   ProspectResearchValidationError,
@@ -584,6 +585,23 @@ class BlockingResearchRuntime
   }
 }
 
+class RejectingCreateRunRepository
+  extends InMemoryRunRepository {
+  public override async createRun(
+    ...args:
+      Parameters<
+        InMemoryRunRepository[
+          "createRun"
+        ]
+      >
+  ): Promise<void> {
+    void args;
+    throw new Error(
+      "fixture run creation failed before persistence"
+    );
+  }
+}
+
 class ReadOnlyResearchRuntime
   implements AgentRuntime {
   public readonly session:
@@ -1054,13 +1072,16 @@ describe(
           );
         const agent =
           new BlockingResearchRuntime();
+        const runRepository =
+          new InMemoryRunRepository();
+        const artifacts =
+          new InMemoryArtifactStore();
         const workflow =
           new ProspectResearchWorkflow({
             repository,
-            runRepository:
-              new InMemoryRunRepository(),
+            runRepository,
             artifactStore:
-              new InMemoryArtifactStore(),
+              artifacts,
             browserRuntime:
               new ReadOnlyBrowserRuntime(),
             agentRuntime:
@@ -1157,6 +1178,139 @@ describe(
           status:
             "CANCELLED"
         });
+
+        await expect(
+          workflow.start({
+            sampleId:
+              acceptance.id,
+            targetId:
+              acceptance.targets[0]!
+                .id
+          })
+        ).rejects.toThrow(
+          "already has a measured attempt reservation"
+        );
+
+        await expect(
+          repository
+            .getAcceptanceAttemptReservation(
+              acceptance.id,
+              acceptance.targets[0]!
+                .id
+            )
+        ).resolves.toMatchObject({
+          runId:
+            started.id
+        });
+
+
+        const recoveryService =
+          new ProspectResearchService(
+            repository,
+            artifacts,
+            runRepository
+          );
+
+        await expect(
+          recoveryService
+            .releaseAcceptanceAttemptReservation(
+              acceptance.id,
+              acceptance.targets[0]!
+                .id,
+              started.id
+            )
+        ).rejects.toThrow(
+          "cannot be released because its durable run exists"
+        );
+      }
+    );
+
+    it(
+      "releases an acceptance reservation only when run creation never becomes durable",
+      async () => {
+        const repository =
+          new InMemoryProspectResearchRepository(
+            () =>
+              "2026-09-20T12:15:00.000Z"
+          );
+        const workflow =
+          new ProspectResearchWorkflow({
+            repository,
+            runRepository:
+              new RejectingCreateRunRepository(),
+            artifactStore:
+              new InMemoryArtifactStore(),
+            browserRuntime:
+              new ReadOnlyBrowserRuntime(),
+            agentRuntime:
+              new ReadOnlyResearchRuntime(),
+            sandboxRuntimeFactory(
+              policy
+            ) {
+              return new LocalSandboxRuntime({
+                ...policy,
+                resolver: {
+                  async resolve() {
+                    return [
+                      "93.184.216.34"
+                    ];
+                  }
+                }
+              });
+            }
+          });
+        const acceptance =
+          acceptanceSample();
+        const target =
+          acceptance.targets[0]!;
+
+        await workflow
+          .approveTargetBatch(
+            acceptanceApprovalBatch(
+              acceptance.targets
+            )
+          );
+        await workflow
+          .freezeSample(
+            acceptance
+          );
+        await workflow
+          .recordHumanBaseline({
+            id:
+              "baseline.acceptance.release",
+            sampleId:
+              acceptance.id,
+            targetId:
+              target.id,
+            source:
+              "MEASURED_HUMAN",
+            preparedBy:
+              "human.researcher",
+            humanPreparationMinutes:
+              18,
+            toolingDescription:
+              "Normal human research tools.",
+            notes: null
+          });
+
+        await expect(
+          workflow.start({
+            sampleId:
+              acceptance.id,
+            targetId:
+              target.id
+          })
+        ).rejects.toThrow(
+          "fixture run creation failed before persistence"
+        );
+
+        await expect(
+          repository
+            .getAcceptanceAttemptReservation(
+              acceptance.id,
+              target.id
+            )
+        ).resolves.toBeUndefined();
       }
     );
 
