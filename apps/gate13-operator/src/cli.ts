@@ -119,7 +119,7 @@ function usage(): string {
     "Acceptance sample:",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- sample-preview \\",
     "    --approval-batch-id <id> --sample-id <id> --operator <identity> \\",
-    "    --max-cost-usd <positive> --execution-profile-file <path> --cost-plan-file <path> \",
+    "    --max-cost-usd <positive> --execution-profile-file <path> --cost-plan-file <path> \\",
     "    --cost-rationale-file <path> --human-baseline-file <path>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- freeze-acceptance <same options> --confirm-complete-universe",
     "",
