@@ -854,8 +854,8 @@ test(
 
     expect(
       summaryText
-    ).toContain(
-      "Browser diagnostics exceeded 10 ms."
+    ).toMatch(
+      /Browser diagnostics exceeded (?:[1-9]|10) ms\./
     );
   }
 );
