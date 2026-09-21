@@ -4,6 +4,9 @@ import {
 import {
   readFile
 } from "node:fs/promises";
+import {
+  pathToFileURL
+} from "node:url";
 
 const DEFAULT_MANIFEST =
   "docs/project/data/gate13-us-transportation-approval-candidates-2026-09-20.json";
@@ -90,6 +93,31 @@ function hostnameWithinDomain(
       "." + domain
     )
   );
+}
+
+function requireIdentifier(
+  value,
+  label
+) {
+  const text =
+    requireText(
+      value,
+      label
+    );
+
+  if (
+    text.length > 128 ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(
+      text
+    )
+  ) {
+    fail(
+      label +
+        " must be a valid Astra identifier"
+    );
+  }
+
+  return text;
 }
 
 function requireText(
@@ -467,7 +495,7 @@ export function buildGate13ApprovalBatch(
   }
 ) {
   const id =
-    requireText(
+    requireIdentifier(
       batchId,
       "batch ID"
     );
@@ -519,9 +547,12 @@ export function buildGate13ApprovalBatch(
           candidate.icpContext,
         approval: {
           id:
-            id +
-            ":" +
-            candidate.targetId,
+            requireIdentifier(
+              id +
+                ":" +
+                candidate.targetId,
+              "generated approval ID"
+            ),
           scope:
             "public_research_only",
           approvedBy:
@@ -632,9 +663,8 @@ async function main() {
 if (
   process.argv[1] !==
     undefined &&
-  new URL(
-    "file://" +
-      process.argv[1]
+  pathToFileURL(
+    process.argv[1]
   ).href ===
     import.meta.url
 ) {
