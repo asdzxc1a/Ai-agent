@@ -1009,6 +1009,116 @@ describe(
     );
 
     it(
+      "owns sample freeze time in the repository instead of trusting caller frozenAt",
+      async () => {
+        const repository =
+          new InMemoryProspectResearchRepository(
+            () =>
+              "2026-09-20T12:15:00.000Z"
+          );
+        const workflow =
+          new ProspectResearchWorkflow({
+            repository,
+            runRepository:
+              new InMemoryRunRepository(),
+            artifactStore:
+              new InMemoryArtifactStore(),
+            browserRuntime:
+              new ReadOnlyBrowserRuntime(),
+            agentRuntime:
+              new ReadOnlyResearchRuntime()
+          });
+        const draft =
+          sample();
+
+        await workflow
+          .approveTarget(
+            target()
+          );
+
+        const frozen =
+          await workflow
+            .freezeSample({
+              ...draft,
+              frozenAt:
+                "2099-01-01T00:00:00.000Z"
+            });
+
+        expect(
+          frozen.frozenAt
+        ).toBe(
+          "2026-09-20T12:15:00.000Z"
+        );
+        await expect(
+          workflow.getSample(
+            frozen.id
+          )
+        ).resolves.toEqual(
+          frozen
+        );
+      }
+    );
+
+    it(
+      "validates acceptance cost-source chronology against server-owned freeze time",
+      async () => {
+        const repository =
+          new InMemoryProspectResearchRepository(
+            () =>
+              "2026-09-20T12:15:00.000Z"
+          );
+        const workflow =
+          new ProspectResearchWorkflow({
+            repository,
+            runRepository:
+              new InMemoryRunRepository(),
+            artifactStore:
+              new InMemoryArtifactStore(),
+            browserRuntime:
+              new ReadOnlyBrowserRuntime(),
+            agentRuntime:
+              new ReadOnlyResearchRuntime()
+          });
+        const acceptance =
+          acceptanceSample();
+
+        await workflow
+          .approveTargetBatch(
+            acceptanceApprovalBatch(
+              acceptance.targets
+            )
+          );
+
+        await expect(
+          workflow.freezeSample({
+            ...acceptance,
+            frozenAt:
+              "2099-01-01T00:00:00.000Z",
+            deliveryCostPlan: {
+              ...acceptance
+                .deliveryCostPlan!,
+              rates:
+                acceptance
+                  .deliveryCostPlan!
+                  .rates.map(
+                    (rate, index) =>
+                      index === 0
+                        ? {
+                            ...rate,
+                            sourceAsOfDate:
+                              "2026-09-21"
+                          }
+                        : rate
+                  )
+            }
+          })
+        ).rejects.toThrow(
+          "delivery cost rate source date must not be after sample freeze"
+        );
+      }
+    );
+
+    it(
       "rejects an acceptance freeze assembled from individual approvals instead of one batch",
       async () => {
         const repository =
