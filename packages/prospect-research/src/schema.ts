@@ -715,6 +715,12 @@ export const PROSPECT_RESEARCH_SELECTION_STRATEGIES =
     "DETERMINISTIC_SUBSET"
   ] as const;
 
+export const PROSPECT_RESEARCH_PROTOCOL_VERSIONS =
+  [
+    "gate13-measured-research-v7",
+    "gate13-measured-research-v8"
+  ] as const;
+
 export const ProspectResearchSelectionUniverseSchema =
   z.object({
     id: IdentifierSchema,
@@ -850,8 +856,8 @@ export const ProspectResearchSampleSchema =
     status:
       z.literal("FROZEN"),
     protocolVersion:
-      z.literal(
-        "gate13-measured-research-v7"
+      z.enum(
+        PROSPECT_RESEARCH_PROTOCOL_VERSIONS
       ),
     purpose:
       z.enum(
@@ -961,6 +967,22 @@ export const ProspectResearchSampleSchema =
             ],
             message:
               "Gate 13 acceptance must compare against the human workflow using its normal tools"
+          });
+        }
+
+        if (
+          sample.purpose ===
+            "ACCEPTANCE" &&
+          sample.protocolVersion !==
+            "gate13-measured-research-v8"
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "protocolVersion"
+            ],
+            message:
+              "Gate 13 acceptance requires the v8 durable delivery-cost protocol"
           });
         }
 
@@ -1155,6 +1177,144 @@ export const ProspectResearchHumanBaselineSchema =
     })
     .strict();
 
+
+export const PROSPECT_RESEARCH_COST_COMPONENT_KINDS =
+  [
+    "MODEL_INFERENCE",
+    "BROWSER_PROVIDER",
+    "PROXY",
+    "CAPTCHA",
+    "OTHER"
+  ] as const;
+
+export const PROSPECT_RESEARCH_COST_ACCOUNTING_METHODS =
+  [
+    "PROVIDER_METER",
+    "PRICING_CALCULATION",
+    "INVOICE",
+    "INTERNAL_ALLOCATION"
+  ] as const;
+
+export const ProspectResearchDeliveryCostComponentSchema =
+  z.object({
+    id: IdentifierSchema,
+    kind:
+      z.enum(
+        PROSPECT_RESEARCH_COST_COMPONENT_KINDS
+      ),
+    label:
+      TextSchema.max(240),
+    amountUsd:
+      z.number()
+        .finite()
+        .nonnegative(),
+    accountingMethod:
+      z.enum(
+        PROSPECT_RESEARCH_COST_ACCOUNTING_METHODS
+      ),
+    sourceDescription:
+      TextSchema.max(2000),
+    sourceUrl:
+      z.string()
+        .url()
+        .nullable(),
+    sourceAsOfDate:
+      z.string().regex(
+        /^\d{4}-\d{2}-\d{2}$/
+      ),
+    calculationDetails:
+      TextSchema.max(4000)
+  }).strict();
+
+export const ProspectResearchDeliveryCostInputSchema =
+  z.object({
+    id: IdentifierSchema,
+    sampleId: IdentifierSchema,
+    targetId: IdentifierSchema,
+    attemptId: IdentifierSchema,
+    accountedBy:
+      TextSchema.max(240),
+    completenessStatement:
+      TextSchema.max(2000),
+    components:
+      z.array(
+        ProspectResearchDeliveryCostComponentSchema
+      ).min(2).max(32)
+  }).strict()
+    .superRefine(
+      (cost, context) => {
+        const componentIds =
+          cost.components.map(
+            (component) =>
+              component.id
+          );
+
+        if (
+          new Set(
+            componentIds
+          ).size !==
+            componentIds.length
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "components"
+            ],
+            message:
+              "delivery-cost component IDs must be unique"
+          });
+        }
+
+        if (
+          !cost.components.some(
+            (component) =>
+              component.kind ===
+                "MODEL_INFERENCE"
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "components"
+            ],
+            message:
+              "delivery-cost accounting requires an explicit MODEL_INFERENCE component"
+          });
+        }
+
+        if (
+          !cost.components.some(
+            (component) =>
+              component.kind ===
+                "BROWSER_PROVIDER"
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "components"
+            ],
+            message:
+              "delivery-cost accounting requires an explicit BROWSER_PROVIDER component"
+          });
+        }
+      }
+    );
+
+export const ProspectResearchDeliveryCostSchema =
+  ProspectResearchDeliveryCostInputSchema
+    .extend({
+      totalDeliveryCostUsd:
+        z.number()
+          .finite()
+          .nonnegative(),
+      recordedAt:
+        z.string().datetime({
+          offset: true
+        })
+    })
+    .strict();
+
 export const PROSPECT_RESEARCH_HUMAN_TIME_METHODS =
   [
     "STOPWATCH",
@@ -1235,6 +1395,9 @@ export const ProspectResearchSampleOutcomeSchema =
     targetId: IdentifierSchema,
     attemptId: IdentifierSchema,
     baselineId: IdentifierSchema,
+    costRecordId:
+      IdentifierSchema
+        .optional(),
     reviewRubricVersion:
       z.literal(
         PROSPECT_RESEARCH_REVIEW_RUBRIC_VERSION
@@ -1473,6 +1636,18 @@ export const ProspectResearchSampleOutcomeSchema =
       }
     );
 
+export type ProspectResearchDeliveryCostComponent =
+  z.infer<
+    typeof ProspectResearchDeliveryCostComponentSchema
+  >;
+export type ProspectResearchDeliveryCostInput =
+  z.infer<
+    typeof ProspectResearchDeliveryCostInputSchema
+  >;
+export type ProspectResearchDeliveryCost =
+  z.infer<
+    typeof ProspectResearchDeliveryCostSchema
+  >;
 export type ProspectResearchAstraHumanTime =
   z.infer<
     typeof ProspectResearchAstraHumanTimeSchema
