@@ -6,14 +6,18 @@ import { z } from "zod";
 
 import {
   ProspectResearchAstraHumanTimeSchema,
+  ProspectResearchDeliveryCostPlanSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   ResearchApprovalBatchSchema,
+  calculateProspectResearchDeliveryCost,
   requiredMaterialClaimAuditCount,
   sameApprovedResearchTarget,
   validateProspectResearchSampleOutcomeContext,
   type ProspectResearchAttempt,
+  type ProspectResearchDeliveryCostEvidence,
+  type ProspectResearchDeliveryCostPlan,
   type ProspectResearchHumanBaseline,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome,
@@ -118,6 +122,8 @@ export interface BuildGate13AcceptanceSampleInput {
   frozenBy: string;
   frozenAt: string;
   maxDeliveryCostUsdPerBrief: number;
+  deliveryCostPlan:
+    ProspectResearchDeliveryCostPlan;
   costCeilingRationale: string;
   humanBaselineDescription: string;
 }
@@ -173,10 +179,6 @@ const OutcomeReviewSchema =
       z.number()
         .int()
         .positive(),
-    deliveryCostUsd:
-      z.number()
-        .finite()
-        .nonnegative(),
     unauthorizedActions:
       z.number()
         .int()
@@ -193,6 +195,43 @@ export type Gate13OutcomeReview =
   z.infer<
     typeof OutcomeReviewSchema
   >;
+
+const Gate13RunSummaryCostSchema =
+  z.object({
+    runId:
+      z.string().trim().min(1),
+    timings:
+      z.object({
+        totalMs:
+          z.number()
+            .int()
+            .positive()
+      }).passthrough(),
+    modelUsage:
+      z.object({
+        promptTokens:
+          z.number()
+            .int()
+            .nonnegative(),
+        completionTokens:
+          z.number()
+            .int()
+            .nonnegative(),
+        reasoningTokens:
+          z.number()
+            .int()
+            .nonnegative(),
+        cachedInputTokens:
+          z.number()
+            .int()
+            .nonnegative(),
+        inferenceTimeMs:
+          z.number()
+            .finite()
+            .nonnegative()
+      }).strict()
+        .optional()
+  }).passthrough();
 
 function parseJson(
   text: string,
@@ -215,6 +254,18 @@ export function parseGate13Universe(
       parseJson(
         universeText,
         "Gate 13 universe"
+      )
+    );
+}
+
+export function parseGate13DeliveryCostPlan(
+  planText: string
+): ProspectResearchDeliveryCostPlan {
+  return ProspectResearchDeliveryCostPlanSchema
+    .parse(
+      parseJson(
+        planText,
+        "Gate 13 delivery cost plan"
       )
     );
 }
@@ -463,6 +514,8 @@ export function buildGate13AcceptanceSample(
           input
             .maxDeliveryCostUsdPerBrief
       },
+      deliveryCostPlan:
+        input.deliveryCostPlan,
       costCeilingRationale:
         input.costCeilingRationale,
       humanBaselineDescription:
@@ -551,12 +604,100 @@ function briefDisposition(
   return "accepted" as const;
 }
 
+function gate13AttemptRunId(
+  attempt:
+    ProspectResearchAttempt
+): string {
+  const runId =
+    attempt.status ===
+      "COMPLETED"
+      ? attempt.report.runId
+      : attempt.runId;
+
+  if (runId === null) {
+    throw new Error(
+      "Gate 13 measured outcome requires a durable run ID for cost accounting."
+    );
+  }
+
+  return runId;
+}
+
+export function buildGate13DeliveryCostEvidenceFromRunSummary(
+  sample:
+    ProspectResearchSample,
+  attempt:
+    ProspectResearchAttempt,
+  runSummaryText: string
+): ProspectResearchDeliveryCostEvidence {
+  const plan =
+    sample.deliveryCostPlan;
+
+  if (plan === undefined) {
+    throw new Error(
+      "Frozen sample does not contain a delivery cost plan."
+    );
+  }
+
+  const summary =
+    Gate13RunSummaryCostSchema
+      .parse(
+        parseJson(
+          runSummaryText,
+          "Gate 13 run summary"
+        )
+      );
+  const runId =
+    gate13AttemptRunId(
+      attempt
+    );
+
+  if (
+    summary.runId !==
+      runId
+  ) {
+    throw new Error(
+      "Gate 13 run summary does not match the durable research attempt."
+    );
+  }
+
+  return calculateProspectResearchDeliveryCost(
+    plan,
+    {
+      modelUsage:
+        summary.modelUsage ===
+          undefined
+          ? null
+          : {
+              promptTokens:
+                summary.modelUsage
+                  .promptTokens,
+              completionTokens:
+                summary.modelUsage
+                  .completionTokens,
+              reasoningTokens:
+                summary.modelUsage
+                  .reasoningTokens,
+              cachedInputTokens:
+                summary.modelUsage
+                  .cachedInputTokens
+            },
+      runDurationMs:
+        summary.timings
+          .totalMs
+    },
+    runId
+  );
+}
+
 export interface BuildGate13SampleOutcomeInput {
   sample: ProspectResearchSample;
   attempt: ProspectResearchAttempt;
   baseline:
     ProspectResearchHumanBaseline;
   review: Gate13OutcomeReview;
+  deliveryCostEvidence:
+    ProspectResearchDeliveryCostEvidence;
   reviewedAt: string;
 }
 
@@ -630,8 +771,12 @@ export function buildGate13SampleOutcome(
           input.review
             .endToEndDurationMs,
         deliveryCostUsd:
-          input.review
-            .deliveryCostUsd,
+          input
+            .deliveryCostEvidence
+            .totalUsd,
+        deliveryCostEvidence:
+          input
+            .deliveryCostEvidence,
         unauthorizedActions:
           input.review
             .unauthorizedActions,
