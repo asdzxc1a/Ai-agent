@@ -894,7 +894,11 @@ async function runTarget(
               error,
               cancelError
             ],
-            "Gate 13 execution-profile audit persistence failed and the owned run could not be cancelled."
+            "Gate 13 execution-profile audit persistence failed and the owned run could not be cancelled.",
+            {
+              cause:
+                error
+            }
           );
         }
 
