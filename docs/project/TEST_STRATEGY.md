@@ -272,6 +272,7 @@ Before the first measured sample:
 - persist approvals first, then distinguish `CALIBRATION` from `ACCEPTANCE` samples; calibration may contain at most 10 targets and is diagnostic-only;
 - the first Gate 13 acceptance uses the complete 43-equity IYT U.S. transportation snapshot dated 2026-09-17; source URL/date, methodology URL, declared count, exact candidate target IDs, and `COMPLETE_UNIVERSE` strategy are frozen before target enrichment;
 - the 43 acceptance approvals are persisted as one manifest-hash-bound batch; tests must prove mixed provenance is rejected and duplicate/storage failure rolls back the batch audit row plus every new target;
+- the operator approval path must derive all 43 approved target payloads from the exact canonical candidate-manifest bytes, compute the SHA-256 itself, remain mutation-free in preview mode, and reject persistence unless the manifest ID, exact SHA-256, and explicit all-43 authorization are confirmed;
 - acceptance is single-market and compares against the human researcher's normal tools; cross-market and scope-matched baselines are calibration-only;
 - durably freeze decision thresholds and a cost-ceiling rationale before results; the quality/time minimums cannot be weakened;
 - for acceptance targets, persist a measured human baseline as separate server-timestamped durable state before the Astra attempt is allowed to start; fixed-cap estimates are calibration-only;

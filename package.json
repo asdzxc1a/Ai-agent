@@ -10,6 +10,7 @@
   },
   "scripts": {
     "check:memory": "node scripts/check-project-memory.mjs",
+    "gate13:approval": "pnpm --filter @astra/gate13-operator build && node apps/gate13-operator/dist/cli.js",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",

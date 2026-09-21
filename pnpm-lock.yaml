@@ -48,6 +48,18 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  apps/gate13-operator:
+    dependencies:
+      '@astra/prospect-postgres':
+        specifier: workspace:*
+        version: link:../../packages/prospect-postgres
+      '@astra/prospect-research':
+        specifier: workspace:*
+        version: link:../../packages/prospect-research
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
   packages/agent-loop:
     dependencies:
       '@astra/agent-runtime':
