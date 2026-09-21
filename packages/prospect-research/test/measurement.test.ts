@@ -10,6 +10,7 @@ import {
   ProspectResearchAttemptSchema,
   ProspectResearchSampleOutcomeSchema,
   calculateProspectResearchDeliveryCost,
+  deriveProspectResearchRequestedFieldCoverage,
   ProspectResearchSampleSchema,
   evaluateProspectResearchSample,
   validateProspectResearchSampleOutcomeContext,
@@ -596,7 +597,28 @@ function completedAttempt(
         transformationOpportunities:
           [],
         buyingSignals: [],
-        unknowns: [],
+        unknowns: [
+          {
+            id:
+              "unknown." +
+              suffix +
+              ".opportunities",
+            field:
+              "transformationOpportunities",
+            reason:
+              "No transformation opportunity was supported by the fixture evidence."
+          },
+          {
+            id:
+              "unknown." +
+              suffix +
+              ".signals",
+            field:
+              "buyingSignals",
+            reason:
+              "No buying signal was supported by the fixture evidence."
+          }
+        ],
         evidence: [
           {
             id:
@@ -1116,6 +1138,114 @@ describe(
         ).toThrow(
           "differs from durable baseline truth"
         );
+      }
+    );
+
+    it(
+      "derives requested-field coverage from durable values or explicit unknowns",
+      () => {
+        const acceptance =
+          sample(
+            "ACCEPTANCE",
+            30
+          );
+        const addressed =
+          completedAttempt(1);
+        const full =
+          deriveProspectResearchRequestedFieldCoverage(
+            acceptance,
+            addressed
+          );
+
+        expect(
+          full.requestedFields
+        ).toEqual([
+          "companyName",
+          "companySummary",
+          "transformationOpportunities",
+          "buyingSignals"
+        ]);
+        expect(
+          full.coveredFields
+        ).toEqual([
+          "companyName",
+          "companySummary",
+          "transformationOpportunities",
+          "buyingSignals"
+        ]);
+
+        const incomplete =
+          ProspectResearchAttemptSchema
+            .parse({
+              ...addressed,
+              report: {
+                ...addressed.report,
+                unknowns: []
+              }
+            });
+        const partial =
+          deriveProspectResearchRequestedFieldCoverage(
+            acceptance,
+            incomplete
+          );
+
+        expect(
+          partial.coveredFields
+        ).toEqual([
+          "companyName",
+          "companySummary"
+        ]);
+
+        const durableBaseline =
+          baseline({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            recordedAt:
+              "2026-09-20T11:59:00.000Z"
+          });
+        const forgedFullCoverage =
+          outcome({
+            sampleId:
+              acceptance.id,
+            targetIndex: 1,
+            materialClaimsReviewed:
+              2,
+            baselineRecordedAt:
+              durableBaseline
+                .recordedAt,
+            baselineMinutes:
+              durableBaseline
+                .humanPreparationMinutes
+          });
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            incomplete,
+            durableBaseline,
+            forgedFullCoverage
+          )
+        ).toThrow(
+          "requested-field coverage must match the frozen field set and durable research attempt"
+        );
+
+        expect(() =>
+          validateProspectResearchSampleOutcomeContext(
+            acceptance,
+            incomplete,
+            durableBaseline,
+            {
+              ...forgedFullCoverage,
+              requestedFieldsCovered:
+                2,
+              requestedFieldsCoveredIds: [
+                "companyName",
+                "companySummary"
+              ]
+            }
+          )
+        ).not.toThrow();
       }
     );
 
