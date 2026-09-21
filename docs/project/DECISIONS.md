@@ -1120,3 +1120,35 @@ The acceptance cohort is a complete frozen universe. Partial success during appr
 
 If a future operator UI introduces signed approvals, the signature may extend this batch record; the atomic all-or-none authorization boundary remains.
 
+---
+
+## D-037 — Approval batches are self-verifying and operator-applied in two stages
+
+**Date:** 2026-09-21
+**Status:** Accepted
+
+**Decision**
+
+Gate 13 acceptance approval uses a two-stage operator surface:
+
+1. **preflight/build** reads the canonical frozen universe and verified candidate-enrichment manifest, validates exact 43/43 membership, computes SHA-256 over the exact manifest bytes, and emits a `ResearchApprovalBatch` without touching the database;
+2. **apply** requires an explicit execution flag plus confirmation of manifest SHA, batch ID, and target count, then persists the batch through the existing transactional repository and verifies the committed batch round-trips exactly.
+
+`ResearchApprovalBatch` itself carries the exact raw source-manifest bytes. Schema validation recomputes the manifest SHA, parses the strict candidate manifest, and proves every approved target is an exact derivation of its verified source row before persistence.
+
+**Why**
+
+PR #87 made approval atomic and stored a manifest hash, but a hash string alone did not cryptographically prove the approved target payload was derived from those manifest bytes. A caller could theoretically attach the right hash to altered target metadata. Operator hand-construction also created avoidable copy/paste risk across 43 targets.
+
+**Consequences**
+
+- the batch is self-contained audit evidence: raw manifest, computed hash, operator identity/time, and exact approved targets;
+- altered domain/start URL/company/ICP fields fail before repository persistence;
+- stale/tampered raw manifest bytes fail the SHA check;
+- normal CI runs the canonical approval preflight so manifest/universe drift is detected before operator use;
+- applying approval remains an explicit operator database action and is never triggered by CI or metadata enrichment;
+- approval candidate verification remains distinct from authorization.
+
+**Revisit when**
+
+Only if Gate 13 approval moves behind a dedicated authenticated operator UI/API that preserves equivalent manifest-byte binding, explicit confirmation, atomic persistence, and audit evidence.
