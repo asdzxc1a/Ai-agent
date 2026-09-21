@@ -395,7 +395,7 @@ Build:
 - record whether review was blind or unblinded and prefer blind review where practical;
 - for completed attempts, derive the required human-audit count from the durable observed evidence set and reject an outcome unless `materialClaimsReviewed` exactly equals that count; failed/not-produced attempts require zero;
 - freeze `gate13-brief-review-v1` before results and derive accepted/minor/major/rejected disposition from correction severity + unsupported-claim state rather than free reviewer labeling;
-- freeze a rationale-backed cost ceiling **and** versioned source-attributed cost plan before results; derive each attempt's model/browser/provider component costs from durable run usage + frozen rates (including explicit rounding/source dates), then record the full Astra-side human-time breakdown (target setup, evidence mapping/source audit, corrections/finalization, failure triage, other measured work), correction count/severity, unsupported material claims, requested-field coverage, duration, and complete delivery cost.
+- freeze a rationale-backed cost ceiling, versioned source-attributed cost plan, **and exact execution profile** before results; the live model name/base URL and Steel base URL must match that profile before research starts, then derive each attempt's model/browser/provider component costs from durable run usage + frozen rates (including explicit rounding/source dates), and record the full Astra-side human-time breakdown (target setup, evidence mapping/source audit, corrections/finalization, failure triage, other measured work), correction count/severity, unsupported material claims, requested-field coverage, duration, and complete delivery cost.
 
 Non-goals:
 
