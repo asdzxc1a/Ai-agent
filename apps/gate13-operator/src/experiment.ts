@@ -175,14 +175,6 @@ const OutcomeReviewSchema =
         .nonnegative(),
     astraHumanTime:
       ProspectResearchAstraHumanTimeSchema,
-    endToEndDurationMs:
-      z.number()
-        .int()
-        .positive(),
-    unauthorizedActions:
-      z.number()
-        .int()
-        .nonnegative(),
     notes:
       z.string()
         .trim()
@@ -200,13 +192,6 @@ const Gate13RunSummaryCostSchema =
   z.object({
     runId:
       z.string().trim().min(1),
-    timings:
-      z.object({
-        totalMs:
-          z.number()
-            .int()
-            .positive()
-      }).passthrough(),
     modelUsage:
       z.object({
         promptTokens:
@@ -651,6 +636,17 @@ export function buildGate13DeliveryCostEvidenceFromRunSummary(
     gate13AttemptRunId(
       attempt
     );
+  const runDurationMs =
+    attempt.runDurationMs;
+
+  if (
+    runDurationMs ===
+      undefined
+  ) {
+    throw new Error(
+      "Gate 13 delivery cost accounting requires server-derived run duration on the durable attempt."
+    );
+  }
 
   if (
     summary.runId !==
@@ -682,9 +678,7 @@ export function buildGate13DeliveryCostEvidenceFromRunSummary(
                 summary.modelUsage
                   .cachedInputTokens
             },
-      runDurationMs:
-        summary.timings
-          .totalMs
+      runDurationMs
     },
     runId
   );
@@ -707,6 +701,24 @@ export function buildGate13SampleOutcome(
 ): ProspectResearchSampleOutcome {
   const targetId =
     input.attempt.target.id;
+  const runDurationMs =
+    input.attempt
+      .runDurationMs;
+  const unauthorizedActions =
+    input.attempt
+      .unauthorizedActions;
+
+  if (
+    runDurationMs ===
+      undefined ||
+    unauthorizedActions ===
+      undefined
+  ) {
+    throw new Error(
+      "Gate 13 measured outcome requires server-derived run duration and action audit on the durable attempt."
+    );
+  }
+
   const outcome =
     ProspectResearchSampleOutcomeSchema
       .parse({
@@ -768,8 +780,7 @@ export function buildGate13SampleOutcome(
           input.review
             .astraHumanTime,
         endToEndDurationMs:
-          input.review
-            .endToEndDurationMs,
+          runDurationMs,
         deliveryCostUsd:
           input
             .deliveryCostEvidence
@@ -777,9 +788,7 @@ export function buildGate13SampleOutcome(
         deliveryCostEvidence:
           input
             .deliveryCostEvidence,
-        unauthorizedActions:
-          input.review
-            .unauthorizedActions,
+        unauthorizedActions,
         notes:
           input.review.notes
       });

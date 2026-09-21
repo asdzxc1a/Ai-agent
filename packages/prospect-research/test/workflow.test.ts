@@ -825,6 +825,14 @@ describe(
           attempt.status
         ).toBe("COMPLETED");
         expect(
+          attempt
+            .unauthorizedActions
+        ).toBe(0);
+        expect(
+          attempt
+            .runDurationMs
+        ).toBeGreaterThan(0);
+        expect(
           attempt.report
             .evidence[0]
             ?.captureReceipts[0]

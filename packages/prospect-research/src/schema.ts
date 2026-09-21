@@ -631,7 +631,17 @@ const AttemptBase = {
   createdAt:
     z.string().datetime({
       offset: true
-    })
+    }),
+  runDurationMs:
+    z.number()
+      .int()
+      .positive()
+      .optional(),
+  unauthorizedActions:
+    z.number()
+      .int()
+      .nonnegative()
+      .optional()
 };
 
 export const CompletedProspectResearchAttemptSchema =

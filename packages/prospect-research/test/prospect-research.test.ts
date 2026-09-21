@@ -513,7 +513,14 @@ function service(
     InMemoryProspectResearchRepository,
   artifacts:
     InMemoryArtifactStore,
-  run?: RunSnapshot
+  run?: RunSnapshot,
+  steps: Array<{
+    runId: string;
+    sequenceNumber: number;
+    kind: string;
+    payload: unknown;
+    createdAt: string;
+  }> = []
 ): ProspectResearchService {
   return new ProspectResearchService(
     repository,
@@ -528,6 +535,19 @@ function service(
               run
             )
           : undefined;
+      },
+      async listSteps(id) {
+        return steps
+          .filter(
+            (step) =>
+              step.runId === id
+          )
+          .map(
+            (step) =>
+              structuredClone(
+                step
+              )
+          );
       }
     }
   );
@@ -1180,7 +1200,30 @@ describe(
         service(
           repository,
           artifacts,
-          completedRun(result)
+          completedRun(result),
+          [
+            {
+              runId,
+              sequenceNumber: 1,
+              kind:
+                "NAVIGATE",
+              payload: {},
+              createdAt:
+                timestamp
+            },
+            {
+              runId,
+              sequenceNumber: 2,
+              kind:
+                "AGENT_LOOP_ACTION",
+              payload: {
+                action:
+                  "unexpected"
+              },
+              createdAt:
+                timestamp
+            }
+          ]
         );
 
       await research.approveTarget(
@@ -1202,6 +1245,10 @@ describe(
         id: runId,
         target: target(),
         createdAt: timestamp,
+        runDurationMs:
+          60_000,
+        unauthorizedActions:
+          1,
         status: "COMPLETED",
         report: {
           id: runId,
@@ -1723,6 +1770,10 @@ describe(
         id: "run.failed",
         target: target(),
         createdAt: timestamp,
+        runDurationMs:
+          60_000,
+        unauthorizedActions:
+          0,
         status: "FAILED",
         runId:
           "run.failed",

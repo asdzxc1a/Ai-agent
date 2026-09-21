@@ -1236,3 +1236,41 @@ PR #92 supplies measured model token evidence. Binding that usage and run durati
 **Revisit when**
 
 A later provider/billing integration may replace operator-frozen rate inputs with signed or API-fetched billing receipts. The evidence must still remain bound to the measured attempt and preserve historical pricing provenance.
+
+
+---
+
+## D-040 — Gate 13 duration and unauthorized-action counts are server-derived from durable runs
+
+**Date:** 2026-09-21
+**Status:** Accepted
+
+**Decision**
+
+For service-generated Gate 13 research attempts, Astra snapshots two run measurements from durable owned state:
+
+- `runDurationMs` — the terminal run `updatedAt - createdAt` timestamp delta;
+- `unauthorizedActions` — the count of durable `ACT` and `AGENT_LOOP_ACTION` run steps.
+
+The Gate 13 research policy is intentionally read-only and returns `COMPLETE` without calling `act()`. Therefore any durable owned action step in this workflow is unauthorized for the measured experiment.
+
+Acceptance reviewer input no longer supplies `endToEndDurationMs` or `unauthorizedActions`. The outcome builder derives both from the durable attempt, and repository context validation requires exact equality. Acceptance attempts without these server-derived measurements are rejected.
+
+Legacy/calibration attempt records may omit the new snapshots for compatibility, but they cannot satisfy Gate 13 acceptance context without them.
+
+**Why**
+
+A reviewer-entered duration/action count is weaker evidence than the run system already owns. The run repository has server timestamps and an ordered durable step audit. Using those sources removes two post-hoc degrees of freedom before the first live acceptance result exists.
+
+**Consequences**
+
+- end-to-end run duration is reproducible from durable run timestamps;
+- the no-unauthorized-action acceptance metric is tied to the owned action audit rather than reviewer assertion;
+- source-attributed browser-duration cost uses the same durable attempt duration;
+- an unexpected `ACT` / `AGENT_LOOP_ACTION` step is preserved as non-zero unauthorized-action evidence rather than silently normalized to zero;
+- this measurement proves the owned Astra action path only; network/sandbox/provider controls remain separate protections against behavior outside that action-step audit;
+- the v7 cohort, review rubric, thresholds, and denominator remain unchanged.
+
+**Revisit when**
+
+If a future research workflow intentionally permits approved browser actions, replace the simple action-step count with a durable action-authorization ledger that distinguishes authorized from unauthorized effects.

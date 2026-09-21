@@ -5,7 +5,8 @@ import type {
 } from "@astra/artifact-store";
 import type {
   RunCompletionVerifier,
-  RunService
+  RunRepository,
+  RunStepRecord
 } from "@astra/run-engine";
 
 import {
@@ -43,15 +44,16 @@ type ResearchRunSnapshot =
   NonNullable<
     Awaited<
       ReturnType<
-        RunService["getRun"]
+        RunRepository["getRun"]
       >
     >
   >;
 
 export type ProspectResearchRunReader =
   Pick<
-    RunService,
-    "getRun"
+    RunRepository,
+    "getRun" |
+    "listSteps"
   >;
 
 export class ProspectResearchValidationError
@@ -198,6 +200,60 @@ export class ProspectResearchService {
     }
 
     return run;
+  }
+
+  async #runMeasurements(
+    run:
+      ResearchRunSnapshot
+  ): Promise<{
+    runDurationMs: number;
+    unauthorizedActions: number;
+  }> {
+    const startedAt =
+      Date.parse(
+        run.createdAt
+      );
+    const finishedAt =
+      Date.parse(
+        run.updatedAt
+      );
+
+    if (
+      !Number.isFinite(
+        startedAt
+      ) ||
+      !Number.isFinite(
+        finishedAt
+      ) ||
+      finishedAt <=
+        startedAt
+    ) {
+      throw new ProspectResearchValidationError([
+        "research run timestamps cannot produce a valid server-owned duration"
+      ]);
+    }
+
+    const steps:
+      RunStepRecord[] =
+      await this.#runs
+        .listSteps(
+          run.id
+        );
+    const unauthorizedActions =
+      steps.filter(
+        (step) =>
+          step.kind ===
+            "ACT" ||
+          step.kind ===
+            "AGENT_LOOP_ACTION"
+      ).length;
+
+    return {
+      runDurationMs:
+        finishedAt -
+        startedAt,
+      unauthorizedActions
+    };
   }
 
   async #assertAttemptAvailable(
@@ -851,6 +907,10 @@ export class ProspectResearchService {
       );
     }
 
+    const measurements =
+      await this.#runMeasurements(
+        run
+      );
     let attempt:
       CompletedProspectResearchAttempt;
 
@@ -864,6 +924,12 @@ export class ProspectResearchService {
             run.createdAt,
           researchedAt:
             run.updatedAt,
+          runDurationMs:
+            measurements
+              .runDurationMs,
+          unauthorizedActions:
+            measurements
+              .unauthorizedActions,
           capturedAtByEvidenceId,
           artifactIdsByEvidenceId,
           captureReceiptsByEvidenceId,
@@ -938,6 +1004,10 @@ export class ProspectResearchService {
       ]);
     }
 
+    const measurements =
+      await this.#runMeasurements(
+        run
+      );
     const attempt =
       FailedProspectResearchAttemptSchema
         .parse({
@@ -948,6 +1018,12 @@ export class ProspectResearchService {
             run.createdAt,
           createdAt:
             run.updatedAt,
+          runDurationMs:
+            measurements
+              .runDurationMs,
+          unauthorizedActions:
+            measurements
+              .unauthorizedActions,
           status: "FAILED",
           runId:
             run.id,
