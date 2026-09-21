@@ -85,7 +85,8 @@ export function gate13ArtifactDir():
   );
 }
 
-export async function withGate13Database<T>(
+async function withGate13DatabaseMode<T>(
+  migrate: boolean,
   operation:
     (
       context:
@@ -102,12 +103,14 @@ export async function withGate13Database<T>(
     });
 
   try {
-    await runProspectPostgresMigrations(
-      pool
-    );
-    await runPostgresMigrations(
-      pool
-    );
+    if (migrate) {
+      await runProspectPostgresMigrations(
+        pool
+      );
+      await runPostgresMigrations(
+        pool
+      );
+    }
 
     return await operation({
       repository:
@@ -122,6 +125,32 @@ export async function withGate13Database<T>(
   } finally {
     await pool.end();
   }
+}
+
+export async function withGate13Database<T>(
+  operation:
+    (
+      context:
+        Gate13DatabaseContext
+    ) => Promise<T>
+): Promise<T> {
+  return withGate13DatabaseMode(
+    true,
+    operation
+  );
+}
+
+export async function withGate13DatabaseReadOnly<T>(
+  operation:
+    (
+      context:
+        Gate13DatabaseContext
+    ) => Promise<T>
+): Promise<T> {
+  return withGate13DatabaseMode(
+    false,
+    operation
+  );
 }
 
 export async function withGate13ReviewContext<T>(
