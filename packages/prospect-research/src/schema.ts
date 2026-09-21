@@ -2285,6 +2285,10 @@ export type ProspectResearchHumanBaseline =
   z.infer<
     typeof ProspectResearchHumanBaselineSchema
   >;
+export type ProspectResearchHumanComparison =
+  z.infer<
+    typeof ProspectResearchHumanComparisonSchema
+  >;
 export type ProspectResearchSelectionUniverse =
   z.infer<
     typeof ProspectResearchSelectionUniverseSchema
