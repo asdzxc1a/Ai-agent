@@ -134,7 +134,7 @@ function usage(): string {
     "    --target-id <id> --run-id <id> [--code <failure-code>]",
     "",
     "Outcome/evaluation:",
-    "  GATE13_DATABASE_URL=... pnpm gate13:operator -- record-outcome \\",
+    "  GATE13_DATABASE_URL=... GATE13_ARTIFACT_DIR=... pnpm gate13:operator -- record-outcome \\",
     "    --sample-id <id> --target-id <id> --attempt-id <id> --review-file <path>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- sample-status --sample-id <id>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- evaluate --sample-id <id>",
