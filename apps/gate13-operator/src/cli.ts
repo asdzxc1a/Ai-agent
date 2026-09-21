@@ -704,6 +704,15 @@ async function acceptanceReadiness(
         if (
           sample === undefined
         ) {
+          if (
+            approvalBatchId ===
+              undefined
+          ) {
+            throw new Error(
+              "Gate 13 readiness requires --approval-batch-id until the acceptance sample is frozen."
+            );
+          }
+
           return {
             sample:
               undefined,
