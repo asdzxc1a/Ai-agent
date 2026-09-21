@@ -411,6 +411,15 @@ describe(
               targetCount: 43,
               baselineCount: 1,
               outcomeCount: 0
+            },
+            {
+              approvalBatchPresent:
+                false,
+              sampleFrozen:
+                true,
+              targetCount: 43,
+              baselineCount: 0,
+              outcomeCount: 0
             }
           ]
         ) {
