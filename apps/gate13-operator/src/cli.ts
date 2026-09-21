@@ -151,6 +151,7 @@ function usage(): string {
     "  pnpm gate13:operator -- artifacts --run-id <id>",
     "  GATE13_ARTIFACT_DIR=... pnpm gate13:operator -- run-usage --run-id <id>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- run-status --run-id <id>",
+    "  GATE13_DATABASE_URL=... pnpm gate13:operator -- release-orphan-attempt-reservation --sample-id <id> --target-id <id> --run-id <id>",
     "",
     "Attempt review/persistence:",
     "  GATE13_DATABASE_URL=... GATE13_ARTIFACT_DIR=... pnpm gate13:operator -- review-completed \\",
@@ -1657,6 +1658,90 @@ async function runStatus(
   });
 }
 
+async function releaseOrphanAttemptReservation(
+  args: string[]
+): Promise<void> {
+  const parsed =
+    parseOptions(
+      args,
+      [
+        "--sample-id",
+        "--target-id",
+        "--run-id"
+      ]
+    );
+  const sampleId =
+    requiredOption(
+      parsed,
+      "--sample-id"
+    );
+  const targetId =
+    requiredOption(
+      parsed,
+      "--target-id"
+    );
+  const runId =
+    requiredOption(
+      parsed,
+      "--run-id"
+    );
+
+  await withGate13Database(
+    async (
+      context
+    ) => {
+      const reservation =
+        await context.repository
+          .getAcceptanceAttemptReservation(
+            sampleId,
+            targetId
+          );
+
+      if (
+        reservation ===
+          undefined ||
+        reservation.runId !==
+          runId
+      ) {
+        throw new Error(
+          "Gate 13 orphan-reservation release requires the exact durable reservation."
+        );
+      }
+
+      const run =
+        await context.runRepository
+          .getRun(
+            runId
+          );
+
+      if (
+        run !== undefined
+      ) {
+        throw new Error(
+          "Gate 13 measured-attempt reservation cannot be released because its durable run exists."
+        );
+      }
+
+      await context.repository
+        .releaseAcceptanceAttemptReservation(
+          sampleId,
+          targetId,
+          runId
+        );
+    }
+  );
+
+  print({
+    action:
+      "ORPHAN_ATTEMPT_RESERVATION_RELEASED",
+    sampleId,
+    targetId,
+    runId,
+    note:
+      "Reservation release is recovery for a pre-run creation failure only. No durable run existed for this ID."
+  });
+}
+
 async function reviewCompleted(
   args: string[]
 ): Promise<void> {
@@ -2282,6 +2367,11 @@ async function main():
       return;
     case "run-status":
       await runStatus(
+        args
+      );
+      return;
+    case "release-orphan-attempt-reservation":
+      await releaseOrphanAttemptReservation(
         args
       );
       return;
