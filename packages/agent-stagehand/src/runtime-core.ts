@@ -216,6 +216,29 @@ async function installNetworkPolicy(
   }
 }
 
+function nonnegativeUsageMetric(
+  value: number,
+  label: string,
+  integer: boolean
+): number {
+  if (
+    !Number.isFinite(value) ||
+    value < 0 ||
+    (
+      integer &&
+      !Number.isInteger(value)
+    )
+  ) {
+    throw new Error(
+      "Stagehand " +
+        label +
+        " usage metric is invalid."
+    );
+  }
+
+  return value;
+}
+
 function httpOrigin(
   value: string
 ): string | undefined {
@@ -512,15 +535,35 @@ class StagehandAgentSession implements AgentSession {
 
     return {
       promptTokens:
-        metrics.totalPromptTokens,
+        nonnegativeUsageMetric(
+          metrics.totalPromptTokens,
+          "totalPromptTokens",
+          true
+        ),
       completionTokens:
-        metrics.totalCompletionTokens,
+        nonnegativeUsageMetric(
+          metrics.totalCompletionTokens,
+          "totalCompletionTokens",
+          true
+        ),
       reasoningTokens:
-        metrics.totalReasoningTokens,
+        nonnegativeUsageMetric(
+          metrics.totalReasoningTokens,
+          "totalReasoningTokens",
+          true
+        ),
       cachedInputTokens:
-        metrics.totalCachedInputTokens,
+        nonnegativeUsageMetric(
+          metrics.totalCachedInputTokens,
+          "totalCachedInputTokens",
+          true
+        ),
       inferenceTimeMs:
-        metrics.totalInferenceTimeMs
+        nonnegativeUsageMetric(
+          metrics.totalInferenceTimeMs,
+          "totalInferenceTimeMs",
+          false
+        )
     };
   }
 
