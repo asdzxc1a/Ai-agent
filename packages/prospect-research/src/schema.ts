@@ -782,7 +782,15 @@ export const ProspectResearchExecutionProfileSchema =
         "STEEL"
       ),
     browserBaseUrl:
-      ProspectResearchExecutionEndpointSchema
+      ProspectResearchExecutionEndpointSchema,
+    browserExpectedImagePin:
+      z.string().regex(
+        /^ghcr\.io\/steel-dev\/steel-browser@sha256:[a-f0-9]{64}$/
+      ),
+    browserIdentityEvidence:
+      z.literal(
+        "EXPECTED_IMAGE_PIN_ONLY"
+      )
   }).strict();
 
 export const PROSPECT_RESEARCH_COST_CATEGORIES =
