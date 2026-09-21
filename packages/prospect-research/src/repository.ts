@@ -443,6 +443,27 @@ export class InMemoryProspectResearchRepository
 
     if (
       [
+        ...this.#attempts
+          .values()
+      ].some(
+        (attempt) =>
+          attempt.target.id ===
+            parsed.targetId &&
+          Date.parse(
+            attempt.startedAt
+          ) >=
+            Date.parse(
+              sample.frozenAt
+            )
+      )
+    ) {
+      throw new Error(
+        "Gate 13 acceptance target already has an unreserved post-freeze research attempt."
+      );
+    }
+
+    if (
+      [
         ...this.#attemptReservations
           .values()
       ].some(
@@ -580,18 +601,44 @@ export class InMemoryProspectResearchRepository
       );
     }
 
+    const applicableAcceptanceSamples =
+      [
+        ...this.#samples.values()
+      ].filter(
+        (sample) =>
+          sample.purpose ===
+            "ACCEPTANCE" &&
+          Date.parse(
+            sample.frozenAt
+          ) <=
+            Date.parse(
+              parsed.startedAt
+            ) &&
+          sample.targets.some(
+            (target) =>
+              target.id ===
+                parsed.target.id
+          )
+      );
     const acceptanceReservations =
       [
         ...this.#attemptReservations
           .values()
       ].filter(
         (reservation) =>
-          reservation.targetId ===
-            parsed.target.id
+          applicableAcceptanceSamples
+            .some(
+              (sample) =>
+                reservation.sampleId ===
+                  sample.id &&
+                reservation.targetId ===
+                  parsed.target.id
+            )
       );
 
     if (
-      acceptanceReservations.length >
+      applicableAcceptanceSamples
+        .length >
         0 &&
       !acceptanceReservations.some(
         (reservation) =>
@@ -600,7 +647,7 @@ export class InMemoryProspectResearchRepository
       )
     ) {
       throw new Error(
-        "Research attempt does not match the reserved Gate 13 acceptance run."
+        "Gate 13 acceptance-era research attempt requires the exact reserved measured run."
       );
     }
 
