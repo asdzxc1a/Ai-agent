@@ -225,7 +225,7 @@ export class ProspectResearchService {
       !Number.isFinite(
         finishedAt
       ) ||
-      finishedAt <
+      finishedAt <=
         startedAt
     ) {
       throw new ProspectResearchValidationError([
