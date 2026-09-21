@@ -9,6 +9,7 @@ import { z } from "zod";
 import type {
   AgentAction,
   AgentActionResult,
+  AgentModelUsageSnapshot,
   AgentOperationOptions,
   AgentPageEvidenceSnapshot,
   AgentRuntime,
@@ -213,6 +214,29 @@ async function installNetworkPolicy(
       originalHandler;
     throw error;
   }
+}
+
+function nonnegativeUsageMetric(
+  value: number,
+  label: string,
+  integer: boolean
+): number {
+  if (
+    !Number.isFinite(value) ||
+    value < 0 ||
+    (
+      integer &&
+      !Number.isInteger(value)
+    )
+  ) {
+    throw new Error(
+      "Stagehand " +
+        label +
+        " usage metric is invalid."
+    );
+  }
+
+  return value;
 }
 
 function httpOrigin(
@@ -502,6 +526,45 @@ class StagehandAgentSession implements AgentSession {
       },
       options.signal
     );
+  }
+
+  public async getModelUsage():
+    Promise<AgentModelUsageSnapshot> {
+    const metrics =
+      await this.#stagehand.metrics;
+
+    return {
+      promptTokens:
+        nonnegativeUsageMetric(
+          metrics.totalPromptTokens,
+          "totalPromptTokens",
+          true
+        ),
+      completionTokens:
+        nonnegativeUsageMetric(
+          metrics.totalCompletionTokens,
+          "totalCompletionTokens",
+          true
+        ),
+      reasoningTokens:
+        nonnegativeUsageMetric(
+          metrics.totalReasoningTokens,
+          "totalReasoningTokens",
+          true
+        ),
+      cachedInputTokens:
+        nonnegativeUsageMetric(
+          metrics.totalCachedInputTokens,
+          "totalCachedInputTokens",
+          true
+        ),
+      inferenceTimeMs:
+        nonnegativeUsageMetric(
+          metrics.totalInferenceTimeMs,
+          "totalInferenceTimeMs",
+          false
+        )
+    };
   }
 
   public close(): Promise<void> {

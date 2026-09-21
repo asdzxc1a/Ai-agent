@@ -6,6 +6,14 @@ const SENSITIVE_KEY =
 const SENSITIVE_URL_KEY =
   /(password|passphrase|secret|token|access[_-]?token|api[_-]?key|authorization|bearer|cookie|set[_-]?cookie|private[_-]?key|credential|signature|sig)/i;
 
+const SAFE_NUMERIC_USAGE_KEYS =
+  new Set([
+    "promptTokens",
+    "completionTokens",
+    "reasoningTokens",
+    "cachedInputTokens"
+  ]);
+
 function redactUrl(value: string): string {
   let url: URL;
 
@@ -87,9 +95,27 @@ export function redactArtifactValue(
   const result: Record<string, unknown> = {};
 
   for (const [key, nested] of Object.entries(source)) {
-    result[key] = SENSITIVE_KEY.test(key)
-      ? REDACTED
-      : redactArtifactValue(nested);
+    const safeNumericUsage =
+      SAFE_NUMERIC_USAGE_KEYS.has(
+        key
+      ) &&
+      typeof nested ===
+        "number" &&
+      Number.isFinite(
+        nested
+      ) &&
+      nested >= 0;
+
+    result[key] =
+      safeNumericUsage
+        ? nested
+        : SENSITIVE_KEY.test(
+            key
+          )
+          ? REDACTED
+          : redactArtifactValue(
+              nested
+            );
   }
 
   return result;

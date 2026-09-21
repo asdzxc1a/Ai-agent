@@ -295,8 +295,10 @@ test("does not request browser diagnostics when artifact collection is disabled"
 
 test("configured artifact store captures successful lifecycle evidence", async () => {
   const artifactStore = new InMemoryArtifactStore();
+  const repository =
+    new InMemoryRunRepository();
   const engine = new RunEngine({
-    repository: new InMemoryRunRepository(),
+    repository,
     browserRuntime: new EvidenceBrowserRuntime(),
     agentRuntime: {
       async openSession() {
@@ -338,6 +340,15 @@ test("configured artifact store captures successful lifecycle evidence", async (
                 "Fixture evidence",
               text:
                 "Visible page evidence that should only be hashed."
+            };
+          },
+          async getModelUsage() {
+            return {
+              promptTokens: 120,
+              completionTokens: 30,
+              reasoningTokens: 5,
+              cachedInputTokens: 40,
+              inferenceTimeMs: 275
             };
           },
           async close() {}
@@ -451,6 +462,40 @@ test("configured artifact store captures successful lifecycle evidence", async (
   expect(summaryText).toContain("Safe button");
   expect(summaryText).toContain("xpath=//button");
   expect(summaryText).toContain("click");
+  expect(
+    JSON.parse(
+      summaryText
+    )
+  ).toMatchObject({
+    modelUsage: {
+      promptTokens: 120,
+      completionTokens: 30,
+      reasoningTokens: 5,
+      cachedInputTokens: 40,
+      inferenceTimeMs: 275
+    }
+  });
+
+  const usageStep =
+    (
+      await repository.listSteps(
+        started.id
+      )
+    ).find(
+      (step) =>
+        step.kind ===
+          "AGENT_MODEL_USAGE"
+    );
+
+  expect(
+    usageStep?.payload
+  ).toEqual({
+    promptTokens: 120,
+    completionTokens: 30,
+    reasoningTokens: 5,
+    cachedInputTokens: 40,
+    inferenceTimeMs: 275
+  });
   expect(summaryText).not.toContain(
     "plain-success-argument"
   );
