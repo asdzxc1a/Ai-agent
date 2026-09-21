@@ -16,11 +16,15 @@
     "test:steel": "vitest run --config vitest.steel.config.ts",
     "test:stagehand": "vitest run --config vitest.stagehand.config.ts",
     "build": "pnpm --recursive --if-present build",
-    "check": "pnpm check:memory && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm check:memory && pnpm check:gate13-approval && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "test:api-browser": "vitest run --config vitest.api-browser.config.ts",
     "test:postgres": "vitest run --config vitest.postgres.config.ts",
     "test:api-restart": "vitest run --config vitest.api-restart.config.ts",
-    "test:api-sse": "vitest run --config vitest.api-sse.config.ts"
+    "test:api-sse": "vitest run --config vitest.api-sse.config.ts",
+    "check:gate13-approval": "node scripts/gate13-approval-preflight.mjs",
+    "gate13:approval-preflight": "node scripts/gate13-approval-preflight.mjs",
+    "gate13:approval-batch": "node scripts/gate13-approval-preflight.mjs --build-batch",
+    "gate13:approval-apply": "pnpm --filter @astra/prospect-research build && pnpm --filter @astra/prospect-postgres build && node scripts/gate13-apply-approval-batch.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
