@@ -14,6 +14,7 @@ import {
   ResearchApprovalBatchSchema,
   FailedProspectResearchAttemptSchema,
   ProspectResearchAttemptReservationInputSchema,
+  ProspectResearchModelUsageSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
@@ -25,6 +26,7 @@ import {
   type ProspectResearchAttemptReservation,
   type ProspectResearchCaptureReceipt,
   type ProspectResearchHumanBaseline,
+  type ProspectResearchModelUsage,
   type ProspectResearchSample,
   type ProspectResearchSampleOutcome
 } from "./schema.js";
@@ -210,6 +212,8 @@ export class ProspectResearchService {
   ): Promise<{
     runDurationMs: number;
     unauthorizedActions: number;
+    modelUsage?:
+      ProspectResearchModelUsage;
   }> {
     const startedAt =
       Date.parse(
@@ -249,12 +253,55 @@ export class ProspectResearchService {
           step.kind ===
             "AGENT_LOOP_ACTION"
       ).length;
+    const modelUsageSteps =
+      steps.filter(
+        (step) =>
+          step.kind ===
+            "AGENT_MODEL_USAGE"
+      );
+
+    if (
+      modelUsageSteps.length >
+        1
+    ) {
+      throw new ProspectResearchValidationError([
+        "research run contains multiple durable model-usage steps"
+      ]);
+    }
+
+    let modelUsage:
+      ProspectResearchModelUsage |
+      undefined;
+
+    if (
+      modelUsageSteps.length ===
+        1
+    ) {
+      try {
+        modelUsage =
+          ProspectResearchModelUsageSchema
+            .parse(
+              modelUsageSteps[0]!
+                .payload
+            );
+      } catch {
+        throw new ProspectResearchValidationError([
+          "research run contains invalid durable model-usage evidence"
+        ]);
+      }
+    }
 
     return {
       runDurationMs:
         finishedAt -
         startedAt,
-      unauthorizedActions
+      unauthorizedActions,
+      ...(modelUsage ===
+        undefined
+        ? {}
+        : {
+            modelUsage
+          })
     };
   }
 
@@ -1004,6 +1051,15 @@ export class ProspectResearchService {
           unauthorizedActions:
             measurements
               .unauthorizedActions,
+          ...(measurements
+            .modelUsage ===
+              undefined
+            ? {}
+            : {
+                modelUsage:
+                  measurements
+                    .modelUsage
+              }),
           capturedAtByEvidenceId,
           artifactIdsByEvidenceId,
           captureReceiptsByEvidenceId,
@@ -1098,6 +1154,15 @@ export class ProspectResearchService {
           unauthorizedActions:
             measurements
               .unauthorizedActions,
+          ...(measurements
+            .modelUsage ===
+              undefined
+            ? {}
+            : {
+                modelUsage:
+                  measurements
+                    .modelUsage
+              }),
           status: "FAILED",
           runId:
             run.id,
