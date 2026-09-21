@@ -436,6 +436,16 @@ function completedFieldCovered(
           0
       );
   }
+
+  const unsupported:
+    never = field;
+
+  throw new Error(
+    "Unsupported requested research field: " +
+      String(
+        unsupported
+      )
+  );
 }
 
 export function deriveProspectResearchRequestedFieldCoverage(
