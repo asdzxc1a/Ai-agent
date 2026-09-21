@@ -1,7 +1,14 @@
 import {
+  ProspectResearchCostMeasurementsSchema,
+  ProspectResearchDeliveryCostEvidenceSchema,
+  ProspectResearchDeliveryCostPlanSchema,
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   type ProspectResearchAstraHumanTime,
+  type ProspectResearchCostMeasurements,
+  type ProspectResearchDeliveryCostEvidence,
+  type ProspectResearchDeliveryCostPlan,
+  type ProspectResearchDeliveryCostRate,
   type ProspectResearchAttempt,
   type ProspectResearchHumanBaseline,
   type ProspectResearchSample,
@@ -81,6 +88,184 @@ export function totalAstraHumanPreparationMinutes(
   );
 }
 
+
+function attemptRunId(
+  attempt:
+    ProspectResearchAttempt
+): string | null {
+  return attempt.status ===
+    "COMPLETED"
+    ? attempt.report.runId
+    : attempt.runId;
+}
+
+function costMeterQuantity(
+  rate:
+    ProspectResearchDeliveryCostRate,
+  measurements:
+    ProspectResearchCostMeasurements
+): number {
+  switch (rate.meter) {
+    case "FIXED_PER_RUN":
+      return 1;
+    case "RUN_DURATION_MS":
+      return measurements
+        .runDurationMs;
+    case "PROMPT_TOKENS":
+    case "COMPLETION_TOKENS":
+    case "REASONING_TOKENS":
+    case "CACHED_INPUT_TOKENS": {
+      const usage =
+        measurements.modelUsage;
+
+      if (usage === null) {
+        throw new Error(
+          "delivery cost plan requires model usage that was not captured: " +
+            rate.meter
+        );
+      }
+
+      switch (rate.meter) {
+        case "PROMPT_TOKENS":
+          return usage
+            .promptTokens;
+        case "COMPLETION_TOKENS":
+          return usage
+            .completionTokens;
+        case "REASONING_TOKENS":
+          return usage
+            .reasoningTokens;
+        case "CACHED_INPUT_TOKENS":
+          return usage
+            .cachedInputTokens;
+      }
+    }
+  }
+}
+
+function billedUnits(
+  quantity: number,
+  rate:
+    ProspectResearchDeliveryCostRate
+): number {
+  const raw =
+    quantity /
+    rate.unitsPerBillingUnit;
+
+  return rate.rounding ===
+    "CEIL"
+    ? Math.ceil(raw)
+    : raw;
+}
+
+export function calculateProspectResearchDeliveryCost(
+  planInput:
+    ProspectResearchDeliveryCostPlan,
+  measurementsInput:
+    ProspectResearchCostMeasurements,
+  runId: string
+): ProspectResearchDeliveryCostEvidence {
+  const plan =
+    ProspectResearchDeliveryCostPlanSchema
+      .parse(planInput);
+  const measurements =
+    ProspectResearchCostMeasurementsSchema
+      .parse(
+        measurementsInput
+      );
+  const components =
+    plan.rates.map(
+      (rate) => {
+        const measuredQuantity =
+          costMeterQuantity(
+            rate,
+            measurements
+          );
+        const units =
+          billedUnits(
+            measuredQuantity,
+            rate
+          );
+
+        return {
+          rateId:
+            rate.id,
+          category:
+            rate.category,
+          label:
+            rate.label,
+          meter:
+            rate.meter,
+          unitsPerBillingUnit:
+            rate.unitsPerBillingUnit,
+          usdPerBillingUnit:
+            rate.usdPerBillingUnit,
+          rounding:
+            rate.rounding,
+          sourceDescription:
+            rate.sourceDescription,
+          sourceUrl:
+            rate.sourceUrl,
+          sourceAsOfDate:
+            rate.sourceAsOfDate,
+          measuredQuantity,
+          billedUnits:
+            units,
+          amountUsd:
+            units *
+            rate.usdPerBillingUnit
+        };
+      }
+    );
+  const totalUsd =
+    components.reduce(
+      (sum, component) =>
+        sum +
+        component.amountUsd,
+      0
+    );
+
+  return ProspectResearchDeliveryCostEvidenceSchema
+    .parse({
+      version:
+        plan.version,
+      runId,
+      components,
+      totalUsd
+    });
+}
+
+function sameCostRateSnapshot(
+  rate:
+    ProspectResearchDeliveryCostRate,
+  component:
+    ProspectResearchDeliveryCostEvidence[
+      "components"
+    ][number]
+): boolean {
+  return (
+    rate.id ===
+      component.rateId &&
+    rate.category ===
+      component.category &&
+    rate.label ===
+      component.label &&
+    rate.meter ===
+      component.meter &&
+    rate.unitsPerBillingUnit ===
+      component.unitsPerBillingUnit &&
+    rate.usdPerBillingUnit ===
+      component.usdPerBillingUnit &&
+    rate.rounding ===
+      component.rounding &&
+    rate.sourceDescription ===
+      component.sourceDescription &&
+    rate.sourceUrl ===
+      component.sourceUrl &&
+    rate.sourceAsOfDate ===
+      component.sourceAsOfDate
+  );
+}
 
 export function requiredMaterialClaimAuditCount(
   attempt:
@@ -211,6 +396,128 @@ export function validateProspectResearchSampleOutcomeContext(
 
   if (
     sample.purpose ===
+      "ACCEPTANCE"
+  ) {
+    const plan =
+      sample.deliveryCostPlan;
+    const evidence =
+      outcome.deliveryCostEvidence;
+    const runId =
+      attemptRunId(
+        attempt
+      );
+
+    if (
+      plan === undefined ||
+      evidence === undefined
+    ) {
+      throw new Error(
+        "Gate 13 acceptance outcomes require frozen, source-attributed delivery cost evidence."
+      );
+    }
+
+    if (
+      runId === null ||
+      evidence.runId !==
+        runId
+    ) {
+      throw new Error(
+        "Gate 13 delivery cost evidence must reference the durable research run."
+      );
+    }
+
+    if (
+      evidence.version !==
+        plan.version ||
+      evidence.components.length !==
+        plan.rates.length ||
+      plan.rates.some(
+        (rate) => {
+          const component =
+            evidence.components
+              .find(
+                (candidate) =>
+                  candidate.rateId ===
+                  rate.id
+              );
+
+          return (
+            component ===
+              undefined ||
+            !sameCostRateSnapshot(
+              rate,
+              component
+            )
+          );
+        }
+      )
+    ) {
+      throw new Error(
+        "Gate 13 delivery cost evidence differs from the frozen cost plan."
+      );
+    }
+
+    for (
+      const component of
+      evidence.components
+    ) {
+      const rate =
+        plan.rates.find(
+          (candidate) =>
+            candidate.id ===
+            component.rateId
+        );
+
+      if (rate === undefined) {
+        throw new Error(
+          "Gate 13 delivery cost evidence contains an unknown frozen rate."
+        );
+      }
+
+      const expectedUnits =
+        billedUnits(
+          component
+            .measuredQuantity,
+          rate
+        );
+      const expectedAmount =
+        expectedUnits *
+        rate.usdPerBillingUnit;
+
+      if (
+        Math.abs(
+          expectedUnits -
+          component.billedUnits
+        ) >
+          1e-9 ||
+        Math.abs(
+          expectedAmount -
+          component.amountUsd
+        ) >
+          1e-9
+      ) {
+        throw new Error(
+          "Gate 13 delivery cost component does not match its frozen rate calculation: " +
+            component.rateId
+        );
+      }
+    }
+
+    if (
+      Math.abs(
+        outcome.deliveryCostUsd -
+        evidence.totalUsd
+      ) >
+        1e-9
+    ) {
+      throw new Error(
+        "Gate 13 delivery cost total differs from source-attributed cost evidence."
+      );
+    }
+  }
+
+  if (
+    sample.purpose ===
       "ACCEPTANCE" &&
     baseline.source !==
       "MEASURED_HUMAN"
@@ -293,8 +600,17 @@ export function evaluateProspectResearchSample(
     );
   }
 
+  const costEvidenceComplete =
+    sample.purpose !==
+      "ACCEPTANCE" ||
+    outcomes.every(
+      (outcome) =>
+        outcome.deliveryCostEvidence !==
+          undefined
+    );
   const complete =
     failures.length === 0 &&
+    costEvidenceComplete &&
     outcomes.length ===
       sample.targets.length &&
     sample.targets.every(
