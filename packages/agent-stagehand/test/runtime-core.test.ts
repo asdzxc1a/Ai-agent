@@ -435,3 +435,102 @@ test(
   }
 );
 
+
+
+test(
+  "maps Stagehand metrics into owned model-usage evidence",
+  async () => {
+    const page = {
+      url() {
+        return "https://example.com/";
+      }
+    };
+    const stagehand = {
+      init:
+        vi.fn(
+          async () => undefined
+        ),
+      close:
+        vi.fn(
+          async () => undefined
+        ),
+      metrics:
+        Promise.resolve({
+          actPromptTokens: 1,
+          actCompletionTokens: 2,
+          actReasoningTokens: 3,
+          actCachedInputTokens: 4,
+          actInferenceTimeMs: 5,
+          extractPromptTokens: 10,
+          extractCompletionTokens: 20,
+          extractReasoningTokens: 30,
+          extractCachedInputTokens: 40,
+          extractInferenceTimeMs: 50,
+          observePromptTokens: 100,
+          observeCompletionTokens: 200,
+          observeReasoningTokens: 300,
+          observeCachedInputTokens: 400,
+          observeInferenceTimeMs: 500,
+          agentPromptTokens: 1000,
+          agentCompletionTokens: 2000,
+          agentReasoningTokens: 3000,
+          agentCachedInputTokens: 4000,
+          agentInferenceTimeMs: 5000,
+          totalPromptTokens: 1111,
+          totalCompletionTokens: 2222,
+          totalReasoningTokens: 3333,
+          totalCachedInputTokens: 4444,
+          totalInferenceTimeMs: 5555
+        }),
+      context: {
+        pages() {
+          return [page];
+        },
+        activePage() {
+          return page;
+        }
+      },
+      observe:
+        vi.fn(
+          async () => []
+        ),
+      act: vi.fn(),
+      extract: vi.fn()
+    } as unknown as Stagehand;
+    const runtime =
+      new StagehandRuntimeCore(
+        () =>
+          stagehand as
+            StagehandType
+      );
+    const browser:
+      BrowserSession = {
+        id:
+          "usage-browser",
+        cdpUrl:
+          "ws://fixture/usage",
+        async close() {}
+      };
+    const session =
+      await runtime.openSession({
+        browser
+      });
+
+    await expect(
+      session.getModelUsage?.()
+    ).resolves.toEqual({
+      promptTokens:
+        1111,
+      completionTokens:
+        2222,
+      reasoningTokens:
+        3333,
+      cachedInputTokens:
+        4444,
+      inferenceTimeMs:
+        5555
+    });
+
+    await session.close();
+  }
+);
