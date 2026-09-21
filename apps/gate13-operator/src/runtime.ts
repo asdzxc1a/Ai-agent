@@ -265,6 +265,27 @@ export async function withGate13FailureContext<T>(
   );
 }
 
+interface Gate13OwnershipClient {
+  query(
+    sql: string,
+    values: unknown[]
+  ): Promise<{
+    rows:
+      Record<
+        string,
+        unknown
+      >[];
+  }>;
+  release(): void;
+}
+
+function nonUndefined(
+  value: unknown
+): value is {} {
+  return value !==
+    undefined;
+}
+
 export async function withGate13Workflow<T>(
   operation:
     (
@@ -313,132 +334,171 @@ export async function withGate13Workflow<T>(
         };
   const pool =
     gate13Pool();
+  let ownershipClient:
+    Gate13OwnershipClient |
+    undefined;
+  let ownsRun =
+    false;
+  let completed =
+    false;
+  let result:
+    T | undefined;
+  let primaryError:
+    unknown;
+  let releaseError:
+    unknown;
+  let clientReleaseError:
+    unknown;
+  let poolEndError:
+    unknown;
 
   try {
     await migrateGate13(
       pool
     );
 
-    const ownershipClient =
+    ownershipClient =
       await pool.connect();
-    let ownsRun = false;
-    let primaryError:
-      unknown;
 
-    try {
-      const ownershipQuery =
-        (
-          sql: string,
-          values:
-            readonly unknown[]
-        ) =>
-          ownershipClient
-            .query(
-              sql,
-              [
-                ...values
-              ]
-            );
+    const ownershipQuery =
+      (
+        sql: string,
+        values:
+          readonly unknown[]
+      ) =>
+        ownershipClient!
+          .query(
+            sql,
+            [
+              ...values
+            ]
+          );
 
-      await acquireGate13RunOwnership(
-        ownershipQuery
+    await acquireGate13RunOwnership(
+      ownershipQuery
+    );
+    ownsRun = true;
+
+    const context =
+      databaseContext(
+        pool
       );
-      ownsRun = true;
-
-      const context =
-        databaseContext(
-          pool
-        );
-      const service =
-        new ProspectResearchService(
+    const service =
+      new ProspectResearchService(
+        context.repository,
+        artifactStore,
+        {
+          getRun:
+            (runId) =>
+              context
+                .runRepository
+                .getRun(
+                  runId
+                )
+        }
+      );
+    const workflow =
+      new ProspectResearchWorkflow({
+        repository:
           context.repository,
-          artifactStore,
-          {
-            getRun:
-              (runId) =>
-                context
-                  .runRepository
-                  .getRun(
-                    runId
-                  )
-          }
-        );
-      const workflow =
-        new ProspectResearchWorkflow({
-          repository:
-            context.repository,
-          runRepository:
-            context.runRepository,
-          artifactStore,
-          browserRuntime:
-            new SteelBrowserRuntime({
-              baseUrl:
-                steelBaseUrl
-            }),
-          agentRuntime:
-            new StagehandAgentRuntime({
-              model
-            })
-        });
+        runRepository:
+          context.runRepository,
+        artifactStore,
+        browserRuntime:
+          new SteelBrowserRuntime({
+            baseUrl:
+              steelBaseUrl
+          }),
+        agentRuntime:
+          new StagehandAgentRuntime({
+            model
+          })
+      });
 
-      return await operation({
+    result =
+      await operation({
         ...context,
         artifactStore,
         service,
         workflow
       });
-    } catch (error) {
-      primaryError =
-        error;
-      throw error;
-    } finally {
-      let releaseError:
-        unknown;
+    completed = true;
+  } catch (error) {
+    primaryError =
+      error;
+  }
 
-      if (ownsRun) {
-        try {
-          await releaseGate13RunOwnership(
-            (
-              sql,
-              values
-            ) =>
-              ownershipClient
-                .query(
-                  sql,
-                  [
-                    ...values
-                  ]
-                )
-          );
-        } catch (error) {
-          releaseError =
-            error;
-        }
-      }
-
-      ownershipClient.release();
-
-      if (
-        releaseError !==
-          undefined
-      ) {
-        if (
-          primaryError !==
-            undefined
-        ) {
-          throw new AggregateError(
-            [
-              primaryError,
-              releaseError
-            ],
-            "Gate 13 run failed and operator ownership cleanup also failed."
-          );
-        }
-
-        throw releaseError;
+  if (
+    ownershipClient !==
+      undefined
+  ) {
+    if (ownsRun) {
+      try {
+        await releaseGate13RunOwnership(
+          (
+            sql,
+            values
+          ) =>
+            ownershipClient!
+              .query(
+                sql,
+                [
+                  ...values
+                ]
+              )
+        );
+      } catch (error) {
+        releaseError =
+          error;
       }
     }
-  } finally {
-    await pool.end();
+
+    try {
+      ownershipClient.release();
+    } catch (error) {
+      clientReleaseError =
+        error;
+    }
   }
+
+  try {
+    await pool.end();
+  } catch (error) {
+    poolEndError =
+      error;
+  }
+
+  const errors = [
+    primaryError,
+    releaseError,
+    clientReleaseError,
+    poolEndError
+  ].filter(
+    nonUndefined
+  );
+
+  if (
+    errors.length ===
+      1
+  ) {
+    throw errors[0];
+  }
+
+  if (
+    errors.length >
+      1
+  ) {
+    throw new AggregateError(
+      errors,
+      "Gate 13 live operator execution and/or ownership cleanup failed."
+    );
+  }
+
+  if (!completed) {
+    throw new Error(
+      "Gate 13 live operator execution ended without a result or error."
+    );
+  }
+
+  return result as T;
 }
