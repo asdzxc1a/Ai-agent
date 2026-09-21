@@ -14,6 +14,7 @@ import {
   type ProspectResearchAttempt,
   type ProspectResearchCaptureReceipt,
   type ProspectResearchClaim,
+  type ProspectResearchModelUsage,
   type ProspectResearchReport,
   type ProspectResearchResult
 } from "./schema.js";
@@ -830,6 +831,8 @@ export interface BuildCompletedProspectResearchAttemptInput {
   researchedAt: string;
   runDurationMs: number;
   unauthorizedActions: number;
+  modelUsage?:
+    ProspectResearchModelUsage;
   capturedAtByEvidenceId:
     ReadonlyMap<string, string>;
   artifactIdsByEvidenceId:
@@ -852,6 +855,7 @@ export function buildCompletedProspectResearchAttempt({
   researchedAt,
   runDurationMs,
   unauthorizedActions,
+  modelUsage,
   capturedAtByEvidenceId,
   artifactIdsByEvidenceId,
   captureReceiptsByEvidenceId,
@@ -912,6 +916,12 @@ export function buildCompletedProspectResearchAttempt({
           researchedAt,
         runDurationMs,
         unauthorizedActions,
+        ...(modelUsage ===
+          undefined
+          ? {}
+          : {
+              modelUsage
+            }),
         status: "COMPLETED",
         report: {
           id: runId,
