@@ -351,6 +351,10 @@ describe(
                 "2026-09-21T12:03:00.000Z",
               createdAt:
                 "2026-09-21T12:04:00.000Z",
+              runDurationMs:
+                60_000,
+              unauthorizedActions:
+                0,
               status:
                 "FAILED",
               runId:
@@ -401,10 +405,6 @@ describe(
                 otherDescription:
                   null
               },
-              endToEndDurationMs:
-                45000,
-              unauthorizedActions:
-                0,
               notes:
                 "Blocked target retained in denominator."
             })
@@ -447,11 +447,11 @@ describe(
                   null
               },
               endToEndDurationMs:
-                45000,
+                45_000,
               deliveryCostUsd:
                 999,
               unauthorizedActions:
-                0,
+                7,
               notes:
                 "Reviewer must not own the delivery cost scalar."
             })
@@ -524,6 +524,16 @@ describe(
           outcome
             .baselineHumanPreparationMinutes
         ).toBe(20);
+        expect(
+          outcome
+            .endToEndDurationMs
+        ).toBe(
+          60_000
+        );
+        expect(
+          outcome
+            .unauthorizedActions
+        ).toBe(0);
         expect(
           outcome
             .deliveryCostUsd
