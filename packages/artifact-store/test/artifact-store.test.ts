@@ -43,7 +43,17 @@ describe("ArtifactStore", () => {
         password: "hunter2",
         nested: {
           authorization: "Bearer abc123",
-          safe: "visible"
+          safe: "visible",
+          promptTokens: 123,
+          completionTokens: 45,
+          reasoningTokens: 6,
+          cachedInputTokens: 78,
+          secretPromptTokens:
+            "must-stay-secret",
+          unsafeUsage: {
+            promptTokens:
+              "also-secret"
+          }
         },
         headers: [
           "Authorization: Basic basic-secret",
@@ -84,6 +94,18 @@ describe("ArtifactStore", () => {
     expect(json).not.toContain("private-key-secret");
     expect(json).not.toContain("url-password");
     expect(json).not.toContain("query-signature");
+    expect(json).not.toContain(
+      "must-stay-secret"
+    );
+    expect(json).not.toContain(
+      "also-secret"
+    );
+    expect(json).toContain(
+      "\"promptTokens\": 123"
+    );
+    expect(json).toContain(
+      "\"completionTokens\": 45"
+    );
     expect(json).toContain("[REDACTED]");
     expect(
       JSON.stringify(content!.record.metadata)
