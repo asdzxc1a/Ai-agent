@@ -9,6 +9,7 @@ import {
   ProspectResearchHumanBaselineSchema,
   ProspectResearchAttemptSchema,
   ProspectResearchSampleOutcomeSchema,
+  calculateProspectResearchDeliveryCost,
   ProspectResearchSampleSchema,
   evaluateProspectResearchSample,
   validateProspectResearchSampleOutcomeContext,
@@ -19,6 +20,81 @@ const approvedAt =
   "2026-09-20T12:00:00.000Z";
 const frozenAt =
   "2026-09-20T12:10:00.000Z";
+
+function deliveryCostPlan(
+  totalUsd = 4
+) {
+  return {
+    version:
+      "gate13-delivery-cost-v1" as const,
+    methodologyDescription:
+      "Deterministic test allocation: half model, half browser provider.",
+    rates: [
+      {
+        id:
+          "cost.model.fixed",
+        category:
+          "MODEL" as const,
+        label:
+          "Fixture model",
+        meter:
+          "FIXED_PER_RUN" as const,
+        unitsPerBillingUnit:
+          1,
+        usdPerBillingUnit:
+          totalUsd / 2,
+        rounding:
+          "NONE" as const,
+        sourceDescription:
+          "Deterministic fixture model rate.",
+        sourceUrl:
+          "https://example.test/model-pricing",
+        sourceAsOfDate:
+          "2026-09-20"
+      },
+      {
+        id:
+          "cost.browser.fixed",
+        category:
+          "BROWSER_PROVIDER" as const,
+        label:
+          "Fixture browser",
+        meter:
+          "FIXED_PER_RUN" as const,
+        unitsPerBillingUnit:
+          1,
+        usdPerBillingUnit:
+          totalUsd / 2,
+        rounding:
+          "NONE" as const,
+        sourceDescription:
+          "Deterministic fixture browser allocation.",
+        sourceUrl:
+          "https://example.test/browser-pricing",
+        sourceAsOfDate:
+          "2026-09-20"
+      }
+    ]
+  };
+}
+
+function deliveryCostEvidence(
+  runId: string,
+  totalUsd = 4
+) {
+  return calculateProspectResearchDeliveryCost(
+    deliveryCostPlan(
+      totalUsd
+    ),
+    {
+      modelUsage:
+        null,
+      runDurationMs:
+        5_000
+    },
+    runId
+  );
+}
 
 function target(
   index: number
@@ -159,6 +235,13 @@ function sample(
         maxDeliveryCostUsdPerBrief:
           10
       },
+      ...(purpose ===
+        "ACCEPTANCE"
+        ? {
+            deliveryCostPlan:
+              deliveryCostPlan()
+          }
+        : {}),
       costCeilingRationale:
         "Pre-registered engineering/business ceiling for this sample.",
       humanBaselineDescription:
@@ -315,6 +398,18 @@ function outcome(input: {
       deliveryCostUsd:
         input.costUsd ??
         4,
+      deliveryCostEvidence:
+        deliveryCostEvidence(
+          "run." +
+            String(
+              input.targetIndex
+            ).padStart(
+              2,
+              "0"
+            ),
+          input.costUsd ??
+            4
+        ),
       unauthorizedActions:
         0,
       notes: null
