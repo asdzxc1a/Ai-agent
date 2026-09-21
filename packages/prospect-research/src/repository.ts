@@ -639,16 +639,37 @@ export class InMemoryProspectResearchRepository
     if (
       applicableAcceptanceSamples
         .length >
-        0 &&
-      !acceptanceReservations.some(
-        (reservation) =>
-          reservation.runId ===
-            parsed.id
-      )
+        0
     ) {
-      throw new Error(
-        "Gate 13 acceptance-era research attempt requires the exact reserved measured run."
-      );
+      const matchingReservation =
+        acceptanceReservations.find(
+          (reservation) =>
+            reservation.runId ===
+              parsed.id
+        );
+
+      if (
+        matchingReservation ===
+          undefined
+      ) {
+        throw new Error(
+          "Gate 13 acceptance-era research attempt requires the exact reserved measured run."
+        );
+      }
+
+      if (
+        Date.parse(
+          parsed.startedAt
+        ) <
+          Date.parse(
+            matchingReservation
+              .reservedAt
+          )
+      ) {
+        throw new Error(
+          "Gate 13 measured attempt cannot start before its durable reservation."
+        );
+      }
     }
 
     if (
