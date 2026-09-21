@@ -1222,8 +1222,7 @@ describe(
               },
               createdAt:
                 timestamp
-            }
-,
+            },
             {
               runId,
               sequenceNumber: 3,
