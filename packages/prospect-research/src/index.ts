@@ -10,6 +10,9 @@ export {
   ProspectResearchAstraHumanTimeSchema,
   ProspectResearchClaimSchema,
   ProspectResearchCaptureReceiptSchema,
+  ProspectResearchDeliveryCostComponentSchema,
+  ProspectResearchDeliveryCostInputSchema,
+  ProspectResearchDeliveryCostSchema,
   ProspectResearchEvidenceResultSchema,
   ProspectResearchEvidenceSchema,
   ProspectResearchFailureSchema,
@@ -24,9 +27,12 @@ export {
   ProspectResearchUnknownSchema,
   PROSPECT_RESEARCH_BASELINE_SOURCES,
   PROSPECT_RESEARCH_BRIEF_DISPOSITIONS,
+  PROSPECT_RESEARCH_COST_ACCOUNTING_METHODS,
+  PROSPECT_RESEARCH_COST_COMPONENT_KINDS,
   PROSPECT_RESEARCH_HUMAN_TIME_METHODS,
   PROSPECT_RESEARCH_HUMAN_BASELINE_MODES,
   PROSPECT_RESEARCH_MARKET_SCOPES,
+  PROSPECT_RESEARCH_PROTOCOL_VERSIONS,
   PROSPECT_RESEARCH_REVIEW_MODES,
   PROSPECT_RESEARCH_REVIEW_RUBRIC_VERSION,
   PROSPECT_RESEARCH_SAMPLE_PURPOSES,
@@ -49,6 +55,9 @@ export type {
   ProspectResearchAttempt,
   ProspectResearchClaim,
   ProspectResearchCaptureReceipt,
+  ProspectResearchDeliveryCost,
+  ProspectResearchDeliveryCostComponent,
+  ProspectResearchDeliveryCostInput,
   ProspectResearchEvidence,
   ProspectResearchEvidenceResult,
   ProspectResearchFailure,
@@ -66,8 +75,10 @@ export type {
 
 
 export {
+  buildProspectResearchDeliveryCost,
   evaluateProspectResearchSample,
   totalAstraHumanPreparationMinutes,
+  totalProspectResearchDeliveryCostUsd,
   validateProspectResearchSampleOutcomeContext
 } from "./measurement.js";
 
