@@ -376,11 +376,13 @@ export class RunEngine implements RunService {
       randomUUID();
 
     if (
-      runId.trim().length === 0 ||
-      runId.length > 240
+      runId.length > 128 ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(
+        runId
+      )
     ) {
       throw new TypeError(
-        "Run ID must be a non-empty string no longer than 240 characters."
+        "Run ID must use the owned identifier shape and be no longer than 128 characters."
       );
     }
     const snapshot: RunSnapshot = {
