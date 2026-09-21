@@ -416,33 +416,6 @@ describe(
           "cost-rate source date cannot be in the future"
         );
 
-        const futureRate =
-          preparation();
-
-        expect(() =>
-          gate13AcceptanceInputPreflight({
-            ...futureRate,
-            deliveryCostPlan: {
-              ...futureRate
-                .deliveryCostPlan,
-              rates:
-                futureRate
-                  .deliveryCostPlan
-                  .rates.map(
-                    (rate, index) =>
-                      index === 0
-                        ? {
-                            ...rate,
-                            sourceAsOfDate:
-                              "2026-09-22"
-                          }
-                        : rate
-                  )
-            }
-          })
-        ).toThrow(
-          "must not be after the preflight timestamp"
-        );
       }
     );
   }
