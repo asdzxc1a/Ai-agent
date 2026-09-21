@@ -384,7 +384,7 @@ Build:
   - PR #77: the first operator research composition is stored-approval-only, serial, read-only, action-free, source-page constrained, and persists only after operator artifact review;
   - PR #78: the measured cohort/criteria are durable and pre-registered; measured runs require frozen-sample membership; failed live attempts remain in the denominator; incomplete cohorts cannot report a pass;
 - constrain the research composition to research-safe actions; effect labels describe retry semantics and never authorize the first side effect;
-- keep Gate 13 execution serial/single-owner while durable worker ownership, fencing, and cross-process endpoint reservations are not implemented;
+- keep Gate 13 execution serial/single-owner while durable worker ownership, fencing, and cross-process endpoint reservations are not implemented; the live operator command must fail closed under a database-scoped cross-process ownership lock so separate shells cannot run two Gate 13 targets concurrently;
 - keep the merged smallest complete operator workflow green: stored approval → frozen-sample membership → bounded read-only model-backed research on the approved start page → evidence/uncertainty review → accepted/corrected brief or explicit live failure;
 - use small cross-region samples only for calibration/stress testing; they may not close Gate 13;
 - for the first Gate 13 acceptance, use the complete 43-equity IYT U.S. transportation holdings snapshot dated 2026-09-17 under D-033; source/methodology provenance and exact candidate target IDs are frozen before target enrichment, and cross-market U.S./China work remains calibration-only under D-031;
