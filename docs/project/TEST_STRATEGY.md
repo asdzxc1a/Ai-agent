@@ -279,6 +279,7 @@ Before the first measured sample:
 - acceptance is single-market and compares against the human researcher's normal tools; cross-market and scope-matched baselines are calibration-only;
 - execution-profile export must produce strict parser-ready credential-free JSON from the current repo/env identity and refuse to overwrite an existing file; durably freeze decision thresholds, a cost-ceiling rationale, a versioned source-attributed delivery-cost plan, and the exact execution profile before results; acceptance cost plans require explicit MODEL and BROWSER_PROVIDER categories and rate-source dates no later than sample freeze; the profile pins the checked-in Stagehand dependency version, model name/base URL, Steel base URL, and expected immutable Steel image pin; tests must reject drift in each field and preserve the distinction between expected image pin and runtime digest attestation; the quality/time minimums cannot be weakened;
 - for acceptance targets, persist a measured human baseline as separate server-timestamped durable state before the Astra attempt is allowed to start; fixed-cap estimates are calibration-only;
+- for the first Gate 13 acceptance, reserve exactly one server-timestamped run ID per frozen sample/target before live browser execution; tests must reject a second start after the first durable run exists (even before review), reject direct post-freeze attempt persistence without the exact reservation, reject backdated attempts that predate the reservation, bind the reviewed outcome to the reserved run ID, and permit reservation release only when no durable run/attempt/outcome exists;
 - record blind versus unblinded review and use blind review where practical;
 - freeze the exact acceptance requested-field ledger (`companyName`, `companySummary`, `transformationOpportunities`, `buyingSignals`); derive covered field IDs/counts from durable values or exact explicit-unknown field IDs, count silent omissions as uncovered, keep failed/not-produced coverage at zero, and reject denominator/covered-ledger drift;
 - derive completed-outcome `materialClaimsReviewed` from the durable attempt evidence count; tests must reject both under-counting and over-counting, while failed/not-produced outcomes remain zero;
@@ -298,7 +299,7 @@ For every research attempt record:
 - complete model/token/browser/provider delivery cost, including failed attempts; acceptance outcome cost must be derived from the durable attempt run summary plus the frozen rate plan, preserving measured quantity, billed units, rounding, rate/source/date, component amount, and total; token usage alone must not be silently treated as dollar cost;
 - unauthorized-action count derived from durable `ACT` / `AGENT_LOOP_ACTION` steps in the read-only Gate 13 run; acceptance outcome values must exactly match the persisted attempt and remain zero.
 
-Blind review where practical. Keep blocked/failed attempts in the denominator/report. A live-site failure is not a Gate 11 deterministic regression.
+Blind review where practical. Keep blocked/failed/cancelled first measured attempts in the denominator/report; do not replace them with retry-assisted outcomes under the v7 acceptance protocol. A live-site failure is not a Gate 11 deterministic regression.
 
 ### Later real-market evidence
 
