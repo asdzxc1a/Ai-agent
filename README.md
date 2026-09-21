@@ -71,7 +71,7 @@ The first acceptance experiment is **single-market U.S. transportation operation
 
 The acceptance experiment must:
 
-- enrich all 43 frozen U.S. transportation members, then approve them through one manifest-hash-bound atomic batch before freezing exactly that complete universe; no member may be dropped because it looks hard or inaccessible;
+- enrich all 43 frozen U.S. transportation members, then approve them through one self-verifying atomic batch that carries the exact raw manifest, recomputes its SHA-256, and proves every approved target matches its verified candidate row before freezing exactly that complete universe; no member may be dropped because it looks hard or inaccessible;
 - compare against the existing human researcher using their **normal tools**, not an artificially one-page-restricted baseline;
 - persist an actually measured human baseline as durable server-timestamped state for each acceptance target **before** Astra is allowed to start that target;
 - freeze the cost ceiling and rationale before results;
@@ -83,6 +83,38 @@ The acceptance experiment must:
 - measure **total Astra-side human preparation time** (setup + evidence audit + corrections/finalization + failure triage + other operator work), coverage, duration, failures, and complete delivery cost against the existing human workflow.
 
 See [STATE.md](./docs/project/STATE.md) for the current verified truth. `pnpm check:memory` enforces that this README gate matches it.
+
+### Gate 13 approval operator commands
+
+Preflight the canonical 43-row candidate manifest without creating approval state:
+
+~~~bash
+pnpm gate13:approval-preflight
+~~~
+
+After an operator has explicitly approved the exact manifest, emit the batch JSON:
+
+~~~bash
+pnpm gate13:approval-batch -- \
+  --batch-id g13-transport-approval-YYYYMMDD \
+  --approved-by "<operator>" \
+  --approved-at "<offset-aware ISO timestamp>" \
+  > /tmp/gate13-approval-batch.json
+~~~
+
+Applying the batch is a separate explicit database action. It requires the exact manifest SHA printed by preflight, batch ID, and target count:
+
+~~~bash
+ASTRA_PROSPECT_DATABASE_URL="<postgres connection string>" \
+pnpm gate13:approval-apply -- \
+  --execute \
+  --batch-file /tmp/gate13-approval-batch.json \
+  --confirm-manifest-sha "<sha256>" \
+  --confirm-batch-id g13-transport-approval-YYYYMMDD \
+  --confirm-target-count 43
+~~~
+
+CI runs the preflight only. CI never performs the apply command.
 
 ## Persistent project memory
 
