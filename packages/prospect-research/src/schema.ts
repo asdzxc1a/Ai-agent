@@ -620,18 +620,6 @@ export const ProspectResearchFailureSchema =
       TextSchema.max(2000)
   }).strict();
 
-export const ProspectResearchRunMeasurementsSchema =
-  z.object({
-    endToEndDurationMs:
-      z.number()
-        .int()
-        .positive(),
-    unauthorizedActions:
-      z.number()
-        .int()
-        .nonnegative()
-  }).strict();
-
 const AttemptBase = {
   id: IdentifierSchema,
   target:
@@ -1989,10 +1977,6 @@ export type ProspectResearchReport =
 export type ProspectResearchFailure =
   z.infer<
     typeof ProspectResearchFailureSchema
-  >;
-export type ProspectResearchRunMeasurements =
-  z.infer<
-    typeof ProspectResearchRunMeasurementsSchema
   >;
 export type LiveResearchFailureCode =
   typeof LIVE_RESEARCH_FAILURE_CODES[number];
