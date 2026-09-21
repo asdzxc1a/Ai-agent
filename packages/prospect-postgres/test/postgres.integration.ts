@@ -6,6 +6,9 @@ import {
   test
 } from "vitest";
 
+import {
+  calculateProspectResearchDeliveryCost
+} from "@astra/prospect-research";
 import type {
   ApprovedResearchTarget,
   CompletedProspectResearchAttempt,
@@ -667,6 +670,110 @@ function acceptanceAttempt(
   };
 }
 
+function acceptanceOutcome(
+  sample:
+    ProspectResearchSample,
+  baseline:
+    ProspectResearchHumanBaseline,
+  attempt:
+    CompletedProspectResearchAttempt
+):
+  ProspectResearchSampleOutcome {
+  const plan =
+    sample.deliveryCostPlan;
+
+  if (
+    plan === undefined
+  ) {
+    throw new Error(
+      "Acceptance fixture requires a cost plan."
+    );
+  }
+
+  const deliveryCostEvidence =
+    calculateProspectResearchDeliveryCost(
+      plan,
+      {
+        modelUsage:
+          null,
+        runDurationMs:
+          attempt.runDurationMs!
+      },
+      attempt.id
+    );
+
+  return {
+    id:
+      "outcome.pg.acceptance.01",
+    sampleId:
+      sample.id,
+    targetId:
+      attempt.target.id,
+    attemptId:
+      attempt.id,
+    baselineId:
+      baseline.id,
+    reviewRubricVersion:
+      sample.reviewRubricVersion,
+    attemptStatus:
+      "COMPLETED",
+    briefDisposition:
+      "accepted",
+    reviewedBy:
+      "operator",
+    reviewedAt:
+      "2026-09-19T12:17:00Z",
+    reviewMode:
+      "UNBLINDED",
+    baselineSource:
+      baseline.source,
+    baselineMeasuredAt:
+      baseline.recordedAt,
+    materialClaimsReviewed:
+      1,
+    unsupportedMaterialClaims:
+      0,
+    corrections: {
+      minor: 0,
+      major: 0,
+      critical: 0
+    },
+    requestedFieldsTotal:
+      4,
+    requestedFieldsCovered:
+      4,
+    requestedFieldsCoveredIds: [
+      "companyName",
+      "companySummary",
+      "transformationOpportunities",
+      "buyingSignals"
+    ],
+    baselineHumanPreparationMinutes:
+      baseline
+        .humanPreparationMinutes,
+    astraHumanTime: {
+      targetSetupMinutes: 1,
+      evidenceMappingAndAuditMinutes:
+        3,
+      correctionAndFinalizationMinutes:
+        1,
+      failureTriageMinutes: 0,
+      otherMinutes: 0,
+      measurementMethod:
+        "STOPWATCH",
+      otherDescription: null
+    },
+    endToEndDurationMs:
+      attempt.runDurationMs!,
+    deliveryCostUsd:
+      deliveryCostEvidence.totalUsd,
+    deliveryCostEvidence,
+    unauthorizedActions:
+      attempt.unauthorizedActions!,
+    notes: null
+  };
+}
+
 function failedAttempt():
   FailedProspectResearchAttempt {
   return {
@@ -795,24 +902,25 @@ test(
       .saveSample(
         sample
       );
-    await repository
-      .saveHumanBaseline({
-        id:
-          "baseline.pg.acceptance.01",
-        sampleId:
-          sample.id,
-        targetId:
-          target.id,
-        source:
-          "MEASURED_HUMAN",
-        preparedBy:
-          "human.researcher",
-        humanPreparationMinutes:
-          18,
-        toolingDescription:
-          "Normal human research tools.",
-        notes: null
-      });
+    const baseline =
+      await repository
+        .saveHumanBaseline({
+          id:
+            "baseline.pg.acceptance.01",
+          sampleId:
+            sample.id,
+          targetId:
+            target.id,
+          source:
+            "MEASURED_HUMAN",
+          preparedBy:
+            "human.researcher",
+          humanPreparationMinutes:
+            18,
+          toolingDescription:
+            "Normal human research tools.",
+          notes: null
+        });
 
     const reservation =
       await repository
@@ -897,6 +1005,31 @@ test(
     ).rejects.toThrow(
       "cannot be released after measured state was persisted"
     );
+
+
+    const measured =
+      acceptanceOutcome(
+        sample,
+        baseline,
+        attempt
+      );
+
+    await expect(
+      repository
+        .saveSampleOutcome(
+          measured
+        )
+    ).resolves.toBeUndefined();
+
+    await expect(
+      new PostgresProspectResearchRepository(
+        pool
+      ).listSampleOutcomes(
+        sample.id
+      )
+    ).resolves.toEqual([
+      measured
+    ]);
   }
 );
 
