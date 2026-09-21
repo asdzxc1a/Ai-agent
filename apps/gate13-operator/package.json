@@ -12,8 +12,12 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@astra/agent-stagehand": "workspace:*",
+    "@astra/artifact-store": "workspace:*",
+    "@astra/browser-steel": "workspace:*",
     "@astra/prospect-postgres": "workspace:*",
     "@astra/prospect-research": "workspace:*",
+    "@astra/run-postgres": "workspace:*",
     "zod": "4.4.3"
   }
 }
