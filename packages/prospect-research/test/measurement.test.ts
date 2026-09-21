@@ -21,6 +21,25 @@ const approvedAt =
 const frozenAt =
   "2026-09-20T12:10:00.000Z";
 
+function executionProfile() {
+  return {
+    version:
+      "gate13-execution-profile-v1" as const,
+    agentRuntime:
+      "STAGEHAND" as const,
+    agentRuntimeVersion:
+      "3.7.0",
+    modelName:
+      "fixture/model-v1",
+    modelBaseUrl:
+      "http://127.0.0.1:4010/v1",
+    browserRuntime:
+      "STEEL" as const,
+    browserBaseUrl:
+      "http://127.0.0.1:3000/"
+  };
+}
+
 function deliveryCostPlan(
   totalUsd = 4
 ) {
@@ -238,6 +257,8 @@ function sample(
       ...(purpose ===
         "ACCEPTANCE"
         ? {
+            executionProfile:
+              executionProfile(),
             deliveryCostPlan:
               deliveryCostPlan()
           }
@@ -1620,6 +1641,17 @@ describe(
             })
         ).toThrow(
           "must compare against the human workflow using its normal tools"
+        );
+
+        expect(() =>
+          ProspectResearchSampleSchema
+            .parse({
+              ...acceptance,
+              executionProfile:
+                undefined
+            })
+        ).toThrow(
+          "requires a frozen execution profile"
         );
 
         expect(() =>
