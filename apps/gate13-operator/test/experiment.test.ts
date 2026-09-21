@@ -20,7 +20,7 @@ import {
 import {
   GATE13_UNIVERSE_PATH,
   buildGate13AcceptanceSample,
-  buildGate13DeliveryCostEvidenceFromRunSummary,
+  buildGate13DeliveryCostEvidenceFromAttempt,
   buildGate13HumanBaselineInput,
   buildGate13SampleOutcome,
   parseGate13OutcomeReview
@@ -385,6 +385,18 @@ describe(
                 60_000,
               unauthorizedActions:
                 0,
+              modelUsage: {
+                promptTokens:
+                  500_000,
+                completionTokens:
+                  0,
+                reasoningTokens:
+                  0,
+                cachedInputTokens:
+                  0,
+                inferenceTimeMs:
+                  10_000
+              },
               status:
                 "FAILED",
               runId:
@@ -479,29 +491,9 @@ describe(
         ).toThrow();
 
         const deliveryCostEvidence =
-          buildGate13DeliveryCostEvidenceFromRunSummary(
+          buildGate13DeliveryCostEvidenceFromAttempt(
             sample,
-            attempt,
-            JSON.stringify({
-              runId:
-                "run.failed.example",
-              timings: {
-                totalMs:
-                  45_000
-              },
-              modelUsage: {
-                promptTokens:
-                  500_000,
-                completionTokens:
-                  0,
-                reasoningTokens:
-                  0,
-                cachedInputTokens:
-                  0,
-                inferenceTimeMs:
-                  10_000
-              }
-            })
+            attempt
           );
         const outcome =
           buildGate13SampleOutcome({
