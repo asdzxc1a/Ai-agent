@@ -946,6 +946,18 @@ test(
         ...measuredOutcome(
           baseline
         ),
+        materialClaimsReviewed:
+          0
+      })
+    ).rejects.toThrow(
+      "must equal the durable observed-evidence audit count: 1"
+    );
+
+    await expect(
+      repository.saveSampleOutcome({
+        ...measuredOutcome(
+          baseline
+        ),
         baselineHumanPreparationMinutes:
           99
       })
