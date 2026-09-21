@@ -23,6 +23,7 @@ export {
   ProspectResearchFailureSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchHumanBaselineSchema,
+  ProspectResearchModelUsageSchema,
   ProspectResearchReportSchema,
   ProspectResearchResultSchema,
   ProspectResearchSampleCriteriaSchema,
@@ -76,6 +77,7 @@ export type {
   ProspectResearchFailure,
   ProspectResearchHumanBaseline,
   ProspectResearchHumanBaselineInput,
+  ProspectResearchModelUsage,
   ProspectResearchReport,
   ProspectResearchRequestedField,
   ProspectResearchResult,
@@ -90,6 +92,7 @@ export type {
 
 export {
   calculateProspectResearchDeliveryCost,
+  calculateProspectResearchDeliveryCostFromAttempt,
   deriveProspectResearchRequestedFieldCoverage,
   evaluateProspectResearchSample,
   requiredMaterialClaimAuditCount,
