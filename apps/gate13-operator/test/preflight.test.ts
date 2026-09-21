@@ -1,13 +1,23 @@
 import {
+  readFile
+} from "node:fs/promises";
+
+import {
   describe,
   expect,
   it
 } from "vitest";
 
 import {
+  GATE13_APPROVAL_MANIFEST_PATH,
+  buildGate13ApprovalBatchFromManifest,
+  previewGate13ApprovalManifest
+} from "../src/approval.js";
+import {
   buildGate13ExecutionProfile
 } from "../src/execution-profile.js";
 import {
+  assertGate13CanonicalApprovalBatch,
   gate13AcceptanceInputPreflight,
   gate13PreflightReadiness
 } from "../src/preflight.js";
@@ -146,6 +156,91 @@ function preparation() {
       "2026-09-21T12:00:00.000Z"
   };
 }
+
+describe(
+  "Gate 13 canonical approval readiness provenance",
+  () => {
+    it(
+      "accepts the exact manifest-derived batch and rejects hash or target drift",
+      async () => {
+        const manifestText =
+          await readFile(
+            GATE13_APPROVAL_MANIFEST_PATH,
+            "utf8"
+          );
+        const preview =
+          previewGate13ApprovalManifest(
+            manifestText
+          );
+        const batch =
+          buildGate13ApprovalBatchFromManifest({
+            manifestText,
+            batchId:
+              "g13.batch.preflight",
+            approvedBy:
+              "operator@example",
+            approvedAt:
+              "2026-09-21T12:00:00.000Z"
+          });
+        const manifest = {
+          id:
+            preview.manifest.id,
+          sha256:
+            preview.sha256,
+          targetIds:
+            preview.manifest
+              .targets.map(
+                (target) =>
+                  target.targetId
+              )
+        };
+
+        expect(() =>
+          assertGate13CanonicalApprovalBatch(
+            batch,
+            manifest,
+            batch.targets
+          )
+        ).not.toThrow();
+
+        expect(() =>
+          assertGate13CanonicalApprovalBatch(
+            {
+              ...batch,
+              sourceManifestSha256:
+                "0".repeat(64)
+            },
+            manifest,
+            batch.targets
+          )
+        ).toThrow(
+          "not bound to the canonical candidate manifest"
+        );
+
+        expect(() =>
+          assertGate13CanonicalApprovalBatch(
+            {
+              ...batch,
+              targets: [
+                {
+                  ...batch.targets[0]!,
+                  startUrl:
+                    "https://www.up.com/"
+                },
+                ...batch.targets
+                  .slice(1)
+              ]
+            },
+            manifest,
+            batch.targets
+          )
+        ).toThrow(
+          "target snapshots differ"
+        );
+      }
+    );
+  }
+);
 
 describe(
   "Gate 13 acceptance input preflight",
