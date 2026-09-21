@@ -25,11 +25,13 @@ import {
 } from "./approval.js";
 import {
   GATE13_UNIVERSE_PATH,
+  assertGate13ExecutionProfile,
   buildGate13AcceptanceSample,
   buildGate13DeliveryCostEvidenceFromRunSummary,
   buildGate13HumanBaselineInput,
   buildGate13SampleOutcome,
   parseGate13DeliveryCostPlan,
+  parseGate13ExecutionProfile,
   parseGate13OutcomeReview
 } from "./experiment.js";
 import {
@@ -112,7 +114,8 @@ function usage(): string {
     "Acceptance sample:",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- sample-preview \\",
     "    --approval-batch-id <id> --sample-id <id> --operator <identity> \\",
-    "    --max-cost-usd <positive> --cost-plan-file <path> --cost-rationale-file <path> --human-baseline-file <path>",
+    "    --max-cost-usd <positive> --execution-profile-file <path> --cost-plan-file <path> \",
+    "    --cost-rationale-file <path> --human-baseline-file <path>",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- freeze-acceptance <same options> --confirm-complete-universe",
     "",
     "Measured human baseline:",
@@ -471,6 +474,10 @@ interface AcceptanceOptions {
   sampleId: string;
   operator: string;
   maxCostUsd: number;
+  executionProfile:
+    ReturnType<
+      typeof parseGate13ExecutionProfile
+    >;
   deliveryCostPlan:
     ReturnType<
       typeof parseGate13DeliveryCostPlan
@@ -495,6 +502,7 @@ async function acceptanceOptions(
         "--sample-id",
         "--operator",
         "--max-cost-usd",
+        "--execution-profile-file",
         "--cost-plan-file",
         "--cost-rationale-file",
         "--human-baseline-file"
@@ -540,6 +548,15 @@ async function acceptanceOptions(
           "--max-cost-usd"
         ),
         "--max-cost-usd"
+      ),
+    executionProfile:
+      parseGate13ExecutionProfile(
+        await readText(
+          requiredOption(
+            parsed,
+            "--execution-profile-file"
+          )
+        )
       ),
     deliveryCostPlan:
       parseGate13DeliveryCostPlan(
@@ -610,6 +627,8 @@ async function buildAcceptanceFromStoredBatch(
             .toISOString(),
         maxDeliveryCostUsdPerBrief:
           options.maxCostUsd,
+        executionProfile:
+          options.executionProfile,
         deliveryCostPlan:
           options.deliveryCostPlan,
         costCeilingRationale:
@@ -799,12 +818,46 @@ async function runTarget(
     async (
       context
     ) => {
+      const sample =
+        await context.repository
+          .getSample(
+            sampleId
+          );
+
+      if (sample === undefined) {
+        throw new Error(
+          "Measured research sample does not exist: " +
+            sampleId
+        );
+      }
+
+      assertGate13ExecutionProfile(
+        sample,
+        context.executionProfile
+      );
+
       const started =
         await context.workflow
           .start({
             sampleId,
             targetId
           });
+
+      try {
+        await context.runRepository
+          .appendStep(
+            started.id,
+            "GATE13_EXECUTION_PROFILE",
+            context.executionProfile
+          );
+      } catch (error) {
+        await context.workflow
+          .cancelRun(
+            started.id
+          )
+          .catch(() => undefined);
+        throw error;
+      }
       let interruptRequested =
         false;
       const onInterrupt =
