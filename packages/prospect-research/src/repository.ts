@@ -611,12 +611,6 @@ export class InMemoryProspectResearchRepository
         (sample) =>
           sample.purpose ===
             "ACCEPTANCE" &&
-          Date.parse(
-            sample.frozenAt
-          ) <=
-            Date.parse(
-              parsed.startedAt
-            ) &&
           sample.targets.some(
             (target) =>
               target.id ===
