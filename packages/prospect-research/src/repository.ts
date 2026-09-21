@@ -5,6 +5,8 @@ import type {
 import {
   ApprovedResearchTargetSchema,
   ResearchApprovalBatchSchema,
+  ProspectResearchAttemptReservationInputSchema,
+  ProspectResearchAttemptReservationSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
