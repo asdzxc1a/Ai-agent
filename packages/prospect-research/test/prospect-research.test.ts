@@ -1223,6 +1223,22 @@ describe(
               createdAt:
                 timestamp
             }
+,
+            {
+              runId,
+              sequenceNumber: 3,
+              kind:
+                "AGENT_MODEL_USAGE",
+              payload: {
+                promptTokens: 120,
+                completionTokens: 30,
+                reasoningTokens: 5,
+                cachedInputTokens: 40,
+                inferenceTimeMs: 275
+              },
+              createdAt:
+                timestamp
+            }
           ]
         );
 
@@ -1249,6 +1265,13 @@ describe(
           60_000,
         unauthorizedActions:
           1,
+        modelUsage: {
+          promptTokens: 120,
+          completionTokens: 30,
+          reasoningTokens: 5,
+          cachedInputTokens: 40,
+          inferenceTimeMs: 275
+        },
         status: "COMPLETED",
         report: {
           id: runId,
@@ -1747,7 +1770,25 @@ describe(
             "run.failed",
             "EXECUTION_FAILED",
             message
-          )
+          ),
+          [
+            {
+              runId:
+                "run.failed",
+              sequenceNumber: 1,
+              kind:
+                "AGENT_MODEL_USAGE",
+              payload: {
+                promptTokens: 90,
+                completionTokens: 20,
+                reasoningTokens: 4,
+                cachedInputTokens: 12,
+                inferenceTimeMs: 180
+              },
+              createdAt:
+                timestamp
+            }
+          ]
         );
 
       await research.approveTarget(
@@ -1774,6 +1815,13 @@ describe(
           60_000,
         unauthorizedActions:
           0,
+        modelUsage: {
+          promptTokens: 90,
+          completionTokens: 20,
+          reasoningTokens: 4,
+          cachedInputTokens: 12,
+          inferenceTimeMs: 180
+        },
         status: "FAILED",
         runId:
           "run.failed",
@@ -1791,6 +1839,119 @@ describe(
         )
       ).toEqual(failure);
     });
+
+    it(
+      "rejects duplicate or malformed durable model-usage steps",
+      async () => {
+        const artifacts =
+          new InMemoryArtifactStore();
+
+        for (
+          const [
+            label,
+            steps,
+            expectedMessage
+          ] of [
+            [
+              "duplicate",
+              [
+                {
+                  runId:
+                    "run.usage.duplicate",
+                  sequenceNumber: 1,
+                  kind:
+                    "AGENT_MODEL_USAGE",
+                  payload: {
+                    promptTokens: 1,
+                    completionTokens: 1,
+                    reasoningTokens: 0,
+                    cachedInputTokens: 0,
+                    inferenceTimeMs: 1
+                  },
+                  createdAt:
+                    timestamp
+                },
+                {
+                  runId:
+                    "run.usage.duplicate",
+                  sequenceNumber: 2,
+                  kind:
+                    "AGENT_MODEL_USAGE",
+                  payload: {
+                    promptTokens: 2,
+                    completionTokens: 1,
+                    reasoningTokens: 0,
+                    cachedInputTokens: 0,
+                    inferenceTimeMs: 1
+                  },
+                  createdAt:
+                    timestamp
+                }
+              ],
+              "multiple durable model-usage steps"
+            ],
+            [
+              "invalid",
+              [
+                {
+                  runId:
+                    "run.usage.invalid",
+                  sequenceNumber: 1,
+                  kind:
+                    "AGENT_MODEL_USAGE",
+                  payload: {
+                    promptTokens: -1,
+                    completionTokens: 1,
+                    reasoningTokens: 0,
+                    cachedInputTokens: 0,
+                    inferenceTimeMs: 1
+                  },
+                  createdAt:
+                    timestamp
+                }
+              ],
+              "invalid durable model-usage evidence"
+            ]
+          ] as const
+        ) {
+          const repository =
+            new InMemoryProspectResearchRepository();
+          const runId =
+            "run.usage." +
+            label;
+          const research =
+            service(
+              repository,
+              artifacts,
+              failedRun(
+                runId,
+                "EXECUTION_FAILED",
+                "Provider failed."
+              ),
+              [
+                ...steps
+              ]
+            );
+
+          await research
+            .approveTarget(
+              target()
+            );
+
+          await expect(
+            research.recordFailure({
+              targetId:
+                "target.example",
+              runId,
+              code:
+                "PROVIDER_FAILED"
+            })
+          ).rejects.toThrow(
+            expectedMessage
+          );
+        }
+      }
+    );
 
     it("derives timeout and cancellation classifications from durable terminal state", async () => {
       const artifacts =
