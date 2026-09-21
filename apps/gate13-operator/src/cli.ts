@@ -13,7 +13,8 @@ import {
 } from "@astra/artifact-store";
 import {
   LIVE_RESEARCH_FAILURE_CODES,
-  evaluateProspectResearchSample
+  evaluateProspectResearchSample,
+  sameApprovedResearchTarget
 } from "@astra/prospect-research";
 import { z } from "zod";
 
@@ -660,9 +661,11 @@ async function acceptanceReadiness(
       parsed,
       "--approval-batch-id"
     );
+  const manifestText =
+    await canonicalManifest();
   const manifest =
     previewGate13ApprovalManifest(
-      await canonicalManifest()
+      manifestText
     );
   const durable =
     await withGate13DatabaseReadOnly(
@@ -698,6 +701,92 @@ async function acceptanceReadiness(
           throw new Error(
             "Gate 13 approval batch does not exist: " +
               approvalBatchId
+          );
+        }
+
+        if (
+          approvalBatch !==
+            undefined
+        ) {
+          const expectedBatch =
+            buildGate13ApprovalBatchFromManifest({
+              manifestText,
+              batchId:
+                approvalBatch.id,
+              approvedBy:
+                approvalBatch.approvedBy,
+              approvedAt:
+                approvalBatch.approvedAt
+            });
+
+          if (
+            approvalBatch
+              .sourceManifestId !==
+                manifest.manifest.id ||
+            approvalBatch
+              .sourceManifestSha256 !==
+                manifest.sha256 ||
+            approvalBatch.targets.length !==
+              expectedBatch.targets.length ||
+            expectedBatch.targets.some(
+              (expectedTarget) => {
+                const actual =
+                  approvalBatch.targets
+                    .find(
+                      (target) =>
+                        target.id ===
+                          expectedTarget.id
+                    );
+
+                return (
+                  actual ===
+                    undefined ||
+                  !sameApprovedResearchTarget(
+                    expectedTarget,
+                    actual
+                  )
+                );
+              }
+            )
+          ) {
+            throw new Error(
+              "Gate 13 durable approval batch differs from the exact canonical manifest-derived batch."
+            );
+          }
+        }
+
+        if (
+          sample !==
+            undefined &&
+          approvalBatch !==
+            undefined &&
+          (
+            sample.targets.length !==
+              approvalBatch.targets.length ||
+            sample.targets.some(
+              (sampleTarget) => {
+                const batchTarget =
+                  approvalBatch.targets
+                    .find(
+                      (target) =>
+                        target.id ===
+                          sampleTarget.id
+                    );
+
+                return (
+                  batchTarget ===
+                    undefined ||
+                  !sameApprovedResearchTarget(
+                    sampleTarget,
+                    batchTarget
+                  )
+                );
+              }
+            )
+          )
+        ) {
+          throw new Error(
+            "Gate 13 frozen sample targets differ from the supplied canonical approval batch."
           );
         }
 
