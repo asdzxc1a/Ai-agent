@@ -162,7 +162,18 @@ export class SandboxedBrowserRuntime
     try {
       const browser =
         await this.#browserRuntime
-          .createSession(options);
+          .createSession({
+            ...options,
+            ...(sandbox
+              .networkProxyUrl ===
+                undefined
+              ? {}
+              : {
+                  networkProxyUrl:
+                    sandbox
+                      .networkProxyUrl
+                })
+          });
 
       return new SandboxedBrowserSession(
         browser,

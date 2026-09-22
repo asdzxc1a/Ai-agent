@@ -197,6 +197,41 @@ describe(
       );
     });
 
+    it("returns exact validated public addresses for connection binding", async () => {
+      const policy =
+        new DefaultSandboxNetworkPolicy({
+          allowedHostnames: [
+            "example.com"
+          ],
+          resolver: {
+            async resolve() {
+              return [
+                "93.184.216.34",
+                "2606:2800:220:1:248:1893:25c8:1946"
+              ];
+            }
+          }
+        });
+
+      await expect(
+        policy.resolveAllowedTarget({
+          url:
+            "https://example.com/path"
+        })
+      ).resolves.toMatchObject({
+        protocol:
+          "https:",
+        hostname:
+          "example.com",
+        port: 443,
+        trusted: false,
+        addresses: [
+          "93.184.216.34",
+          "2606:2800:220:1:248:1893:25c8:1946"
+        ]
+      });
+    });
+
     it("re-resolves every request so a DNS rebind is blocked", async () => {
       const policy =
         new DefaultSandboxNetworkPolicy({

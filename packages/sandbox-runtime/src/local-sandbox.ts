@@ -3,6 +3,10 @@ import {
 } from "node:crypto";
 
 import {
+  ConnectionBoundEgressProxy,
+  type ConnectionBoundEgressProxyOptions
+} from "./connection-bound-proxy.js";
+import {
   DefaultSandboxNetworkPolicy,
   type SandboxNetworkPolicyOptions
 } from "./network-policy.js";
@@ -20,42 +24,88 @@ class LocalSandboxSession
     randomUUID();
   public readonly networkPolicy:
     DefaultSandboxNetworkPolicy;
+  public readonly networkProxyUrl?:
+    string;
 
+  readonly #proxy?:
+    ConnectionBoundEgressProxy;
   #status: SandboxStatus =
     "ACTIVE";
+  #closePromise?:
+    Promise<void>;
 
   public constructor(
-    policyOptions:
-      SandboxNetworkPolicyOptions
+    policy:
+      DefaultSandboxNetworkPolicy,
+    proxy?:
+      ConnectionBoundEgressProxy
   ) {
     this.networkPolicy =
-      new DefaultSandboxNetworkPolicy(
-        policyOptions
-      );
+      policy;
+
+    if (
+      proxy !== undefined
+    ) {
+      this.#proxy =
+        proxy;
+      this.networkProxyUrl =
+        proxy.proxyUrl;
+    }
   }
 
   public get status(): SandboxStatus {
     return this.#status;
   }
 
-  public async close(): Promise<void> {
-    this.#status = "CLOSED";
+  public close(): Promise<void> {
+    this.#closePromise ??=
+      this.#closeOnce();
+
+    return this.#closePromise;
+  }
+
+  async #closeOnce():
+    Promise<void> {
+    try {
+      await this.#proxy
+        ?.close();
+    } finally {
+      this.#status =
+        "CLOSED";
+    }
   }
 }
 
-export type LocalSandboxRuntimeOptions =
-  SandboxNetworkPolicyOptions;
+export interface LocalSandboxRuntimeOptions
+  extends SandboxNetworkPolicyOptions {
+  connectionProxy?:
+    ConnectionBoundEgressProxyOptions;
+}
 
 export class LocalSandboxRuntime
   implements SandboxRuntime {
   readonly #policyOptions:
-    LocalSandboxRuntimeOptions;
+    SandboxNetworkPolicyOptions;
+  readonly #connectionProxy?:
+    ConnectionBoundEgressProxyOptions;
 
   public constructor(
-    options:
+    {
+      connectionProxy,
+      ...policyOptions
+    }:
       LocalSandboxRuntimeOptions = {}
   ) {
-    this.#policyOptions = options;
+    this.#policyOptions =
+      policyOptions;
+
+    if (
+      connectionProxy !==
+        undefined
+    ) {
+      this.#connectionProxy =
+        connectionProxy;
+    }
   }
 
   public async createSession(
@@ -71,8 +121,38 @@ export class LocalSandboxRuntime
       );
     }
 
+    const policy =
+      new DefaultSandboxNetworkPolicy(
+        this.#policyOptions
+      );
+    const proxy =
+      this.#connectionProxy ===
+        undefined
+        ? undefined
+        : await ConnectionBoundEgressProxy
+            .start(
+              policy,
+              this.#connectionProxy
+            );
+
+    if (options.signal?.aborted) {
+      await proxy
+        ?.close()
+        .catch(
+          () => undefined
+        );
+      throw (
+        options.signal.reason ??
+        new DOMException(
+          "The operation was aborted.",
+          "AbortError"
+        )
+      );
+    }
+
     return new LocalSandboxSession(
-      this.#policyOptions
+      policy,
+      proxy
     );
   }
 }

@@ -43,6 +43,8 @@ function profile() {
       "https://models.example.test/v1",
     steelBaseUrl:
       "http://127.0.0.1:3000",
+    egressProxyBrowserHost:
+      "host.docker.internal",
     stagehandPackageText,
     steelImagePinText
   });
@@ -79,6 +81,13 @@ const driftCases:
       }
     ],
     [
+      "networkEgressProxyBrowserHost",
+      {
+        egressProxyBrowserHost:
+          "steel-proxy.internal"
+      }
+    ],
+    [
       "agentRuntimeVersion",
       {
         stagehandPackageText:
@@ -110,7 +119,7 @@ describe(
           profile()
         ).toEqual({
           version:
-            "gate13-execution-profile-v1",
+            "gate13-execution-profile-v2",
           agentRuntime:
             "STAGEHAND",
           agentRuntimeVersion:
@@ -126,7 +135,11 @@ describe(
           browserExpectedImagePin:
             steelImagePinText,
           browserIdentityEvidence:
-            "EXPECTED_IMAGE_PIN_ONLY"
+            "EXPECTED_IMAGE_PIN_ONLY",
+          networkEgressMode:
+            "ASTRA_CONNECTION_BOUND_PROXY_V1",
+          networkEgressProxyBrowserHost:
+            "host.docker.internal"
         });
       }
     );
@@ -144,6 +157,8 @@ describe(
               "https://models.example.test/v1",
             steelBaseUrl:
               "http://127.0.0.1:3000/",
+            egressProxyBrowserHost:
+              "host.docker.internal",
             stagehandPackageText,
             steelImagePinText
           });
@@ -175,6 +190,8 @@ describe(
               "https://models.example.test/v1",
             steelBaseUrl:
               "http://127.0.0.1:3000",
+            egressProxyBrowserHost:
+              "host.docker.internal",
             stagehandPackageText,
             steelImagePinText,
             ...overrides
@@ -264,7 +281,7 @@ describe(
           parseGate13ExecutionProfile(
             JSON.stringify({
               version:
-                "gate13-execution-profile-v1",
+                "gate13-execution-profile-v2",
               agentRuntime:
                 "STAGEHAND",
               agentRuntimeVersion:

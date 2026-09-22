@@ -363,7 +363,7 @@ function acceptanceSample():
     ],
     executionProfile: {
       version:
-        "gate13-execution-profile-v1",
+        "gate13-execution-profile-v2",
       agentRuntime:
         "STAGEHAND",
       agentRuntimeVersion:
@@ -380,7 +380,11 @@ function acceptanceSample():
         "ghcr.io/steel-dev/steel-browser@sha256:" +
         "a".repeat(64),
       browserIdentityEvidence:
-        "EXPECTED_IMAGE_PIN_ONLY"
+        "EXPECTED_IMAGE_PIN_ONLY",
+      networkEgressMode:
+        "ASTRA_CONNECTION_BOUND_PROXY_V1",
+      networkEgressProxyBrowserHost:
+        "host.docker.internal"
     },
     deliveryCostPlan: {
       version:

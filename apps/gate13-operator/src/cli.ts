@@ -17,6 +17,7 @@ import {
 } from "@astra/prospect-research";
 import { z } from "zod";
 
+import { normalizeGate13CliArgs } from "./cli-args.js";
 import {
   GATE13_APPROVAL_MANIFEST_PATH,
   assertGate13ApprovalConfirmation,
@@ -116,8 +117,8 @@ function usage(): string {
     "Gate 13 operator",
     "",
     "Execution profile:",
-    "  GATE13_STEEL_BASE_URL=... GATE13_MODEL_NAME=... [GATE13_MODEL_BASE_URL=...] pnpm gate13:operator -- execution-profile-preview",
-    "  GATE13_STEEL_BASE_URL=... GATE13_MODEL_NAME=... [GATE13_MODEL_BASE_URL=...] pnpm gate13:operator -- execution-profile-export --output <path>",
+    "  GATE13_STEEL_BASE_URL=... GATE13_EGRESS_PROXY_BROWSER_HOST=... GATE13_MODEL_NAME=... [GATE13_MODEL_BASE_URL=...] pnpm gate13:operator -- execution-profile-preview",
+    "  GATE13_STEEL_BASE_URL=... GATE13_EGRESS_PROXY_BROWSER_HOST=... GATE13_MODEL_NAME=... [GATE13_MODEL_BASE_URL=...] pnpm gate13:operator -- execution-profile-export --output <path>",
     "",
     "Approval inspection/persistence:",
     "  pnpm gate13:operator -- preview",
@@ -126,7 +127,7 @@ function usage(): string {
     "    --confirm-manifest-id <id> --confirm-sha <sha256> --authorize-all-43",
     "",
     "Acceptance preflight (no DB/browser/mutation):",
-    "  GATE13_STEEL_BASE_URL=... GATE13_MODEL_NAME=... [GATE13_MODEL_BASE_URL=...] pnpm gate13:operator -- acceptance-preflight \\",
+    "  GATE13_STEEL_BASE_URL=... GATE13_EGRESS_PROXY_BROWSER_HOST=... GATE13_MODEL_NAME=... [GATE13_MODEL_BASE_URL=...] pnpm gate13:operator -- acceptance-preflight \\",
     "    --max-cost-usd <positive> --execution-profile-file <path> --cost-plan-file <path> \\",
     "    --cost-rationale-file <path> --human-baseline-file <path>",
     "",
@@ -147,7 +148,7 @@ function usage(): string {
     "    --tooling-file <path> [--notes-file <path>]",
     "",
     "Serial read-only research:",
-    "  GATE13_DATABASE_URL=... GATE13_ARTIFACT_DIR=... GATE13_STEEL_BASE_URL=... GATE13_MODEL_NAME=... \\",
+    "  GATE13_DATABASE_URL=... GATE13_ARTIFACT_DIR=... GATE13_STEEL_BASE_URL=... GATE13_EGRESS_PROXY_BROWSER_HOST=... GATE13_MODEL_NAME=... \\",
     "    pnpm gate13:operator -- run-target --sample-id <id> --target-id <id>",
     "  pnpm gate13:operator -- artifacts --run-id <id>",
     "  GATE13_ARTIFACT_DIR=... pnpm gate13:operator -- run-usage --run-id <id>",
@@ -2220,7 +2221,9 @@ async function main():
     command,
     ...args
   ] =
-    process.argv.slice(2);
+    normalizeGate13CliArgs(
+      process.argv.slice(2)
+    );
 
   if (
     command ===

@@ -41,6 +41,8 @@ function executionProfile() {
       "http://127.0.0.1:4010/v1",
     steelBaseUrl:
       "http://127.0.0.1:3000",
+    egressProxyBrowserHost:
+      "host.docker.internal",
     stagehandPackageText,
     steelImagePinText
   });

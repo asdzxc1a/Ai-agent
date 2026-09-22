@@ -586,6 +586,100 @@ test("artifact-store failures do not change successful run result", async () => 
 });
 
 
+
+test(
+  "hung screenshot cannot outlive the run wall-clock budget",
+  async () => {
+    let browserClosed = 0;
+    let agentClosed = 0;
+
+    const engine =
+      new RunEngine({
+        repository:
+          new InMemoryRunRepository(),
+        browserRuntime: {
+          async createSession() {
+            return {
+              id:
+                "browser-hung-screenshot",
+              cdpUrl:
+                "ws://browser.test/hung",
+              captureScreenshot() {
+                return new Promise<
+                  Uint8Array
+                >(() => {});
+              },
+              async close() {
+                browserClosed += 1;
+              }
+            };
+          }
+        },
+        agentRuntime: {
+          async openSession() {
+            return {
+              async navigate() {},
+              async observe() {
+                return [];
+              },
+              async act() {
+                return {
+                  success: true,
+                  message:
+                    "unused",
+                  actions: []
+                };
+              },
+              async extract<T>(
+                instruction: string,
+                schema:
+                  RuntimeSchema<T>
+              ): Promise<T> {
+                void instruction;
+                return schema.parse({});
+              },
+              async close() {
+                agentClosed += 1;
+              }
+            };
+          }
+        },
+        artifactStore:
+          new InMemoryArtifactStore(),
+        artifactTimeoutMs:
+          5_000,
+        executionBudget: {
+          maxDurationMs: 25
+        }
+      });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Bound a hung screenshot."
+        }
+      });
+    const terminal =
+      await waitForTerminal(
+        engine,
+        started.id
+      );
+
+    expect(
+      terminal.status
+    ).toBe("FAILED");
+    expect(
+      terminal.error?.code
+    ).toBe("RUN_TIMEOUT");
+    expect(browserClosed).toBe(1);
+    expect(agentClosed).toBe(1);
+  }
+);
+
+
 test(
   "caller-supplied internal run IDs are preserved and validated",
   async () => {

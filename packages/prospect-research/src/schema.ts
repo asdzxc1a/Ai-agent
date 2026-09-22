@@ -788,7 +788,7 @@ export const PROSPECT_RESEARCH_REQUESTED_FIELDS =
   ] as const;
 
 export const PROSPECT_RESEARCH_EXECUTION_PROFILE_VERSION =
-  "gate13-execution-profile-v1" as const;
+  "gate13-execution-profile-v2" as const;
 
 const ProspectResearchExecutionEndpointSchema =
   z.string().url()
@@ -852,7 +852,19 @@ export const ProspectResearchExecutionProfileSchema =
     browserIdentityEvidence:
       z.literal(
         "EXPECTED_IMAGE_PIN_ONLY"
-      )
+      ),
+    networkEgressMode:
+      z.literal(
+        "ASTRA_CONNECTION_BOUND_PROXY_V1"
+      ),
+    networkEgressProxyBrowserHost:
+      z.string()
+        .trim()
+        .min(1)
+        .max(253)
+        .regex(
+          /^[A-Za-z0-9.-]+$/
+        )
   }).strict();
 
 export const PROSPECT_RESEARCH_COST_CATEGORIES =

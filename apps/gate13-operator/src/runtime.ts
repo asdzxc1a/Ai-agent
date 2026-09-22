@@ -22,6 +22,9 @@ import {
   PostgresRunRepository,
   runPostgresMigrations
 } from "@astra/run-postgres";
+import {
+  LocalSandboxRuntime
+} from "@astra/sandbox-runtime";
 
 import {
   assertGate13ExecutionProfileMatches,
@@ -571,7 +574,21 @@ export async function withGate13Workflow<T>(
         agentRuntime:
           new StagehandAgentRuntime({
             model
-          })
+          }),
+        sandboxRuntimeFactory(
+          policy
+        ) {
+          return new LocalSandboxRuntime({
+            ...policy,
+            connectionProxy: {
+              browserHostname:
+                executionProfile
+                  .networkEgressProxyBrowserHost,
+              listenHostname:
+                "0.0.0.0"
+            }
+          });
+        }
       });
 
     result =
