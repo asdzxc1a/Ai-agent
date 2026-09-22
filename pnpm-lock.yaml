@@ -71,6 +71,9 @@ importers:
       '@astra/run-postgres':
         specifier: workspace:*
         version: link:../../packages/run-postgres
+      '@astra/sandbox-runtime':
+        specifier: workspace:*
+        version: link:../../packages/sandbox-runtime
       zod:
         specifier: 4.4.3
         version: 4.4.3
