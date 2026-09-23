@@ -152,7 +152,7 @@ export class ProspectResearchService {
         .parse(input);
 
     try {
-      await this.#repository
+      return await this.#repository
         .saveTargetBatch(
           batch
         );
@@ -163,8 +163,6 @@ export class ProspectResearchService {
           : "research approval batch could not be saved"
       ]);
     }
-
-    return batch;
   }
 
   async #requireTarget(

@@ -1233,9 +1233,24 @@ test(
     const batch =
       approvalBatch();
 
-    await first.saveTargetBatch(
-      batch
+    const persisted =
+      await first.saveTargetBatch(
+        batch
+      );
+
+    expect(
+      persisted.approvedAt
+    ).not.toBe(
+      batch.approvedAt
     );
+    expect(
+      persisted.targets.every(
+        (target) =>
+          target.approval
+            .approvedAt ===
+          persisted.approvedAt
+      )
+    ).toBe(true);
 
     const second =
       new PostgresProspectResearchRepository(
@@ -1247,18 +1262,27 @@ test(
         batch.id
       )
     ).resolves.toEqual(
-      batch
+      persisted
     );
+    const targets =
+      await second.listTargets();
+
     expect(
-      (
-        await second.listTargets()
-      ).map(
+      targets.map(
         (target) => target.id
       )
     ).toEqual([
       "target.pg",
       "target.pg.second"
     ]);
+    expect(
+      targets.every(
+        (target) =>
+          target.approval
+            .approvedAt ===
+          persisted.approvedAt
+      )
+    ).toBe(true);
   }
 );
 

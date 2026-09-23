@@ -591,8 +591,13 @@ describe(
       async () => {
         const artifacts =
           new InMemoryArtifactStore();
+        const persistedApprovedAt =
+          "2026-09-23T12:34:56.000Z";
         const successRepository =
-          new InMemoryProspectResearchRepository();
+          new InMemoryProspectResearchRepository(
+            () =>
+              persistedApprovedAt
+          );
         const success =
           service(
             successRepository,
@@ -601,13 +606,30 @@ describe(
         const batch =
           approvalBatch();
 
-        await expect(
-          success.approveTargetBatch(
-            batch
-          )
-        ).resolves.toEqual(
-          batch
+        const persisted =
+          await success
+            .approveTargetBatch(
+              batch
+            );
+
+        expect(
+          persisted.approvedAt
+        ).toBe(
+          persistedApprovedAt
         );
+        expect(
+          persisted.approvedAt
+        ).not.toBe(
+          batch.approvedAt
+        );
+        expect(
+          persisted.targets.every(
+            (approved) =>
+              approved.approval
+                .approvedAt ===
+              persistedApprovedAt
+          )
+        ).toBe(true);
         expect(
           (
             await successRepository
@@ -626,7 +648,7 @@ describe(
               batch.id
             )
         ).resolves.toEqual(
-          batch
+          persisted
         );
 
         const rollbackRepository =

@@ -702,3 +702,25 @@ Give artifact work an independent bounded deadline, pass the run AbortSignal thr
 **Prevention**
 
 Observability cannot be a prerequisite for termination. Every optional diagnostics/evidence/provider operation that sits inside a durable lifecycle must either cooperate with cancellation or be raced by an owned deadline so cleanup and terminal persistence remain reachable.
+
+---
+
+## L-029 — Authority timestamps belong to the persistence boundary
+
+**Date:** 2026-09-23
+
+**Symptom / context**
+
+Gate 13 had already moved sample freeze, measured-human baseline recording, and measured-attempt reservation chronology onto repository/database clocks, but the atomic approval batch still persisted the caller-supplied `approvedAt`. A direct repository caller could therefore forge when the formal real-company authorization supposedly happened.
+
+**Cause**
+
+The CLI generated a reasonable current timestamp, so the normal operator path looked safe, but the durable repository contract still treated caller chronology as authoritative.
+
+**Fix**
+
+Canonicalize the approval batch at persistence time. Assign one repository/database-owned instant, overwrite the batch `approvedAt` and every target `approval.approvedAt`, persist those canonical snapshots atomically, and return the persisted batch to the caller.
+
+**Prevention**
+
+Whenever a timestamp controls authorization, freeze/order semantics, uniqueness, or measured-experiment chronology, ask who owns the clock at the durable boundary. UI/CLI-generated “now” is presentation convenience, not authoritative chronology. Return the canonical persisted object so later state is constructed from durable truth rather than a stale draft.

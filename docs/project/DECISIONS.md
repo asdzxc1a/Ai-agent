@@ -1565,3 +1565,39 @@ Binding the actual outbound socket to the validated literal address closes that 
 **Revisit when**
 
 A future sandbox/provider supplies a stronger independently verified network namespace/egress firewall that can enforce the same owned allowlist and literal-address binding. Preserve the provider-neutral policy and acceptance evidence rather than weakening it.
+
+---
+
+## D-048 — Gate 13 approval time is server-owned at atomic persistence
+
+**Date:** 2026-09-23
+**Status:** Accepted
+
+**Decision**
+
+The authoritative `ResearchApprovalBatch.approvedAt` timestamp is assigned by the persistence boundary when the atomic approval batch is committed.
+
+Caller/CLI `approvedAt` remains a draft-construction field so the manifest-derived batch can be validated before persistence, but it is not authoritative. Persistence canonicalizes both the batch timestamp and every nested target `approval.approvedAt` to one repository/database-owned instant:
+
+- the in-memory repository uses its injected clock;
+- PostgreSQL uses one transaction-scoped database `NOW()`;
+- the canonical batch JSON and every target JSON store the same server-owned timestamp;
+- `saveTargetBatch()` and `approveTargetBatch()` return the canonical persisted batch;
+- the Gate 13 operator prints that returned timestamp rather than the draft timestamp.
+
+**Why**
+
+Approval is the formal authorization boundary for real-company research. Before this decision, a direct repository caller could backdate or forward-date the batch and all target approvals while still satisfying the schema, making authorization chronology caller-owned even though later sample freeze and measured-attempt chronology were already server-owned.
+
+**Consequences**
+
+- candidate enrichment and preview still do not authorize anything;
+- authorization time is the durable write time, not the time a caller assembled a draft batch;
+- all 43 target snapshots in the atomic Gate 13 batch share the exact canonical approval instant;
+- sample-freeze validation compares against stored server-owned approval provenance;
+- tests must use the returned persisted batch when constructing later frozen acceptance state;
+- `approvedBy` remains operator-supplied identity until the later agency authentication/authorization boundary exists.
+
+**Revisit when**
+
+A future authenticated approval service can bind approver identity and an external signed authorization receipt. Preserve the server-owned persistence timestamp as durable chronology rather than replacing it.
