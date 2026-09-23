@@ -15,6 +15,7 @@ import {
   ProspectResearchSampleOutcomeSchema,
   ProspectResearchSampleSchema,
   canonicalizeProspectResearchSampleFreeze,
+  canonicalizeResearchApprovalBatchPersistence,
   sameApprovedResearchTarget,
   validateProspectResearchAttemptForPersistence,
   validateProspectResearchSampleOutcomeContext,
@@ -117,15 +118,36 @@ export class PostgresProspectResearchRepository
   public async saveTargetBatch(
     input:
       ResearchApprovalBatch
-  ): Promise<void> {
-    const batch =
-      ResearchApprovalBatchSchema
-        .parse(input);
+  ): Promise<
+    ResearchApprovalBatch
+  > {
     const client =
       await this.#pool.connect();
 
     try {
       await client.query("BEGIN");
+      const clock =
+        await client.query(
+          "SELECT NOW() AS approved_at"
+        );
+      const approvedAtRaw =
+        (
+          clock.rows[0] as {
+            approved_at:
+              Date | string;
+          }
+        ).approved_at;
+      const approvedAt =
+        approvedAtRaw instanceof Date
+          ? approvedAtRaw.toISOString()
+          : new Date(
+              approvedAtRaw
+            ).toISOString();
+      const batch =
+        canonicalizeResearchApprovalBatchPersistence(
+          input,
+          approvedAt
+        );
 
       await client.query(
         `
@@ -172,6 +194,8 @@ export class PostgresProspectResearchRepository
       }
 
       await client.query("COMMIT");
+
+      return batch;
     } catch (error) {
       await client.query(
         "ROLLBACK"

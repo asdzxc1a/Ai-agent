@@ -2199,6 +2199,88 @@ export function canonicalizeProspectResearchSampleFreeze(
     });
 }
 
+export function canonicalizeResearchApprovalBatchPersistence(
+  input: unknown,
+  approvedAt: string
+): ResearchApprovalBatch {
+  if (
+    typeof input !==
+      "object" ||
+    input === null ||
+    Array.isArray(
+      input
+    )
+  ) {
+    return ResearchApprovalBatchSchema
+      .parse(input);
+  }
+
+  const record =
+    input as
+      Record<
+        string,
+        unknown
+      >;
+  const targets =
+    Array.isArray(
+      record.targets
+    )
+      ? record.targets.map(
+          (target) => {
+            if (
+              typeof target !==
+                "object" ||
+              target === null ||
+              Array.isArray(
+                target
+              )
+            ) {
+              return target;
+            }
+
+            const targetRecord =
+              target as
+                Record<
+                  string,
+                  unknown
+                >;
+            const approval =
+              targetRecord.approval;
+
+            return {
+              ...targetRecord,
+              approval:
+                typeof approval ===
+                    "object" &&
+                  approval !==
+                    null &&
+                  !Array.isArray(
+                    approval
+                  )
+                  ? {
+                      ...(
+                        approval as
+                          Record<
+                            string,
+                            unknown
+                          >
+                      ),
+                      approvedAt
+                    }
+                  : approval
+            };
+          }
+        )
+      : record.targets;
+
+  return ResearchApprovalBatchSchema
+    .parse({
+      ...record,
+      approvedAt,
+      targets
+    });
+}
+
 export type ProspectResearchSampleOutcome =
   z.infer<
     typeof ProspectResearchSampleOutcomeSchema

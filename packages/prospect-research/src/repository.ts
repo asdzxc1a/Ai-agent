@@ -4,13 +4,13 @@ import type {
 
 import {
   ApprovedResearchTargetSchema,
-  ResearchApprovalBatchSchema,
   ProspectResearchAttemptReservationInputSchema,
   ProspectResearchAttemptReservationSchema,
   ProspectResearchHumanBaselineInputSchema,
   ProspectResearchHumanBaselineSchema,
   ProspectResearchSampleOutcomeSchema,
   canonicalizeProspectResearchSampleFreeze,
+  canonicalizeResearchApprovalBatchPersistence,
   type ApprovedResearchTarget,
   type ResearchApprovalBatch,
   type ProspectResearchAttempt,
@@ -38,7 +38,9 @@ export interface ProspectResearchRepository {
   saveTargetBatch(
     batch:
       ResearchApprovalBatch
-  ): Promise<void>;
+  ): Promise<
+    ResearchApprovalBatch
+  >;
 
   getApprovalBatch(
     batchId: string
@@ -228,10 +230,14 @@ export class InMemoryProspectResearchRepository
   public async saveTargetBatch(
     input:
       ResearchApprovalBatch
-  ): Promise<void> {
+  ): Promise<
+    ResearchApprovalBatch
+  > {
     const batch =
-      ResearchApprovalBatchSchema
-        .parse(input);
+      canonicalizeResearchApprovalBatchPersistence(
+        input,
+        this.#now()
+      );
 
     if (
       this.#approvalBatches
@@ -274,6 +280,10 @@ export class InMemoryProspectResearchRepository
         structuredClone(target)
       );
     }
+
+    return structuredClone(
+      batch
+    );
   }
 
   public async getApprovalBatch(

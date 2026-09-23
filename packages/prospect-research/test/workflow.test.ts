@@ -1218,16 +1218,22 @@ describe(
         const acceptance =
           acceptanceSample();
 
-        await workflow
-          .approveTargetBatch(
-            acceptanceApprovalBatch(
-              acceptance.targets
-            )
-          );
+        const approvalBatch =
+          await workflow
+            .approveTargetBatch(
+              acceptanceApprovalBatch(
+                acceptance.targets
+              )
+            );
+        const approvedAcceptance = {
+          ...acceptance,
+          targets:
+            approvalBatch.targets
+        };
 
         await workflow
           .freezeSample(
-            acceptance
+            approvedAcceptance
           );
 
         await expect(
@@ -1378,15 +1384,21 @@ describe(
         const target =
           acceptance.targets[0]!;
 
-        await workflow
-          .approveTargetBatch(
-            acceptanceApprovalBatch(
-              acceptance.targets
-            )
-          );
+        const approvalBatch =
+          await workflow
+            .approveTargetBatch(
+              acceptanceApprovalBatch(
+                acceptance.targets
+              )
+            );
+        const approvedAcceptance = {
+          ...acceptance,
+          targets:
+            approvalBatch.targets
+        };
         await workflow
           .freezeSample(
-            acceptance
+            approvedAcceptance
           );
         await workflow
           .recordHumanBaseline({
