@@ -1640,3 +1640,81 @@ Conservative accounting also avoids three false-pass risks: cached-input tokens 
 **Revisit when**
 
 Gate 13 has a complete 43-target result, or before authorization if the intended provider cannot be qualified with the pinned Stagehand adapter. Any change before authorization must produce a new packet and rerun the mutation-free preflight.
+
+---
+
+## D-050 — Agent comparator is a separate experiment and cannot satisfy Gate 13 human evidence
+
+**Date:** 2026-09-23
+**Status:** Accepted
+
+**Decision**
+
+Introduce `gate13-agent-comparator-v1` as a separate, explicitly versioned experiment for comparing Astra against an independent general-purpose browser research agent.
+
+The comparator may reference the exact frozen 43-target manifest, but it has:
+
+- separate authorization;
+- separate file storage;
+- separate first-attempt reservations and terminal attempts;
+- separate browser profile/runtime;
+- separate prompt/config hashes;
+- `MEASURED_AGENT` rather than `MEASURED_HUMAN`;
+- `humanBaselineMinutes = null`;
+- `humanReviewMinutes = null`;
+- `NOT_REVIEWED` or later `MODEL_REVIEWED`, never `HUMAN_REVIEWED`.
+
+The comparator has no dependency on the original Gate 13 prospect/run PostgreSQL repositories and cannot advance `g13-us-transportation-acceptance-2026-09-23-v1`.
+
+**Why**
+
+Replacing the human baseline with an agent would answer a different question while corrupting the existing Gate 13 claim. The human gate asks whether Astra reduces measured human preparation time without increasing factual risk. The agent comparator asks how Astra's workflow performs against a general-purpose browser agent. Those measurements are useful together only if their identities and denominators remain distinct.
+
+**Consequences**
+
+- original Gate 13 remains pending until its real human-baseline and human-review requirements are met or the product gate is explicitly superseded;
+- the agent comparator can be developed and fixture-qualified without consuming any Astra acceptance attempt;
+- blocked, failed, cancelled, timed-out, and successful comparator first attempts remain durable rather than being replaced;
+- browser research is constrained to a dedicated unsigned-in BrowserSkill profile and connection-bound egress;
+- the comparator runner owns timestamps and retains actual Codex usage when available;
+- a live 43-target comparator run requires its own explicit authorization after `PREPARED_NOT_AUTHORIZED`.
+
+**Revisit when**
+
+A later product decision deliberately changes the Gate 13 claim or establishes a new gate that uses agent-vs-agent evidence as the primary acceptance criterion. Do not silently reinterpret comparator evidence as human evidence.
+
+---
+
+## D-051 — Comparator browser must not use the macOS system Keychain
+
+**Date:** 2026-09-23
+**Status:** Accepted
+
+**Decision**
+
+The dedicated `gate13-agent-comparator-v1` browser is Chrome for Testing, not the user's normal Chrome profile, and it is launched with mock/basic credential storage:
+
+- `--use-mock-keychain`;
+- `--password-store=basic`;
+- sync disabled;
+- password-manager/autofill service features disabled;
+- BrowserSkill loaded only from the pinned 0.3.1 extension directory;
+- system Keychain access frozen as `FORBIDDEN`.
+
+The protocol records `credentialStore = MOCK_KEYCHAIN` and `systemKeychainAccess = FORBIDDEN`. A measured comparator run must fail readiness rather than ask for or rely on the user's login Keychain, saved passwords, cookies, or normal browser credential state.
+
+**Why**
+
+A Chrome for Testing launch without the explicit mock-keychain flag can trigger macOS access to the Chromium Safe Storage item in the user's login Keychain. That is irrelevant to a public-web research benchmark and violates the isolation goal: the comparator must not gain capability or state from personal credential storage.
+
+**Consequences**
+
+- no Keychain password or Keychain approval is part of the comparator setup;
+- browser credential state is deliberately disposable and experiment-local;
+- dedicated Chrome launch arguments are regression-tested;
+- the comparator remains unsigned-in and does not borrow the user's personal browser profile;
+- connection-bound egress and BrowserSkill command guards remain separate defense layers.
+
+**Revisit when**
+
+A future browser harness provides a stronger OS-isolated credentialless profile. Preserve the invariant that the comparator cannot depend on personal credential storage.

@@ -1,0 +1,17 @@
+{
+  "name": "@astra/gate13-agent-comparator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/cli.js",
+  "types": "./dist/cli.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@astra/agent-comparator": "workspace:*",
+    "@astra/sandbox-runtime": "workspace:*",
+    "zod": "4.4.3"
+  }
+}

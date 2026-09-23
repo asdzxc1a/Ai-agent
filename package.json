@@ -22,7 +22,9 @@
     "test:postgres": "vitest run --config vitest.postgres.config.ts",
     "test:api-restart": "vitest run --config vitest.api-restart.config.ts",
     "test:api-sse": "vitest run --config vitest.api-sse.config.ts",
-    "gate13:operator": "pnpm --filter @astra/gate13-operator build && node apps/gate13-operator/dist/cli.js"
+    "gate13:operator": "pnpm --filter @astra/gate13-operator build && node apps/gate13-operator/dist/cli.js",
+    "gate13:comparator": "pnpm --filter @astra/gate13-agent-comparator... build && node apps/gate13-agent-comparator/dist/cli.js",
+    "gate13:comparator:fixture": "pnpm --filter @astra/gate13-agent-comparator... build && node apps/gate13-agent-comparator/dist/integrated-fixture-smoke.js"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

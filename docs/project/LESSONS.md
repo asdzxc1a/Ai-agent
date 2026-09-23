@@ -746,3 +746,47 @@ Choose the highest-capability model explicitly supported by the pinned adapter f
 **Prevention**
 
 Before freezing any model-backed acceptance profile, verify four things together: exact adapter support, exact model identity/endpoint, durable usage semantics, and source-dated pricing. Never let a “latest model” upgrade silently redefine a measured gate.
+
+---
+
+## L-031 — Separate useful experiments instead of falsifying a missing measurement
+
+**Date:** 2026-09-23
+
+**Symptom / context**
+
+The first 43-target Gate 13 sample is authorized and frozen, but measured-human baselines remain 0/43. An agent can perform comparable browser research immediately, which creates pressure to treat agent elapsed time as a substitute for human preparation minutes.
+
+**Cause**
+
+The workflow shape looks similar even though the measured quantity is different. Agent elapsed time is not observed human labor, and zero is not a valid encoding for an unmeasured human quantity.
+
+**Fix**
+
+Create a separate agent-comparison protocol and storage boundary. Keep human measurements `null / NOT_MEASURED`, preserve the original Gate 13 worklist unchanged, and label automated review as model review rather than human review.
+
+**Prevention**
+
+Before reusing a benchmark recorder or field, ask whether the new arm measures the same real-world quantity. If not, create a new experiment identity and leave unavailable measurements unavailable. Never optimize convenience by changing the meaning of the denominator.
+
+---
+
+## L-032 — Browser-profile isolation includes credential-store isolation
+
+**Date:** 2026-09-23
+
+**Symptom / context**
+
+The dedicated Chrome for Testing comparator profile was separate from normal Chrome, yet macOS still presented a prompt for access to `Chromium Safe Storage` in the user's login Keychain.
+
+**Cause**
+
+A separate browser profile prevents reuse of normal browsing state, but Chromium's default platform credential-encryption path can still consult the system Keychain. Profile isolation alone is therefore not credential-store isolation.
+
+**Fix**
+
+Launch the comparator browser with `--use-mock-keychain` and `--password-store=basic`, disable sync/password-manager service behavior, freeze system Keychain access as forbidden in the protocol, and test those launch arguments.
+
+**Prevention**
+
+When building an isolated browser benchmark, audit not only cookies/profile directories and network egress but also the browser's OS credential/encryption backend. A browser that prompts for personal Keychain access is not a clean comparator environment.

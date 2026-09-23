@@ -287,7 +287,8 @@ Before the first measured sample:
 - freeze the exact acceptance requested-field ledger (`companyName`, `companySummary`, `transformationOpportunities`, `buyingSignals`); derive covered field IDs/counts from durable values or exact explicit-unknown field IDs, count silent omissions as uncovered, keep failed/not-produced coverage at zero, and reject denominator/covered-ledger drift;
 - derive completed-outcome `materialClaimsReviewed` from the durable attempt evidence count; tests must reject both under-counting and over-counting, while failed/not-produced outcomes remain zero;
 - freeze the brief-review rubric before results; reviewers record correction severities, while the schema derives the allowed brief disposition;
-- do not report an acceptance pass/fail verdict until every frozen target has exactly one recorded outcome.
+- do not report an acceptance pass/fail verdict until every frozen target has exactly one recorded outcome;
+- keep any general-purpose browser-agent comparison in a separate protocol/storage boundary: comparator records must never satisfy `MEASURED_HUMAN`, human-review, or original acceptance outcome requirements; deterministic coverage must prove separate authorization, exact first-attempt reservation, duplicate prevention, timeout/interruption preservation, approved-domain evidence, guarded BrowserSkill commands, dedicated browser readiness, system-Keychain prohibition/mock credential storage, and absence of dependencies on the original prospect/run PostgreSQL repositories; before live-company authorization, run the real Codex + real BrowserSkill local fixture behind the connection-bound proxy and require only local fixture navigation/evidence, zero original-Gate mutation, and `humanBaselineMinutes`/`humanReviewMinutes = null`.
 
 For every research attempt record:
 

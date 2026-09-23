@@ -9,6 +9,9 @@ function workspaceSource(path: string): string {
 export default defineConfig({
   resolve: {
     alias: {
+      "@astra/agent-comparator": workspaceSource(
+        "./packages/agent-comparator/src/index.ts"
+      ),
       "@astra/agent-runtime": workspaceSource(
         "./packages/agent-runtime/src/index.ts"
       ),

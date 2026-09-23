@@ -1,0 +1,66 @@
+import {
+  expect,
+  test
+} from "vitest";
+
+import {
+  loadFrozenComparatorInputs
+} from "../src/protocol.js";
+
+test(
+  "checked-in comparator protocol is exact-manifest bound and does not claim human measurement",
+  async () => {
+    const inputs =
+      await loadFrozenComparatorInputs();
+
+    expect(
+      inputs
+        .protocol
+        .sourceManifest
+        .targetCount
+    ).toBe(43);
+    expect(
+      inputs.manifestSha256
+    ).toBe(
+      "9b050c12d784f8476ca0f80cbdb9e425b634b9d2c484730ac1617c025dcec109"
+    );
+    expect(
+      inputs.protocol
+        .humanBaseline
+    ).toBe(
+      "NOT_MEASURED"
+    );
+    expect(
+      inputs.protocol
+        .humanReview
+    ).toBe(
+      "NOT_PERFORMED"
+    );
+    expect(
+      inputs.protocol
+        .execution
+        .retries
+    ).toBe(0);
+    expect(
+      inputs.protocol
+        .browser
+        .enforcement
+    ).toBe(
+      "CONNECTION_BOUND_PROXY_AND_GUARDED_BSK"
+    );
+    expect(
+      inputs.protocol
+        .browser
+        .credentialStore
+    ).toBe(
+      "MOCK_KEYCHAIN"
+    );
+    expect(
+      inputs.protocol
+        .browser
+        .systemKeychainAccess
+    ).toBe(
+      "FORBIDDEN"
+    );
+  }
+);
