@@ -876,15 +876,21 @@ test(
         sample.targets
       );
 
-    await repository
-      .saveTargetBatch(
-        batch
-      );
+    const persistedBatch =
+      await repository
+        .saveTargetBatch(
+          batch
+        );
+    const approvedSample = {
+      ...sample,
+      targets:
+        persistedBatch.targets
+    };
 
     const frozen =
       await repository
         .saveSample(
-          sample
+          approvedSample
         );
 
     expect(
@@ -924,14 +930,20 @@ test(
         sample.targets
       );
 
-    await repository
-      .saveTargetBatch(
-        batch
-      );
+    const persistedBatch =
+      await repository
+        .saveTargetBatch(
+          batch
+        );
+    const approvedSample = {
+      ...sample,
+      targets:
+        persistedBatch.targets
+    };
     const frozen =
       await repository
         .saveSample(
-          sample
+          approvedSample
         );
     const baseline =
       await repository
@@ -1152,16 +1164,19 @@ test(
     const target =
       sample.targets[0]!;
 
+    const persistedBatch =
+      await repository
+        .saveTargetBatch(
+          approvalBatch(
+            sample.targets
+          )
+        );
     await repository
-      .saveTargetBatch(
-        approvalBatch(
-          sample.targets
-        )
-      );
-    await repository
-      .saveSample(
-        sample
-      );
+      .saveSample({
+        ...sample,
+        targets:
+          persistedBatch.targets
+      });
     await repository
       .saveHumanBaseline({
         id:
