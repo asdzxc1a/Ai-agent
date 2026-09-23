@@ -1,0 +1,22 @@
+{
+  "version": "gate13-acceptance-packet-v1",
+  "status": "PREPARED_NOT_AUTHORIZED",
+  "preparedAsOfDate": "2026-09-23",
+  "manifestId": "g13-us-transportation-approval-candidates-2026-09-20",
+  "manifestSha256": "9b050c12d784f8476ca0f80cbdb9e425b634b9d2c484730ac1617c025dcec109",
+  "universeId": "g13-us-transportation-iyt-2026-09-17",
+  "targetCount": 43,
+  "maxDeliveryCostUsdPerBrief": 5,
+  "executionProfileFile": "docs/project/data/gate13-execution-profile-2026-09-23.json",
+  "costPlanFile": "docs/project/data/gate13-acceptance-cost-plan-2026-09-23.json",
+  "costRationaleFile": "docs/project/data/gate13-cost-ceiling-rationale-2026-09-23.md",
+  "humanBaselineFile": "docs/project/data/gate13-human-baseline-procedure-2026-09-23.md",
+  "modelSelection": {
+    "modelName": "openai/gpt-5.6-sol",
+    "reason": "Use the highest-capability OpenAI GPT-5.6 model explicitly supported by pinned Stagehand 3.7.0 for the first high-integrity acceptance. The first measured cohort optimizes for factual reliability and usable-brief rate before model-cost optimization. GPT-6 is intentionally not selected because it is not in the pinned Stagehand 3.7.0 supported CUA model set."
+  },
+  "authorization": {
+    "authorized": false,
+    "note": "This packet is preparation evidence only. It does not authorize the 43 real-company targets."
+  }
+}

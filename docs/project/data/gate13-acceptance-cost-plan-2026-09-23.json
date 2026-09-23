@@ -1,0 +1,42 @@
+{
+  "version": "gate13-delivery-cost-v1",
+  "methodologyDescription": "Pre-result Gate 13 acceptance accounting. Model cost uses OpenAI GPT-5.6 Sol standard short-context list pricing. PROMPT_TOKENS are conservatively charged at the full uncached input rate even when Stagehand separately reports cached-input tokens, so cache discounts can only reduce real spend rather than create an understated acceptance result. COMPLETION_TOKENS use the provider output-token quantity; OpenAI reasoning tokens are a subset of output tokens in the pinned AI SDK mapping and are therefore not charged a second time. Self-hosted Steel/browser cost uses an explicit reference-infrastructure allocation equal to one AWS EC2 t3.2xlarge Linux On-Demand instance in us-east-1 at $0.3328/hour, billed proportionally from the server-derived run duration with no rounding. This is a reproducible conservative accounting allocation, not a claim that the browser host physically runs on AWS.",
+  "rates": [
+    {
+      "id": "gate13.openai.gpt-5.6-sol.input",
+      "category": "MODEL",
+      "label": "GPT-5.6 Sol input tokens (conservative full-rate accounting)",
+      "meter": "PROMPT_TOKENS",
+      "unitsPerBillingUnit": 1000000,
+      "usdPerBillingUnit": 4,
+      "rounding": "NONE",
+      "sourceDescription": "OpenAI API standard short-context input pricing for gpt-5.6-sol: $4.00 per 1M input tokens. Cached tokens are intentionally not discounted in Gate 13 accounting because Stagehand promptTokens includes the provider input total and cachedInputTokens is a subset; charging all prompt tokens at the full rate avoids undercounting or double-entry arithmetic.",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing",
+      "sourceAsOfDate": "2026-09-23"
+    },
+    {
+      "id": "gate13.openai.gpt-5.6-sol.output",
+      "category": "MODEL",
+      "label": "GPT-5.6 Sol output tokens",
+      "meter": "COMPLETION_TOKENS",
+      "unitsPerBillingUnit": 1000000,
+      "usdPerBillingUnit": 20,
+      "rounding": "NONE",
+      "sourceDescription": "OpenAI API standard short-context output pricing for gpt-5.6-sol: $20.00 per 1M output tokens. In the pinned AI SDK/OpenAI mapping outputTokens is the provider output_tokens quantity while reasoningTokens is an informational subset, so no separate reasoning-token rate is added.",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing",
+      "sourceAsOfDate": "2026-09-23"
+    },
+    {
+      "id": "gate13.self-hosted-steel.reference-compute",
+      "category": "BROWSER_PROVIDER",
+      "label": "Self-hosted Steel reference compute allocation",
+      "meter": "RUN_DURATION_MS",
+      "unitsPerBillingUnit": 3600000,
+      "usdPerBillingUnit": 0.3328,
+      "rounding": "NONE",
+      "sourceDescription": "Reference-equivalent self-hosted browser allocation using the documented AWS EC2 t3.2xlarge On-Demand hourly price of $0.3328 in us-east-1. Gate 13 execution remains self-hosted; this rate exists to make browser infrastructure cost reproducible and non-zero without pretending managed Steel Cloud pricing applies.",
+      "sourceUrl": "https://docs.aws.amazon.com/prescriptive-guidance/latest/optimize-costs-microsoft-workloads/right-size-selection.html",
+      "sourceAsOfDate": "2026-09-23"
+    }
+  ]
+}

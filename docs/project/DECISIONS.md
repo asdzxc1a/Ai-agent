@@ -1601,3 +1601,42 @@ Approval is the formal authorization boundary for real-company research. Before 
 **Revisit when**
 
 A future authenticated approval service can bind approver identity and an external signed authorization receipt. Preserve the server-owned persistence timestamp as durable chronology rather than replacing it.
+
+---
+
+## D-049 — First Gate 13 acceptance freezes GPT-5.6 Sol with conservative delivery-cost accounting
+
+**Date:** 2026-09-23
+**Status:** Accepted
+
+**Decision**
+
+The first 43-target Gate 13 acceptance packet uses the exact model identity `openai/gpt-5.6-sol` through the direct OpenAI API endpoint `https://api.openai.com/v1/`, together with pinned Stagehand 3.7.0 and the existing pinned self-hosted Steel/browser profile.
+
+The acceptance cost plan freezes:
+
+- GPT-5.6 Sol input at $4.00 per 1M `PROMPT_TOKENS`;
+- GPT-5.6 Sol output at $20.00 per 1M `COMPLETION_TOKENS`;
+- no separate reasoning-token charge because the pinned OpenAI AI SDK reports reasoning tokens as a subset of provider output tokens;
+- no cached-input discount in acceptance accounting: all prompt tokens are charged at the full input rate, making the result conservative rather than dependent on subtraction semantics;
+- self-hosted Steel/browser infrastructure at a reproducible reference allocation of $0.3328 per reference compute hour, metered from server-derived run duration;
+- a pre-result delivery-cost ceiling of $5.00 per brief.
+
+The normal-tools human-baseline procedure is frozen in the same packet before authorization.
+
+**Why**
+
+The first acceptance should maximize the chance of learning whether the research system can meet the zero-unsupported-claim and usable-brief thresholds rather than prematurely optimizing model COGS. Pinned Stagehand 3.7.0 explicitly supports GPT-5.6 Sol, while newer model families not in that pinned provider surface would create avoidable integration drift. At the expected research-token scale, the difference between Sol and cheaper GPT-5.6 variants is small compared with the experiment's factual-quality and human-time objectives.
+
+Conservative accounting also avoids two false-pass risks: cached-input tokens are a subset of input usage, and reasoning tokens are a subset of provider output usage in the pinned SDK mapping. The cost plan therefore prefers a reproducible upper-bound treatment over clever arithmetic that could understate spend.
+
+**Consequences**
+
+- the checked-in packet is preparation evidence only and remains `PREPARED_NOT_AUTHORIZED`;
+- changing model identity, endpoint, Stagehand version, Steel pin, proxy identity, pricing rates, human-baseline procedure, or the $5 ceiling after authorization/result visibility invalidates the frozen packet and requires a newly versioned acceptance protocol;
+- an OpenAI API credential is supplied only at live execution time and is never written into the execution profile or packet;
+- model/provider optimization belongs after the first acceptance result, not inside the frozen measured cohort.
+
+**Revisit when**
+
+Gate 13 has a complete 43-target result, or before authorization if the intended provider cannot be qualified with the pinned Stagehand adapter. Any change before authorization must produce a new packet and rerun the mutation-free preflight.

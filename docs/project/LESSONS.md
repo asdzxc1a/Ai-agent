@@ -724,3 +724,25 @@ Canonicalize the approval batch at persistence time. Assign one repository/datab
 **Prevention**
 
 Whenever a timestamp controls authorization, freeze/order semantics, uniqueness, or measured-experiment chronology, ask who owns the clock at the durable boundary. UI/CLI-generated “now” is presentation convenience, not authoritative chronology. Return the canonical persisted object so later state is constructed from durable truth rather than a stale draft.
+
+---
+
+## L-030 — Freeze the supported provider surface, not merely the newest model
+
+**Date:** 2026-09-23
+
+**Symptom / context**
+
+A newer public model can look cheaper or more capable on a pricing page, but the first measured Gate 13 run is also testing a pinned Stagehand/AI-SDK/browser composition. Selecting a model outside that pinned adapter's qualified model surface would mix provider-integration novelty into the product-value experiment.
+
+**Cause**
+
+“Best model” and “best experimental choice” are not the same optimization problem. The latter must include adapter support, reproducibility, billing semantics, and the cost of contaminating a first-attempt acceptance cohort.
+
+**Fix**
+
+Choose the highest-capability model explicitly supported by the pinned adapter for the first acceptance, freeze its exact provider/model/base-URL identity, and use conservative cost accounting where usage fields overlap. Optimize to cheaper/newer models only after the value gate has honest evidence.
+
+**Prevention**
+
+Before freezing any model-backed acceptance profile, verify four things together: exact adapter support, exact model identity/endpoint, durable usage semantics, and source-dated pricing. Never let a “latest model” upgrade silently redefine a measured gate.
