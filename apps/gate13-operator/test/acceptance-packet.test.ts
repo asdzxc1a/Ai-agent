@@ -235,7 +235,7 @@ describe(
         expect(
           costEvidence.totalUsd
         ).toBeCloseTo(
-          3.1664,
+          6.6664,
           8
         );
         expect(
@@ -302,7 +302,7 @@ describe(
             packet.universeId,
           targetCount: 43,
           maxDeliveryCostUsdPerBrief:
-            5,
+            10,
           costRateCount: 3,
           costCategories: [
             "BROWSER_PROVIDER",

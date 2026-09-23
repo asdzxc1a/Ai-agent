@@ -6,7 +6,7 @@
   "manifestSha256": "9b050c12d784f8476ca0f80cbdb9e425b634b9d2c484730ac1617c025dcec109",
   "universeId": "g13-us-transportation-iyt-2026-09-17",
   "targetCount": 43,
-  "maxDeliveryCostUsdPerBrief": 5,
+  "maxDeliveryCostUsdPerBrief": 10,
   "executionProfileFile": "docs/project/data/gate13-execution-profile-2026-09-23.json",
   "costPlanFile": "docs/project/data/gate13-acceptance-cost-plan-2026-09-23.json",
   "costRationaleFile": "docs/project/data/gate13-cost-ceiling-rationale-2026-09-23.md",

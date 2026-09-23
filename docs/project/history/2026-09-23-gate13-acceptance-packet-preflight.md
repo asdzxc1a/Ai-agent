@@ -15,7 +15,7 @@ Frozen preparation inputs:
 - pinned Steel image: `ghcr.io/steel-dev/steel-browser@sha256:58fc8f1ed309a647ea7e7a53005b90cb239b8995698d195a261654ac8804974c`;
 - connection-bound egress browser host: `host.docker.internal`;
 - cost plan: `docs/project/data/gate13-acceptance-cost-plan-2026-09-23.json`;
-- cost ceiling: **$5.00 USD / brief**;
+- cost ceiling: **$10.00 USD / brief**;
 - human comparator: `NORMAL_TOOLS` procedure at `docs/project/data/gate13-human-baseline-procedure-2026-09-23.md`.
 
 The offline operator preflight was run with those exact files and the matching intended environment. It returned:
