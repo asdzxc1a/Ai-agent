@@ -226,3 +226,167 @@ test(
     }
   }
 );
+
+test(
+  "CONNECT dials the policy-resolved literal without re-resolving the hostname",
+  async () => {
+    let reached = 0;
+    const fixture =
+      createServer(
+        (_request, response) => {
+          reached += 1;
+          response.end(
+            "connect-ok"
+          );
+        }
+      );
+    const fixturePort =
+      await listen(
+        fixture
+      );
+
+    class OneShotPolicy
+      extends DefaultSandboxNetworkPolicy {
+      public calls = 0;
+
+      public override async resolveAllowedTarget() {
+        this.calls += 1;
+
+        if (this.calls > 1) {
+          throw new Error(
+            "Target was resolved more than once."
+          );
+        }
+
+        return {
+          protocol:
+            "https:" as const,
+          hostname:
+            "rebind.invalid",
+          port:
+            fixturePort,
+          trusted:
+            false,
+          addresses: [
+            "127.0.0.1"
+          ]
+        };
+      }
+    }
+
+    const policy =
+      new OneShotPolicy();
+    const proxy =
+      await ConnectionBoundEgressProxy
+        .start(
+          policy,
+          {
+            browserHostname:
+              "127.0.0.1",
+            listenHostname:
+              "127.0.0.1"
+          }
+        );
+    const proxyUrl =
+      new URL(
+        proxy.proxyUrl
+      );
+
+    try {
+      const body =
+        await new Promise<string>(
+          (resolve, reject) => {
+            const outbound =
+              request({
+                host:
+                  proxyUrl.hostname,
+                port:
+                  Number(
+                    proxyUrl.port
+                  ),
+                method:
+                  "CONNECT",
+                path:
+                  "rebind.invalid:" +
+                  String(
+                    fixturePort
+                  )
+              });
+
+            outbound.once(
+              "connect",
+              (
+                response,
+                socket,
+                head
+              ) => {
+                if (
+                  response.statusCode !==
+                    200
+                ) {
+                  socket.destroy();
+                  reject(
+                    new Error(
+                      "CONNECT returned " +
+                        String(
+                          response
+                            .statusCode
+                        )
+                    )
+                  );
+                  return;
+                }
+
+                let data =
+                  head.toString(
+                    "utf8"
+                  );
+
+                socket.setEncoding(
+                  "utf8"
+                );
+                socket.on(
+                  "data",
+                  (chunk) => {
+                    data +=
+                      String(chunk);
+                  }
+                );
+                socket.once(
+                  "end",
+                  () =>
+                    resolve(data)
+                );
+                socket.once(
+                  "error",
+                  reject
+                );
+                socket.write(
+                  "GET /bound HTTP/1.1\r\n" +
+                    "Host: rebind.invalid\r\n" +
+                    "Connection: close\r\n" +
+                    "\r\n"
+                );
+              }
+            );
+            outbound.once(
+              "error",
+              reject
+            );
+            outbound.end();
+          }
+        );
+
+      expect(body).toContain(
+        "connect-ok"
+      );
+      expect(reached).toBe(1);
+      expect(policy.calls).toBe(1);
+    } finally {
+      await proxy.close();
+      await closeServer(
+        fixture
+      );
+    }
+  }
+);

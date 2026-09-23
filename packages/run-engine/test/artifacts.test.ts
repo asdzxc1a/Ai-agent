@@ -587,6 +587,179 @@ test("artifact-store failures do not change successful run result", async () => 
 
 
 
+
+test(
+  "artifact deadline aborts screenshot provider without failing the run",
+  async () => {
+    let captureCalls = 0;
+    let firstCaptureAborted =
+      false;
+    let browserClosed = 0;
+    let agentClosed = 0;
+
+    const engine =
+      new RunEngine({
+        repository:
+          new InMemoryRunRepository(),
+        browserRuntime: {
+          async createSession() {
+            return {
+              id:
+                "browser-artifact-deadline",
+              cdpUrl:
+                "ws://browser.test/artifact-deadline",
+              captureScreenshot(
+                options = {}
+              ) {
+                captureCalls += 1;
+
+                if (captureCalls > 1) {
+                  return Promise.resolve(
+                    new Uint8Array([
+                      0xff,
+                      0xd8,
+                      0xff,
+                      0xd9
+                    ])
+                  );
+                }
+
+                return new Promise<
+                  Uint8Array
+                >(
+                  (_resolve, reject) => {
+                    const signal =
+                      options.signal;
+
+                    if (signal === undefined) {
+                      reject(
+                        new Error(
+                          "Screenshot deadline signal was not supplied."
+                        )
+                      );
+                      return;
+                    }
+
+                    const onAbort = () => {
+                      firstCaptureAborted =
+                        true;
+                      reject(
+                        signal.reason ??
+                          new DOMException(
+                            "Screenshot aborted.",
+                            "AbortError"
+                          )
+                      );
+                    };
+
+                    if (signal.aborted) {
+                      onAbort();
+                      return;
+                    }
+
+                    signal.addEventListener(
+                      "abort",
+                      onAbort,
+                      {
+                        once: true
+                      }
+                    );
+                  }
+                );
+              },
+              async close() {
+                browserClosed += 1;
+              }
+            };
+          }
+        },
+        agentRuntime: {
+          async openSession() {
+            return {
+              async navigate() {},
+              async observe() {
+                return [
+                  {
+                    selector:
+                      "xpath=//button",
+                    description:
+                      "Safe button",
+                    method:
+                      "click"
+                  }
+                ];
+              },
+              async act(action) {
+                return {
+                  success: true,
+                  message:
+                    "ok",
+                  actions: [
+                    action
+                  ]
+                };
+              },
+              async extract<T>(
+                instruction: string,
+                schema:
+                  RuntimeSchema<T>
+              ): Promise<T> {
+                void instruction;
+                return schema.parse({});
+              },
+              async close() {
+                agentClosed += 1;
+              }
+            };
+          }
+        },
+        artifactStore:
+          new InMemoryArtifactStore(),
+        artifactTimeoutMs: 20,
+        executionBudget: {
+          maxDurationMs: 1_000
+        },
+        completionVerifier: {
+          verify() {
+            return {
+              verified: true,
+              message:
+                "Fixture completion verified."
+            };
+          }
+        }
+      });
+
+    const started =
+      await engine.createRun({
+        request: {
+          url:
+            "https://fixture.test/",
+          goal:
+            "Complete despite a timed-out evidence capture."
+        }
+      });
+    const terminal =
+      await waitForTerminal(
+        engine,
+        started.id
+      );
+
+    expect(
+      terminal.status
+    ).toBe("COMPLETED");
+    expect(
+      firstCaptureAborted
+    ).toBe(true);
+    expect(
+      captureCalls
+    ).toBeGreaterThanOrEqual(2);
+    expect(browserClosed).toBe(1);
+    expect(agentClosed).toBe(1);
+  }
+);
+
+
 test(
   "hung screenshot cannot outlive the run wall-clock budget",
   async () => {

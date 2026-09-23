@@ -815,6 +815,17 @@ export class RunEngine implements RunService {
 
     const startedAt =
       Date.now();
+    const artifactSignal =
+      signal === undefined
+        ? AbortSignal.timeout(
+            this.#artifactTimeoutMs
+          )
+        : AbortSignal.any([
+            signal,
+            AbortSignal.timeout(
+              this.#artifactTimeoutMs
+            )
+          ]);
     const remainingMs = () =>
       Math.max(
         1,
@@ -842,17 +853,14 @@ export class RunEngine implements RunService {
       try {
         pageEvidence =
           await withDeadline(
-            agent.capturePageEvidence(
-              signal === undefined
-                ? {}
-                : {
-                    signal
-                  }
-            ),
+            agent.capturePageEvidence({
+              signal:
+                artifactSignal
+            }),
             remainingMs(),
             "Page evidence capture for " +
               name,
-            signal
+            artifactSignal
           );
       } catch (error) {
         artifactErrors.push(
@@ -868,16 +876,13 @@ export class RunEngine implements RunService {
         await withDeadline(
           browser.captureScreenshot({
             fullPage: true,
-            ...(signal === undefined
-              ? {}
-              : {
-                  signal
-                })
+            signal:
+              artifactSignal
           }),
           remainingMs(),
           "Screenshot capture for " +
             name,
-          signal
+          artifactSignal
         );
       const screenshotSha256 =
         sha256(data);
@@ -918,7 +923,7 @@ export class RunEngine implements RunService {
         remainingMs(),
         "Screenshot artifact persistence for " +
           name,
-        signal
+        artifactSignal
       );
     } catch (error) {
       artifactErrors.push(
