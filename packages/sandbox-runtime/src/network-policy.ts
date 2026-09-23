@@ -53,6 +53,16 @@ export interface SandboxNetworkPolicyOptions {
   resolver?: SandboxDnsResolver;
 }
 
+export interface ResolvedSandboxNetworkTarget {
+  protocol:
+    | "http:"
+    | "https:";
+  hostname: string;
+  port: number;
+  trusted: boolean;
+  addresses: readonly string[];
+}
+
 class NodeSandboxDnsResolver
   implements SandboxDnsResolver {
   public async resolve(
@@ -371,9 +381,9 @@ export class DefaultSandboxNetworkPolicy
     };
   }
 
-  public async assertAllowed(
+  public async resolveAllowedTarget(
     request: BrowserNetworkRequest
-  ): Promise<void> {
+  ): Promise<ResolvedSandboxNetworkTarget> {
     let url: URL;
 
     try {
@@ -391,7 +401,9 @@ export class DefaultSandboxNetworkPolicy
     ) {
       throw new SandboxNetworkPolicyError(
         "DISALLOWED_SCHEME",
-        `Network scheme ${url.protocol} is not allowed.`
+        "Network scheme " +
+          url.protocol +
+          " is not allowed."
       );
     }
 
@@ -432,91 +444,144 @@ export class DefaultSandboxNetworkPolicy
     if (!allowed) {
       throw new SandboxNetworkPolicyError(
         "BLOCKED_HOSTNAME",
-        `Hostname ${hostname} is outside the sandbox egress allowlist.`
+        "Hostname " +
+          hostname +
+          " is outside the sandbox egress allowlist."
       );
     }
 
-    if (!trusted) {
+    const port =
+      url.port.length === 0
+        ? (
+            url.protocol ===
+              "https:"
+              ? 443
+              : 80
+          )
+        : Number(url.port);
+
+    if (trusted) {
+      return {
+        protocol:
+          url.protocol,
+        hostname,
+        port,
+        trusted: true,
+        addresses: [
+          hostname
+        ]
+      };
+    }
+
+    if (
+      reservedHostname(
+        hostname
+      )
+    ) {
+      throw new SandboxNetworkPolicyError(
+        "BLOCKED_HOSTNAME",
+        "Hostname " +
+          hostname +
+          " is not allowed."
+      );
+    }
+
+    if (
+      !this.#allowedPorts.has(
+        port
+      )
+    ) {
+      throw new SandboxNetworkPolicyError(
+        "BLOCKED_PORT",
+        "Network port " +
+          String(port) +
+          " is not allowed."
+      );
+    }
+
+    if (isIP(hostname) !== 0) {
       if (
-        reservedHostname(
+        isBlockedNetworkAddress(
           hostname
         )
       ) {
         throw new SandboxNetworkPolicyError(
-          "BLOCKED_HOSTNAME",
-          `Hostname ${hostname} is not allowed.`
-        );
-      }
-
-      const port =
-        url.port.length === 0
-          ? (
-              url.protocol ===
-                "https:"
-                ? 443
-                : 80
-            )
-          : Number(url.port);
-
-      if (
-        !this.#allowedPorts.has(
-          port
-        )
-      ) {
-        throw new SandboxNetworkPolicyError(
-          "BLOCKED_PORT",
-          `Network port ${String(port)} is not allowed.`
-        );
-      }
-
-      if (isIP(hostname) !== 0) {
-        if (
-          isBlockedNetworkAddress(
-            hostname
-          )
-        ) {
-          throw new SandboxNetworkPolicyError(
-            "BLOCKED_ADDRESS",
-            `Network address ${hostname} is not allowed.`
-          );
-        }
-
-        return;
-      }
-
-      let addresses:
-        readonly string[];
-
-      try {
-        addresses =
-          await this.#resolver.resolve(
-            hostname
-          );
-      } catch {
-        throw new SandboxNetworkPolicyError(
-          "DNS_LOOKUP_FAILED",
-          `DNS lookup failed for ${hostname}.`
-        );
-      }
-
-      if (addresses.length === 0) {
-        throw new SandboxNetworkPolicyError(
-          "DNS_LOOKUP_FAILED",
-          `DNS lookup returned no addresses for ${hostname}.`
-        );
-      }
-
-      const blocked =
-        addresses.find(
-          isBlockedNetworkAddress
-        );
-
-      if (blocked !== undefined) {
-        throw new SandboxNetworkPolicyError(
           "BLOCKED_ADDRESS",
-          `Hostname ${hostname} resolved to a blocked network address.`
+          "Network address " +
+            hostname +
+            " is not allowed."
         );
       }
+
+      return {
+        protocol:
+          url.protocol,
+        hostname,
+        port,
+        trusted: false,
+        addresses: [
+          hostname
+        ]
+      };
     }
+
+    let addresses:
+      readonly string[];
+
+    try {
+      addresses =
+        await this.#resolver.resolve(
+          hostname
+        );
+    } catch {
+      throw new SandboxNetworkPolicyError(
+        "DNS_LOOKUP_FAILED",
+        "DNS lookup failed for " +
+          hostname +
+          "."
+      );
+    }
+
+    if (addresses.length === 0) {
+      throw new SandboxNetworkPolicyError(
+        "DNS_LOOKUP_FAILED",
+        "DNS lookup returned no addresses for " +
+          hostname +
+          "."
+      );
+    }
+
+    const blocked =
+      addresses.find(
+        isBlockedNetworkAddress
+      );
+
+    if (blocked !== undefined) {
+      throw new SandboxNetworkPolicyError(
+        "BLOCKED_ADDRESS",
+        "Hostname " +
+          hostname +
+          " resolved to a blocked network address."
+      );
+    }
+
+    return {
+      protocol:
+        url.protocol,
+      hostname,
+      port,
+      trusted: false,
+      addresses: [
+        ...addresses
+      ]
+    };
+  }
+
+  public async assertAllowed(
+    request: BrowserNetworkRequest
+  ): Promise<void> {
+    await this.resolveAllowedTarget(
+      request
+    );
   }
 }

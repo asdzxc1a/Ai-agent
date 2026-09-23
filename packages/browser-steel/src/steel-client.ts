@@ -17,6 +17,7 @@ export interface CreateSteelSessionOptions {
     width: number;
     height: number;
   };
+  proxyUrl?: string;
   signal?: AbortSignal;
 }
 
@@ -104,7 +105,8 @@ export class SteelClient {
         headless: options.headless,
         skipFingerprintInjection:
           options.skipFingerprintInjection,
-        dimensions: options.dimensions
+        dimensions: options.dimensions,
+        proxyUrl: options.proxyUrl
       }),
       ...(options.signal === undefined
         ? {}
@@ -141,6 +143,7 @@ export class SteelClient {
   public async captureScreenshot(
     options: {
       fullPage?: boolean;
+      signal?: AbortSignal;
     } = {}
   ): Promise<Uint8Array> {
     const response = await fetch(
@@ -150,7 +153,14 @@ export class SteelClient {
         headers: {
           "content-type": "application/json"
         },
-        body: JSON.stringify(options)
+        body: JSON.stringify({
+          fullPage: options.fullPage
+        }),
+        ...(options.signal === undefined
+          ? {}
+          : {
+              signal: options.signal
+            })
       }
     );
 

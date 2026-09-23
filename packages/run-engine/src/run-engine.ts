@@ -181,6 +181,8 @@ function sha256(
     .digest("hex");
 }
 
+const DEFAULT_ARTIFACT_TIMEOUT_MS =
+  10_000;
 const DEFAULT_DIAGNOSTICS_TIMEOUT_MS =
   10_000;
 const DEFAULT_CLEANUP_TIMEOUT_MS =
@@ -206,15 +208,18 @@ function positiveTimeout(
 async function withDeadline<T>(
   operation: Promise<T>,
   timeoutMs: number,
-  label: string
+  label: string,
+  signal?: AbortSignal
 ): Promise<T> {
   let timer:
     ReturnType<
       typeof setTimeout
     > | undefined;
+  let abortListener:
+    (() => void) | undefined;
 
-  try {
-    return await Promise.race([
+  const pending:
+    Promise<T>[] = [
       operation,
       new Promise<T>(
         (_resolve, reject) => {
@@ -235,10 +240,57 @@ async function withDeadline<T>(
           );
         }
       )
-    ]);
+    ];
+
+  if (signal !== undefined) {
+    pending.push(
+      new Promise<T>(
+        (_resolve, reject) => {
+          abortListener = () => {
+            reject(
+              signal.reason ??
+                new DOMException(
+                  label +
+                    " was aborted.",
+                  "AbortError"
+                )
+            );
+          };
+
+          if (signal.aborted) {
+            abortListener();
+            return;
+          }
+
+          signal.addEventListener(
+            "abort",
+            abortListener,
+            {
+              once: true
+            }
+          );
+        }
+      )
+    );
+  }
+
+  try {
+    return await Promise.race(
+      pending
+    );
   } finally {
     if (timer !== undefined) {
       clearTimeout(timer);
+    }
+
+    if (
+      signal !== undefined &&
+      abortListener !== undefined
+    ) {
+      signal.removeEventListener(
+        "abort",
+        abortListener
+      );
     }
   }
 }
@@ -276,6 +328,7 @@ export interface RunEngineOptions {
   completionVerifier?: RunCompletionVerifier;
   executionBudget?: RunExecutionBudget;
   createUsageMeter?: RunUsageMeterFactory;
+  artifactTimeoutMs?: number;
   diagnosticsTimeoutMs?: number;
   cleanupTimeoutMs?: number;
 }
@@ -290,6 +343,8 @@ export class RunEngine implements RunService {
   readonly #executionBudget:
     NormalizedRunExecutionBudget;
   readonly #createUsageMeter?: RunUsageMeterFactory;
+  readonly #artifactTimeoutMs:
+    number;
   readonly #diagnosticsTimeoutMs:
     number;
   readonly #cleanupTimeoutMs:
@@ -308,6 +363,8 @@ export class RunEngine implements RunService {
     completionVerifier,
     executionBudget,
     createUsageMeter,
+    artifactTimeoutMs =
+      DEFAULT_ARTIFACT_TIMEOUT_MS,
     diagnosticsTimeoutMs =
       DEFAULT_DIAGNOSTICS_TIMEOUT_MS,
     cleanupTimeoutMs =
@@ -333,6 +390,11 @@ export class RunEngine implements RunService {
     this.#executionBudget =
       normalizeRunExecutionBudget(
         executionBudget
+      );
+    this.#artifactTimeoutMs =
+      positiveTimeout(
+        artifactTimeoutMs,
+        "Run artifactTimeoutMs"
       );
     this.#diagnosticsTimeoutMs =
       positiveTimeout(
@@ -733,7 +795,8 @@ export class RunEngine implements RunService {
     agent: AgentSession | undefined,
     name: string,
     semanticSettled: boolean,
-    artifactErrors: string[]
+    artifactErrors: string[],
+    signal?: AbortSignal
   ): Promise<void> {
     if (
       this.#artifactStore === undefined ||
@@ -742,6 +805,36 @@ export class RunEngine implements RunService {
       return;
     }
 
+    if (signal?.aborted) {
+      artifactErrors.push(
+        name +
+          ": skipped after run abort."
+      );
+      return;
+    }
+
+    const startedAt =
+      Date.now();
+    const artifactSignal =
+      signal === undefined
+        ? AbortSignal.timeout(
+            this.#artifactTimeoutMs
+          )
+        : AbortSignal.any([
+            signal,
+            AbortSignal.timeout(
+              this.#artifactTimeoutMs
+            )
+          ]);
+    const remainingMs = () =>
+      Math.max(
+        1,
+        this.#artifactTimeoutMs -
+          (
+            Date.now() -
+            startedAt
+          )
+      );
     let pageEvidence:
       Awaited<
         ReturnType<
@@ -759,20 +852,38 @@ export class RunEngine implements RunService {
     ) {
       try {
         pageEvidence =
-          await agent
-            .capturePageEvidence();
+          await withDeadline(
+            agent.capturePageEvidence({
+              signal:
+                artifactSignal
+            }),
+            remainingMs(),
+            "Page evidence capture for " +
+              name,
+            artifactSignal
+          );
       } catch (error) {
         artifactErrors.push(
-          `${name}: page-evidence: ${errorMessage(error)}`
+          name +
+            ": page-evidence: " +
+            errorMessage(error)
         );
       }
     }
 
     try {
       const data =
-        await browser.captureScreenshot({
-          fullPage: true
-        });
+        await withDeadline(
+          browser.captureScreenshot({
+            fullPage: true,
+            signal:
+              artifactSignal
+          }),
+          remainingMs(),
+          "Screenshot capture for " +
+            name,
+          artifactSignal
+        );
       const screenshotSha256 =
         sha256(data);
       const metadata =
@@ -800,17 +911,25 @@ export class RunEngine implements RunService {
               screenshotSha256
             };
 
-      await this.#artifactStore.putArtifact({
-        runId,
-        kind: "SCREENSHOT",
-        name,
-        mediaType: "image/jpeg",
-        data,
-        metadata
-      });
+      await withDeadline(
+        this.#artifactStore.putArtifact({
+          runId,
+          kind: "SCREENSHOT",
+          name,
+          mediaType: "image/jpeg",
+          data,
+          metadata
+        }),
+        remainingMs(),
+        "Screenshot artifact persistence for " +
+          name,
+        artifactSignal
+      );
     } catch (error) {
       artifactErrors.push(
-        `${name}: ${errorMessage(error)}`
+        name +
+          ": " +
+          errorMessage(error)
       );
     }
   }
@@ -901,11 +1020,12 @@ export class RunEngine implements RunService {
     }
 
     try {
-      await this.#artifactStore.putJsonArtifact({
-        runId,
-        kind: "RUN_SUMMARY",
-        name: "run-summary.json",
-        value: {
+      await withDeadline(
+        this.#artifactStore.putJsonArtifact({
+          runId,
+          kind: "RUN_SUMMARY",
+          name: "run-summary.json",
+          value: {
           runId,
           url: input.request.url,
           status: terminal.status,
@@ -927,9 +1047,12 @@ export class RunEngine implements RunService {
                 failure:
                   terminal.failure
               }),
-          artifactErrors
-        }
-      });
+            artifactErrors
+          }
+        }),
+        this.#artifactTimeoutMs,
+        "Run summary artifact persistence"
+      );
     } catch {
       // Artifact capture is intentionally best-effort.
     }
@@ -1214,8 +1337,10 @@ export class RunEngine implements RunService {
         agent,
         "after-navigation.jpg",
         false,
-        artifactErrors
+        artifactErrors,
+        signal
       );
+      throwIfAborted(signal);
 
       if (this.#agentLoop !== undefined) {
         startedAt = Date.now();
@@ -1269,8 +1394,10 @@ export class RunEngine implements RunService {
                       ) +
                       "-after-action.jpg",
                     true,
-                    artifactErrors
+                    artifactErrors,
+                    signal
                   );
+                  throwIfAborted(signal);
                   pendingLoopScreenshotIteration =
                     undefined;
                 }
@@ -1297,8 +1424,10 @@ export class RunEngine implements RunService {
               ).padStart(2, "0") +
               "-after-action.jpg",
             false,
-            artifactErrors
+            artifactErrors,
+            signal
           );
+          throwIfAborted(signal);
           pendingLoopScreenshotIteration =
             undefined;
         }
@@ -1355,8 +1484,10 @@ export class RunEngine implements RunService {
           agent,
           "final-observation.jpg",
           true,
-          artifactErrors
+          artifactErrors,
+          signal
         );
+        throwIfAborted(signal);
 
         result =
           loopResult.result;
@@ -1445,8 +1576,10 @@ export class RunEngine implements RunService {
             agent,
             "after-action.jpg",
             false,
-            artifactErrors
+            artifactErrors,
+            signal
           );
+          throwIfAborted(signal);
 
           if (
             input.outputSchema ===
@@ -1640,7 +1773,8 @@ export class RunEngine implements RunService {
           agent,
           "failure.jpg",
           false,
-          artifactErrors
+          artifactErrors,
+          signal
         );
       }
     } finally {

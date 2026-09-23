@@ -33,6 +33,7 @@ export interface Gate13ExecutionProfileInput {
   modelBaseUrl?:
     string | undefined;
   steelBaseUrl: string;
+  egressProxyBrowserHost: string;
   stagehandPackageText: string;
   steelImagePinText: string;
 }
@@ -118,7 +119,7 @@ export function buildGate13ExecutionProfile(
   return ProspectResearchExecutionProfileSchema
     .parse({
       version:
-        "gate13-execution-profile-v1",
+        "gate13-execution-profile-v2",
       agentRuntime:
         "STAGEHAND",
       agentRuntimeVersion:
@@ -140,7 +141,14 @@ export function buildGate13ExecutionProfile(
           .steelImagePinText
           .trim(),
       browserIdentityEvidence:
-        "EXPECTED_IMAGE_PIN_ONLY"
+        "EXPECTED_IMAGE_PIN_ONLY",
+      networkEgressMode:
+        "ASTRA_CONNECTION_BOUND_PROXY_V1",
+      networkEgressProxyBrowserHost:
+        input
+          .egressProxyBrowserHost
+          .trim()
+          .toLowerCase()
     });
 }
 
@@ -193,6 +201,10 @@ export async function currentGate13ExecutionProfile():
     steelBaseUrl:
       requiredEnv(
         "GATE13_STEEL_BASE_URL"
+      ),
+    egressProxyBrowserHost:
+      requiredEnv(
+        "GATE13_EGRESS_PROXY_BROWSER_HOST"
       ),
     stagehandPackageText,
     steelImagePinText
@@ -295,7 +307,9 @@ export function assertGate13ExecutionProfileMatches(
       "browserRuntime",
       "browserBaseUrl",
       "browserExpectedImagePin",
-      "browserIdentityEvidence"
+      "browserIdentityEvidence",
+      "networkEgressMode",
+      "networkEgressProxyBrowserHost"
     ] as const
   ) {
     if (

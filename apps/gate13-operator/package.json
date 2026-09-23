@@ -18,6 +18,7 @@
     "@astra/prospect-postgres": "workspace:*",
     "@astra/prospect-research": "workspace:*",
     "@astra/run-postgres": "workspace:*",
-    "zod": "4.4.3"
+    "zod": "4.4.3",
+    "@astra/sandbox-runtime": "workspace:*"
   }
 }

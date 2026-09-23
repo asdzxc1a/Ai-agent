@@ -323,6 +323,13 @@ export class SteelBrowserRuntime
               skipFingerprintInjection: true
             }
           : {}),
+        ...(options.networkProxyUrl ===
+          undefined
+          ? {}
+          : {
+              proxyUrl:
+                options.networkProxyUrl
+            }),
           ...(options.signal === undefined
             ? {}
             : {

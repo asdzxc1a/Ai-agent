@@ -6,7 +6,8 @@ import {
 import type {
   BrowserNetworkPolicy,
   BrowserRuntime,
-  BrowserSession
+  BrowserSession,
+  BrowserSessionOptions
 } from "@astra/browser-runtime";
 
 import {
@@ -49,10 +50,18 @@ class FakeBrowserRuntime
   implements BrowserRuntime {
   public readonly sessions:
     FakeBrowserSession[] = [];
+  public readonly proxyUrls:
+    Array<string | undefined> =
+      [];
   public failCreate = false;
 
-  public async createSession():
-    Promise<BrowserSession> {
+  public async createSession(
+    options:
+      BrowserSessionOptions = {}
+  ): Promise<BrowserSession> {
+    this.proxyUrls.push(
+      options.networkProxyUrl
+    );
     if (this.failCreate) {
       throw new Error(
         "browser create failed"
@@ -166,6 +175,44 @@ test("sandboxed browser sessions expose owned isolation and policy identity", as
   ).toBe("ACTIVE");
 
   await second.close();
+});
+
+test("sandbox-owned network proxy overrides the browser route", async () => {
+  const sandboxRuntime:
+    SandboxRuntime = {
+      async createSession() {
+        return {
+          id:
+            "sandbox-proxy",
+          status:
+            "ACTIVE",
+          networkPolicy: {
+            async assertAllowed() {}
+          },
+          networkProxyUrl:
+            "http://proxy.test:8080",
+          async close() {}
+        };
+      }
+    };
+  const browserRuntime =
+    new FakeBrowserRuntime();
+  const runtime =
+    new SandboxedBrowserRuntime({
+      sandboxRuntime,
+      browserRuntime
+    });
+
+  await runtime.createSession({
+    networkProxyUrl:
+      "http://caller-bypass.test:9999"
+  });
+
+  expect(
+    browserRuntime.proxyUrls
+  ).toEqual([
+    "http://proxy.test:8080"
+  ]);
 });
 
 test("sandbox cleanup still runs when browser cleanup fails", async () => {

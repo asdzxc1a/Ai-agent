@@ -1,4 +1,8 @@
 export {
+  ConnectionBoundEgressProxy
+} from "./connection-bound-proxy.js";
+
+export {
   DefaultSandboxNetworkPolicy,
   SandboxNetworkPolicyError,
   isBlockedNetworkAddress
@@ -13,10 +17,19 @@ export {
 } from "./sandboxed-browser-runtime.js";
 
 export type {
+  ConnectionBoundEgressProxyOptions
+} from "./connection-bound-proxy.js";
+
+export type {
+  ResolvedSandboxNetworkTarget,
   SandboxDnsResolver,
   SandboxNetworkPolicyErrorCode,
   SandboxNetworkPolicyOptions
 } from "./network-policy.js";
+
+export type {
+  LocalSandboxRuntimeOptions
+} from "./local-sandbox.js";
 
 export type {
   SandboxRuntime,

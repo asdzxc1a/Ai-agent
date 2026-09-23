@@ -1520,3 +1520,48 @@ Gate 13 now uses sample freeze time as a trust boundary: cost sources must preda
 **Revisit when**
 
 If the platform later introduces a signed external experiment-registration timestamp, store it as separate provenance. Do not replace or overload the server-owned durable freeze timestamp.
+
+
+---
+
+## D-047 — Gate 13 public-browser egress is connection-bound and frozen in the execution profile
+
+**Date:** 2026-09-22
+**Status:** Accepted
+
+**Decision**
+
+Gate 13 live public research routes the browser through an Astra-owned connection-bound HTTP/CONNECT proxy in addition to Stagehand's context-wide request policy.
+
+For every untrusted public request, the owned network policy resolves and validates the target first. The proxy then opens the actual upstream TCP connection to one of those validated literal addresses instead of allowing Chromium/provider DNS to independently choose a later address. The original hostname remains the HTTP Host/TLS SNI identity, while the socket destination is the policy-approved address.
+
+Trusted deterministic fixture/infrastructure hosts remain an explicit exception for provider-test topology and may use a configured connection override. They are never treated as proof of safe arbitrary public DNS.
+
+Gate 13 acceptance uses `gate13-execution-profile-v2`, which freezes:
+
+- Stagehand version;
+- model name/base URL;
+- Steel base URL and expected immutable image pin;
+- `networkEgressMode = ASTRA_CONNECTION_BOUND_PROXY_V1`;
+- the browser-visible proxy hostname.
+
+Live `run-target` rejects execution-profile drift before research and constructs the sandbox with that frozen proxy identity.
+
+**Why**
+
+Application-layer DNS/IP preflight alone has a time-of-check/time-of-use gap: Astra can validate a public DNS answer and then Chromium can independently resolve the same approved hostname to a different, possibly private/link-local/metadata address. A domain allowlist plus repeated preflight is therefore not connection-level DNS-rebinding protection.
+
+Binding the actual outbound socket to the validated literal address closes that gap while keeping provider-specific proxy plumbing behind the owned browser/sandbox contracts.
+
+**Consequences**
+
+- public Gate 13 browser traffic has two independent controls: Stagehand request interception and connection-bound egress;
+- redirects/subresources remain subject to the same owned policy before the proxy connects;
+- the proxy is fail-closed for off-allowlist or blocked-address requests;
+- the browser/provider cannot bypass the sandbox-owned proxy by supplying a caller proxy URL through the owned session contract;
+- the first Gate 13 acceptance must freeze the v2 profile before authorization/results;
+- authentication/tenancy and durable multi-worker Steel ownership remain separate later production boundaries.
+
+**Revisit when**
+
+A future sandbox/provider supplies a stronger independently verified network namespace/egress firewall that can enforce the same owned allowlist and literal-address binding. Preserve the provider-neutral policy and acceptance evidence rather than weakening it.

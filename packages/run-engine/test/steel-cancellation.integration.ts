@@ -209,7 +209,17 @@ test(
               new LocalSandboxRuntime({
                 trustedHostnames: [
                   "host.docker.internal"
-                ]
+                ],
+                connectionProxy: {
+                  browserHostname:
+                    "host.docker.internal",
+                  listenHostname:
+                    "0.0.0.0",
+                  trustedConnectionOverrides: {
+                    "host.docker.internal":
+                      "127.0.0.1"
+                  }
+                }
               }),
             browserRuntime:
               new SteelBrowserRuntime({

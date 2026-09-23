@@ -31,13 +31,72 @@ describe("SteelClient", () => {
       new AbortController();
     const session = await client.createSession({
       headless: true,
+      proxyUrl:
+        "http://proxy.test:8080",
       signal: controller.signal
     });
 
     expect(session.status).toBe("live");
+    expect(
+      JSON.parse(
+        String(
+          fetchMock.mock
+            .calls[0]?.[1]?.body
+        )
+      )
+    ).toMatchObject({
+      proxyUrl:
+        "http://proxy.test:8080"
+    });
     expect(session.websocketUrl).toBe("ws://localhost:3000/");
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:3000/v1/sessions",
+      expect.objectContaining({
+        method: "POST",
+        signal:
+          controller.signal
+      })
+    );
+  });
+
+  it("passes screenshot cancellation through to Steel", async () => {
+    const fetchMock =
+      vi.fn<typeof fetch>()
+        .mockResolvedValue(
+          new Response(
+            new Uint8Array([
+              0xff,
+              0xd8,
+              0xff
+            ]),
+            {
+              status: 200
+            }
+          )
+        );
+
+    vi.stubGlobal(
+      "fetch",
+      fetchMock
+    );
+
+    const client =
+      new SteelClient(
+        "http://localhost:3000/"
+      );
+    const controller =
+      new AbortController();
+
+    await client.captureScreenshot({
+      fullPage: true,
+      signal:
+        controller.signal
+    });
+
+    expect(
+      fetchMock
+    ).toHaveBeenCalledWith(
+      "http://localhost:3000/v1/sessions/screenshot",
       expect.objectContaining({
         method: "POST",
         signal:

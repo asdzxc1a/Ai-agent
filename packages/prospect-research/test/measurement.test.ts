@@ -26,7 +26,7 @@ const frozenAt =
 function executionProfile() {
   return {
     version:
-      "gate13-execution-profile-v1" as const,
+      "gate13-execution-profile-v2" as const,
     agentRuntime:
       "STAGEHAND" as const,
     agentRuntimeVersion:
@@ -43,7 +43,11 @@ function executionProfile() {
       "ghcr.io/steel-dev/steel-browser@sha256:" +
       "a".repeat(64),
     browserIdentityEvidence:
-      "EXPECTED_IMAGE_PIN_ONLY"
+      "EXPECTED_IMAGE_PIN_ONLY",
+    networkEgressMode:
+      "ASTRA_CONNECTION_BOUND_PROXY_V1" as const,
+    networkEgressProxyBrowserHost:
+      "host.docker.internal"
   };
 }
 

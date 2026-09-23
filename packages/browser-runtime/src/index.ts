@@ -6,11 +6,13 @@ export interface BrowserViewport {
 export interface BrowserSessionOptions {
   headless?: boolean;
   viewport?: BrowserViewport;
+  networkProxyUrl?: string;
   signal?: AbortSignal;
 }
 
 export interface BrowserScreenshotOptions {
   fullPage?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface BrowserNetworkRequest {

@@ -657,3 +657,48 @@ Send origin-storage cleanup through Stagehand's supported `page.sendCDP(...)` ta
 **Prevention**
 
 Treat CDP method scope as part of the adapter contract. Test cleanup against the exact pinned provider rather than assuming a command accepted by one CDP connection type works on another.
+
+
+---
+
+## L-027 — DNS validation is not connection binding
+
+**Date:** 2026-09-22
+
+**Symptom / context**
+
+Gate 12 re-resolved allowed hosts and rejected unsafe/private DNS answers, but an audit showed the checked address was not carried into Chromium's actual connection. An attacker-controlled approved hostname could therefore return a public address during Astra's check and a blocked address when the browser resolved it again.
+
+**Cause**
+
+The safety decision and the TCP connection were owned by different resolvers at different times. Returning only `void` from an allow/deny check discarded the exact safe address that justified the decision.
+
+**Fix**
+
+Make the network policy return the validated target/address set and route untrusted browser traffic through an owned connection-bound proxy that dials a validated literal address while preserving hostname/SNI identity. Keep request interception as defense in depth.
+
+**Prevention**
+
+For SSRF/DNS-rebinding boundaries, test the prohibited network effect and bind the actual socket destination to the policy decision. A domain allowlist or pre-connect DNS lookup by itself is not connection-level enforcement.
+
+---
+
+## L-028 — Best-effort evidence must have its own abort/deadline boundary
+
+**Date:** 2026-09-22
+
+**Symptom / context**
+
+A deterministic audit browser whose screenshot promise never resolved left a run permanently `RUNNING` even after the configured run wall-clock timeout had fired; agent/browser cleanup never ran.
+
+**Cause**
+
+The main execution operations were abort-raced, but screenshot/page-evidence/artifact persistence was awaited as best-effort observability without its own deadline. Triggering the run AbortSignal could not settle a provider promise that ignored cancellation.
+
+**Fix**
+
+Give artifact work an independent bounded deadline, pass the run AbortSignal through the owned screenshot contract into Steel fetch, race page evidence/screenshot persistence against abort/deadline, and immediately re-check the run signal after active-path evidence capture.
+
+**Prevention**
+
+Observability cannot be a prerequisite for termination. Every optional diagnostics/evidence/provider operation that sits inside a durable lifecycle must either cooperate with cancellation or be raced by an owned deadline so cleanup and terminal persistence remain reachable.

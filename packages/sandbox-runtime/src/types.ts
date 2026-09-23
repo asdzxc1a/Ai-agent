@@ -12,6 +12,8 @@ export interface SandboxSession {
   readonly status: SandboxStatus;
   readonly networkPolicy:
     BrowserNetworkPolicy;
+  readonly networkProxyUrl?:
+    string;
 
   close(): Promise<void>;
 }
