@@ -1,0 +1,42 @@
+{
+  "version": "gate13-delivery-cost-v1",
+  "methodologyDescription": "Pre-result Gate 13 acceptance accounting. The pinned runtime persists aggregate model usage, not per-request context-length/cache-write billing events, so model cost intentionally uses a conservative upper-bound treatment. Every PROMPT_TOKENS unit is charged at $10/1M: the maximum documented GPT-5.6 Sol standard input-side rate when the >272K long-context input rate ($8/1M) and 1.25x cache-write multiplier are considered. Every COMPLETION_TOKENS unit is charged at the documented long-context output rate of $30/1M. This can overstate real spend but cannot create a cost pass by assuming short-context or cache discounts that durable run evidence cannot independently reconstruct. Reasoning tokens are not charged a second time because the pinned OpenAI AI SDK exposes them as a subset of provider output_tokens. Self-hosted Steel/browser cost uses an explicit reference-infrastructure allocation equal to one AWS EC2 t3.2xlarge Linux On-Demand instance in us-east-1 at $0.3328/hour, billed proportionally from the server-derived run duration with no rounding. This is a reproducible conservative accounting allocation, not a claim that the browser host physically runs on AWS.",
+  "rates": [
+    {
+      "id": "gate13.openai.gpt-5.6-sol.input",
+      "category": "MODEL",
+      "label": "GPT-5.6 Sol input tokens (maximum applicable standard-rate accounting)",
+      "meter": "PROMPT_TOKENS",
+      "unitsPerBillingUnit": 1000000,
+      "usdPerBillingUnit": 10,
+      "rounding": "NONE",
+      "sourceDescription": "OpenAI documents GPT-5.6 Sol standard short-context input at $4/1M and long-context (>272K input tokens) at $8/1M for the full request; cache writes are billed at 1.25x the uncached input rate. Because Gate 13 persists aggregate Stagehand prompt usage rather than per-request cache-write/context-threshold events, every prompt token is conservatively priced at $10/1M (1.25 x $8) to avoid understating measured delivery cost.",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing",
+      "sourceAsOfDate": "2026-09-23"
+    },
+    {
+      "id": "gate13.openai.gpt-5.6-sol.output",
+      "category": "MODEL",
+      "label": "GPT-5.6 Sol output tokens (long-context upper-bound accounting)",
+      "meter": "COMPLETION_TOKENS",
+      "unitsPerBillingUnit": 1000000,
+      "usdPerBillingUnit": 30,
+      "rounding": "NONE",
+      "sourceDescription": "OpenAI documents GPT-5.6 Sol standard output at $20/1M for short-context requests and $30/1M when input exceeds 272K tokens. Gate 13 uses $30/1M for every completion token because durable usage is aggregate and cannot prove the threshold was never crossed. In the pinned AI SDK/OpenAI mapping outputTokens is provider output_tokens while reasoningTokens is a subset, so reasoning is not charged a second time.",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing",
+      "sourceAsOfDate": "2026-09-23"
+    },
+    {
+      "id": "gate13.self-hosted-steel.reference-compute",
+      "category": "BROWSER_PROVIDER",
+      "label": "Self-hosted Steel reference compute allocation",
+      "meter": "RUN_DURATION_MS",
+      "unitsPerBillingUnit": 3600000,
+      "usdPerBillingUnit": 0.3328,
+      "rounding": "NONE",
+      "sourceDescription": "Reference-equivalent self-hosted browser allocation using the documented AWS EC2 t3.2xlarge On-Demand hourly price of $0.3328 in us-east-1. Gate 13 execution remains self-hosted; this rate exists to make browser infrastructure cost reproducible and non-zero without pretending managed Steel Cloud pricing applies.",
+      "sourceUrl": "https://docs.aws.amazon.com/prescriptive-guidance/latest/optimize-costs-microsoft-workloads/right-size-selection.html",
+      "sourceAsOfDate": "2026-09-23"
+    }
+  ]
+}

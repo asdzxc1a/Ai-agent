@@ -1,0 +1,13 @@
+{
+  "version": "gate13-execution-profile-v2",
+  "agentRuntime": "STAGEHAND",
+  "agentRuntimeVersion": "3.7.0",
+  "modelName": "openai/gpt-5.6-sol",
+  "modelBaseUrl": "https://api.openai.com/v1/",
+  "browserRuntime": "STEEL",
+  "browserBaseUrl": "http://127.0.0.1:3000/",
+  "browserExpectedImagePin": "ghcr.io/steel-dev/steel-browser@sha256:58fc8f1ed309a647ea7e7a53005b90cb239b8995698d195a261654ac8804974c",
+  "browserIdentityEvidence": "EXPECTED_IMAGE_PIN_ONLY",
+  "networkEgressMode": "ASTRA_CONNECTION_BOUND_PROXY_V1",
+  "networkEgressProxyBrowserHost": "host.docker.internal"
+}
