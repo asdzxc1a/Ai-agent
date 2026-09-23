@@ -45,6 +45,9 @@ import {
   gate13PreflightReadiness
 } from "./preflight.js";
 import {
+  loadGate13AcceptanceWorklist
+} from "./worklist.js";
+import {
   gate13ArtifactDir,
   withGate13Database,
   withGate13DatabaseReadOnly,
@@ -134,6 +137,7 @@ function usage(): string {
     "Acceptance durable readiness (read-only DB):",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- acceptance-readiness \\",
     "    --sample-id <id> [--approval-batch-id <id>]",
+    "  GATE13_DATABASE_URL=... pnpm gate13:operator -- acceptance-worklist --sample-id <id> [--pending-only]",
     "",
     "Acceptance sample:",
     "  GATE13_DATABASE_URL=... pnpm gate13:operator -- sample-preview \\",
@@ -1993,6 +1997,59 @@ async function recordOutcome(
   });
 }
 
+async function acceptanceWorklist(
+  args: string[]
+): Promise<void> {
+  const parsed =
+    parseOptions(
+      args,
+      [
+        "--sample-id"
+      ],
+      [
+        "--pending-only"
+      ]
+    );
+  const sampleId =
+    requiredOption(
+      parsed,
+      "--sample-id"
+    );
+  const pendingOnly =
+    parsed.flags.has(
+      "--pending-only"
+    );
+
+  const result =
+    await withGate13DatabaseReadOnly(
+      async (
+        context
+      ) =>
+        loadGate13AcceptanceWorklist(
+          context.repository,
+          context.runRepository,
+          sampleId
+        )
+    );
+
+  print({
+    action:
+      "ACCEPTANCE_WORKLIST",
+    pendingOnly,
+    ...result,
+    items:
+      pendingOnly
+        ? result.items.filter(
+            (item) =>
+              item.nextTransition !==
+                "COMPLETE"
+          )
+        : result.items,
+    note:
+      "Read-only. Next transitions are derived from the durable baseline, measured-run reservation, exact reserved run, persisted attempt, and reviewed outcome. Unrelated target history is never selected as the measured attempt."
+  });
+}
+
 async function sampleStatus(
   args: string[]
 ): Promise<void> {
@@ -2320,6 +2377,11 @@ async function main():
       return;
     case "record-outcome":
       await recordOutcome(
+        args
+      );
+      return;
+    case "acceptance-worklist":
+      await acceptanceWorklist(
         args
       );
       return;
