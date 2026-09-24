@@ -50,6 +50,9 @@
       ],
       "@astra/prospect-postgres": [
         "./packages/prospect-postgres/src/index.ts"
+      ],
+      "@astra/agent-comparator": [
+        "./packages/agent-comparator/src/index.ts"
       ]
     }
   },

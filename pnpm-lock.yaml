@@ -51,6 +51,18 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  apps/gate13-agent-comparator:
+    dependencies:
+      '@astra/agent-comparator':
+        specifier: workspace:*
+        version: link:../../packages/agent-comparator
+      '@astra/sandbox-runtime':
+        specifier: workspace:*
+        version: link:../../packages/sandbox-runtime
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
   apps/gate13-operator:
     dependencies:
       '@astra/agent-stagehand':
@@ -74,6 +86,12 @@ importers:
       '@astra/sandbox-runtime':
         specifier: workspace:*
         version: link:../../packages/sandbox-runtime
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
+  packages/agent-comparator:
+    dependencies:
       zod:
         specifier: 4.4.3
         version: 4.4.3

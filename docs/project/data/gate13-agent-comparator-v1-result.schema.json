@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["brief", "evidence", "visitedUrls", "terminalNote", "modelUsage"],
+  "properties": {
+    "brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["companyName", "companySummary", "transformationOpportunities", "buyingSignals"],
+      "properties": {
+        "companyName": { "$ref": "#/$defs/field" },
+        "companySummary": { "$ref": "#/$defs/field" },
+        "transformationOpportunities": { "$ref": "#/$defs/field" },
+        "buyingSignals": { "$ref": "#/$defs/field" }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "visitedUrls": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "terminalNote": { "type": "string", "minLength": 1 },
+    "modelUsage": { "type": "null" }
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unknown", "evidenceIndexes"],
+      "properties": {
+        "value": { "type": ["string", "null"] },
+        "unknown": { "type": "boolean" },
+        "evidenceIndexes": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fieldId", "statement", "url", "pageTitle", "screenshotPath"],
+      "properties": {
+        "fieldId": {
+          "enum": ["companyName", "companySummary", "transformationOpportunities", "buyingSignals"]
+        },
+        "statement": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "minLength": 1 },
+        "pageTitle": { "type": ["string", "null"] },
+        "screenshotPath": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
