@@ -1718,3 +1718,119 @@ A Chrome for Testing launch without the explicit mock-keychain flag can trigger 
 **Revisit when**
 
 A future browser harness provides a stronger OS-isolated credentialless profile. Preserve the invariant that the comparator cannot depend on personal credential storage.
+
+---
+
+## D-052 — Comparator quality review is blinded, cross-model, and descriptive only
+
+**Date:** 2026-09-24
+**Status:** Accepted
+
+**Decision**
+
+Every completed `gate13-agent-comparator-v1` first attempt may receive exactly one append-only `gate13-agent-comparator-model-review-v1` review.
+
+The reviewer is deliberately separated from generation:
+
+- generator: Codex CLI 0.154.0 with `gpt-5.6-sol`;
+- reviewer: Codex CLI 0.154.0 with `gpt-5.6-luna`;
+- reviewer input: only the completed brief plus its supplied evidence;
+- reviewer does not receive the arm identity, generation prompt, timing, cost, token usage, other targets, human baseline, or human-review data;
+- reviewer tool use is forbidden and command execution is treated as review failure;
+- review records are append-only, attempt-digest-bound, and carry `reviewType = MODEL_REVIEWED`;
+- `humanReviewMinutes` remains `null`.
+
+The reviewer judges only whether brief content is supported by the **provided evidence**. It does not independently open source pages and cannot be treated as human source/screenshot verification.
+
+Comparator cohort reports remain `DESCRIPTIVE_ONLY`; they expose completion, failures, field coverage, elapsed time, token usage, model-review usability, and model-review support findings without manufacturing an overall Gate 13 pass/fail verdict.
+
+**Why**
+
+A second model is useful for consistent blinded evidence-support screening, but letting that screen stand in for human review or independent source verification would repeat the same measurement-category mistake that the separate comparator was created to avoid.
+
+Using Luna for review also reduces same-model self-preference relative to asking the Sol generator to grade itself, while preserving an explicit limitation: both are OpenAI model-family judgments and may share correlated errors.
+
+**Consequences**
+
+- completed comparator attempts advance to a separate model-review transition;
+- failed/timed-out/cancelled/blocked first attempts stay terminal without invented reviews;
+- duplicate reviews are rejected;
+- changing the reviewer model/prompt after live-result visibility requires a newly versioned review protocol;
+- model-review findings may inform engineering, but original Gate 13 still requires measured humans and human evidence audit.
+
+**Revisit when**
+
+An independently qualified semantic-support evaluator or real blinded human review is available. Keep the current review provenance rather than rewriting historical model-reviewed results.
+
+---
+
+## D-053 — Comparator dollar metrics are frozen reference accounting, not actual billing
+
+**Date:** 2026-09-24
+**Status:** Accepted
+
+**Decision**
+
+`gate13-agent-comparator-v1` carries a hash-bound `gate13-agent-comparator-reference-cost-v1` plan, but its dollar output is explicitly labeled `REFERENCE_API_EQUIVALENT_NOT_ACTUAL_BILL`.
+
+The plan uses:
+- GPT-5.6 Sol generation at the conservative long-context/cache-write upper-bound rates already used by the Gate 13 acceptance packet: $10/M input and $30/M output;
+- GPT-5.6 Luna blinded review at $0.50/M input and $1.80/M output, using the same long-context/cache-write upper-bound logic;
+- $0.3328/hour reference browser compute, matching the frozen Gate 13 normalization.
+
+The reporter derives token quantities only from runner-owned Codex JSONL usage and browser duration only from the immutable comparator attempt. It must never describe those normalized dollars as an OpenAI API invoice, Codex subscription charge, or actual AWS spend.
+
+**Why**
+
+The comparator currently runs through Codex CLI rather than a metered API billing account. Token usage is measurable, but actual subscription economics are not equivalent to public API list pricing. A normalized API-equivalent metric is still useful for architecture comparisons if its meaning is frozen before live results and clearly separated from actual spend.
+
+**Consequences**
+
+- reference-cost plan SHA is part of the comparator protocol;
+- changing rates after live-result visibility requires a new comparator protocol version;
+- reports expose known normalized model/browser components and preserve missing usage rather than inventing dollars;
+- cost comparisons are descriptive engineering evidence only and cannot satisfy Gate 13's frozen delivery-cost criterion;
+- actual provider invoices, if later available, are a separate evidence source.
+
+**Revisit when**
+
+The comparator is executed through a directly metered provider/API account with immutable per-run billing receipts. Preserve historical reference accounting rather than rewriting past reports.
+
+---
+
+## D-054 — Comparator generation has no shell; BrowserSkill is exposed through a narrow read-only MCP gateway
+
+**Date:** 2026-09-24
+**Status:** Accepted
+
+**Decision**
+
+The measured `gate13-agent-comparator-v1` generator runs Codex with its shell/code execution surface disabled and a temporary isolated Codex home containing only copied authentication plus the experiment-owned MCP configuration.
+
+Browser access is exposed through one stdio MCP server, `astra_browser`. That server offers only the frozen read-only research operations (session lifecycle, allowlisted navigation, semantic observation/snapshot, bounded scrolling/wait/reload/back/forward, and run-local screenshots). Each MCP call is translated into a run-local broker request; the trusted parent validates the exact BrowserSkill command and destination before invoking the real BrowserSkill CLI.
+
+The MCP tools are marked read-only/non-destructive so headless execution does not require interactive approval for the frozen read-only research actions. The browser itself remains behind Astra's connection-bound proxy, so MCP tool shape is not the network security boundary.
+
+The generator has:
+- shell tool disabled;
+- code-mode arbitrary execution unavailable to the research worker;
+- host skills/apps/plugins/browser/computer tools disabled;
+- an isolated HOME/TMPDIR and isolated temporary CODEX_HOME;
+- no original Gate 13 database environment;
+- only the experiment-owned `astra_browser` MCP server.
+
+**Why**
+
+A post-hoc shell audit can detect misuse but cannot undo a secret/file read that already occurred. The safer boundary is capability minimization: the research model should never receive a general shell when its task only needs a narrow browser interface.
+
+**Consequences**
+
+- live comparator generation cannot fall back to curl, filesystem reads, repository inspection, or another browser CLI;
+- BrowserSkill policy is enforced twice: structured MCP tool definitions and trusted broker validation;
+- command/event traces remain evidence, but are no longer the primary shell-security mechanism;
+- any future comparator tool must be added explicitly to the MCP surface and separately reviewed for side effects;
+- failure to expose the frozen MCP surface fails the first attempt rather than enabling an alternate path.
+
+**Revisit when**
+
+A provider-native browser tool can enforce the same destination, credential, side-effect, and evidence boundaries without widening the model's capabilities.

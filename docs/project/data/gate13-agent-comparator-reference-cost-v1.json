@@ -1,0 +1,29 @@
+{
+  "version": "gate13-agent-comparator-reference-cost-v1",
+  "accounting": "REFERENCE_API_EQUIVALENT_NOT_ACTUAL_BILL",
+  "sourceAsOfDate": "2026-09-24",
+  "rates": {
+    "generatorInputUsdPerMillion": 10,
+    "generatorOutputUsdPerMillion": 30,
+    "reviewerInputUsdPerMillion": 0.5,
+    "reviewerOutputUsdPerMillion": 1.8,
+    "browserComputeUsdPerHour": 0.3328
+  },
+  "sources": [
+    {
+      "label": "OpenAI GPT-5.6 Sol pricing",
+      "url": "https://developers.openai.com/api/docs/pricing",
+      "note": "Comparator generation accounting uses the same conservative upper-bound treatment as Gate 13: every input token at $10/M (long-context $8/M plus the 1.25x cache-write factor) and every output token at $30/M. This can overstate actual spend but avoids a false cost advantage when per-request threshold/cache-write conditions cannot be reconstructed from aggregate Codex usage."
+    },
+    {
+      "label": "OpenAI GPT-5.6 Luna pricing",
+      "url": "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+      "note": "Blinded reviewer accounting uses $0.50/M input (long-context $0.40/M multiplied by the 1.25x cache-write factor) and $1.80/M output (long-context output rate), again as an upper-bound treatment."
+    },
+    {
+      "label": "AWS EC2 t3.2xlarge reference compute",
+      "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/optimize-costs-microsoft-workloads/right-size-selection.html",
+      "note": "Browser/runtime accounting uses the same $0.3328/hour reference-compute allocation as the frozen Gate 13 acceptance packet. This is normalized reference accounting, not a claim that the comparator physically runs on AWS or that Codex usage is billed through the API."
+    }
+  ]
+}

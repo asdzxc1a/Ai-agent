@@ -11,6 +11,15 @@ import {
 } from "node:path";
 
 import {
+  comparatorAttemptSha256,
+  ComparatorModelReviewDraftSchema,
+  ComparatorModelReviewSchema,
+  type ComparatorModelReview,
+  type ComparatorModelReviewDraft,
+  type ComparatorReviewerIdentity,
+  type ComparatorReviewerModelUsage
+} from "./review.js";
+import {
   ComparatorAttemptSchema,
   ComparatorAuthorizationSchema,
   ComparatorReservationSchema,
@@ -79,6 +88,19 @@ export interface ComparatorReservationInput {
     ComparatorAgentIdentity;
 }
 
+export interface ComparatorModelReviewInput {
+  attemptId: string;
+  targetId: string;
+  protocolSha256: string;
+  reviewPromptSha256: string;
+  reviewerIdentity:
+    ComparatorReviewerIdentity;
+  review:
+    ComparatorModelReviewDraft;
+  modelUsage:
+    ComparatorReviewerModelUsage | null;
+}
+
 export class ComparatorFileStore {
   readonly #root: string;
   readonly #now:
@@ -119,6 +141,15 @@ export class ComparatorFileStore {
         join(
           this.#root,
           "attempts"
+        ),
+        {
+          recursive: true
+        }
+      ),
+      mkdir(
+        join(
+          this.#root,
+          "reviews"
         ),
         {
           recursive: true
@@ -361,6 +392,196 @@ export class ComparatorFileStore {
         ComparatorAttemptSchema
           .parse(input)
     );
+  }
+
+  public async saveModelReview(
+    input:
+      ComparatorModelReviewInput
+  ): Promise<
+    ComparatorModelReview
+  > {
+    await this.#ensure();
+    const [
+      attempt,
+      reservation
+    ] =
+      await Promise.all([
+        this.getAttempt(
+          input.targetId
+        ),
+        this.getReservation(
+          input.targetId
+        )
+      ]);
+
+    if (
+      attempt ===
+        undefined
+    ) {
+      throw new Error(
+        "Comparator model review requires a terminal first attempt."
+      );
+    }
+
+    if (
+      reservation ===
+        undefined ||
+      reservation.attemptId !==
+        attempt.attemptId ||
+      reservation.protocolSha256 !==
+        input.protocolSha256
+    ) {
+      throw new Error(
+        "Comparator model review protocol binding does not match the reserved first attempt."
+      );
+    }
+
+    if (
+      attempt.status !==
+        "COMPLETED" ||
+      attempt.workerResult ===
+        null
+    ) {
+      throw new Error(
+        "Comparator model review is only valid for a completed attempt."
+      );
+    }
+
+    if (
+      attempt.attemptId !==
+        input.attemptId
+    ) {
+      throw new Error(
+        "Comparator model review does not reference the target's terminal first attempt."
+      );
+    }
+
+    const parsedDraft =
+      ComparatorModelReviewDraftSchema
+        .parse(
+          input.review
+        );
+    const review =
+      ComparatorModelReviewSchema
+        .parse({
+          version:
+            "gate13-agent-comparator-model-review-v1",
+          reviewType:
+            "MODEL_REVIEWED",
+          blindInput:
+            "BRIEF_AND_EVIDENCE_ONLY",
+          attemptId:
+            attempt.attemptId,
+          targetId:
+            attempt.targetId,
+          attemptSha256:
+            comparatorAttemptSha256(
+              attempt
+            ),
+          protocolSha256:
+            input.protocolSha256,
+          reviewPromptSha256:
+            input.reviewPromptSha256,
+          reviewedAt:
+            iso(this.#now),
+          reviewerIdentity:
+            input.reviewerIdentity,
+          findings:
+            parsedDraft.findings,
+          correctionSeverity:
+            parsedDraft
+              .correctionSeverity,
+          usability:
+            parsedDraft.usability,
+          reviewNote:
+            parsedDraft.reviewNote,
+          modelUsage:
+            input.modelUsage,
+          humanReviewMinutes:
+            null
+        });
+
+    await writeFile(
+      join(
+        this.#root,
+        "reviews",
+        safeTargetId(
+          review.targetId
+        ) +
+          ".json"
+      ),
+      JSON.stringify(
+        review,
+        null,
+        2
+      ) +
+        "\n",
+      {
+        encoding:
+          "utf8",
+        flag:
+          "wx",
+        mode:
+          0o600
+      }
+    );
+
+    return review;
+  }
+
+  public async getModelReview(
+    targetId: string
+  ): Promise<
+    ComparatorModelReview |
+    undefined
+  > {
+    await this.#ensure();
+
+    const review =
+      await readJson(
+        join(
+          this.#root,
+          "reviews",
+          safeTargetId(
+            targetId
+          ) +
+            ".json"
+        ),
+        (value) =>
+          ComparatorModelReviewSchema
+            .parse(
+              value
+            )
+      );
+
+    if (
+      review ===
+        undefined
+    ) {
+      return undefined;
+    }
+
+    const attempt =
+      await this.getAttempt(
+        targetId
+      );
+
+    if (
+      attempt ===
+        undefined ||
+      comparatorAttemptSha256(
+        attempt
+      ) !==
+        review.attemptSha256 ||
+      attempt.attemptId !==
+        review.attemptId
+    ) {
+      throw new Error(
+        "Comparator model review no longer matches the immutable terminal attempt."
+      );
+    }
+
+    return review;
   }
 
   public async finalizeInterrupted(

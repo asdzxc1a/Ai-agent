@@ -790,3 +790,69 @@ Launch the comparator browser with `--use-mock-keychain` and `--password-store=b
 **Prevention**
 
 When building an isolated browser benchmark, audit not only cookies/profile directories and network egress but also the browser's OS credential/encryption backend. A browser that prompts for personal Keychain access is not a clean comparator environment.
+
+---
+
+## L-033 — A blinded model review is useful screening, not source verification
+
+**Date:** 2026-09-24
+
+**Symptom / context**
+
+Once an agent comparator can produce evidence-backed briefs, it is tempting to use another model's approval as if the brief had been independently verified.
+
+**Cause**
+
+The reviewer can compare prose against supplied evidence, but it does not automatically prove that the supplied evidence is authentic, complete, current, or correctly captured from the live source. Model families can also share correlated reasoning errors.
+
+**Fix**
+
+Label the layer precisely: `MODEL_REVIEWED`, blinded to arm/generator metadata, bound to the immutable attempt digest, and limited to support-by-provided-evidence judgments. Keep human review time `null`; keep cohort reporting descriptive; never translate a model-review result into `HUMAN_REVIEWED`.
+
+**Prevention**
+
+For every evaluation layer, name the evidence boundary it actually observes. “Reviewed” without the reviewer type and accessible evidence boundary is too ambiguous for an acceptance protocol.
+
+---
+
+## L-034 — Token counts are evidence; list-price conversion is an accounting model
+
+**Date:** 2026-09-24
+
+**Symptom / context**
+
+Codex JSONL exposes input/output usage, which makes it easy to multiply tokens by API prices and accidentally present the result as actual spend.
+
+**Cause**
+
+Usage measurement and provider billing are different evidence layers. Subscription tools, cached requests, long-context thresholds, regional processing, promotions, and provider-specific billing can make public list-price arithmetic diverge from the invoice.
+
+**Fix**
+
+Persist runner-owned usage as measured evidence. Put any dollar conversion behind a versioned, hash-bound cost plan with an explicit accounting label such as `REFERENCE_API_EQUIVALENT_NOT_ACTUAL_BILL`. Report missing usage as missing rather than zero.
+
+**Prevention**
+
+Every cost number should answer two questions in its schema: “which measured quantities produced this?” and “is this actual billing or normalized accounting?” If either answer is implicit, the metric is not safe for acceptance evidence.
+
+---
+
+## L-035 — Prefer capability removal over auditing a powerful tool after use
+
+**Date:** 2026-09-24
+
+**Symptom / context**
+
+The first comparator worker design placed a guarded `bsk` executable on PATH and audited Codex shell events afterward. That could reject a bad first attempt, but a malicious or confused command might already have read unrelated local state before the audit noticed it.
+
+**Cause**
+
+The boundary tried to make a general shell safe by convention plus after-the-fact inspection, even though the research task needed only a small read-only browser API.
+
+**Fix**
+
+Disable shell/code execution for the generator and expose BrowserSkill through an experiment-owned MCP server whose tools are narrow, typed, read-only, destination-bounded, and revalidated by a trusted broker outside the model sandbox. Put Codex authentication/config in a temporary isolated home.
+
+**Prevention**
+
+When an agent requires five safe operations, give it five safe operations—not a shell plus instructions to behave. Auditing is evidence; least capability is the control.

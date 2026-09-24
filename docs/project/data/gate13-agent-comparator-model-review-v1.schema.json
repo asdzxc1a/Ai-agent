@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings", "correctionSeverity", "usability", "reviewNote", "modelUsage"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fieldId", "verdict", "material", "rationale"],
+        "properties": {
+          "fieldId": {
+            "enum": ["companyName", "companySummary", "transformationOpportunities", "buyingSignals"]
+          },
+          "verdict": {
+            "enum": ["SUPPORTED_BY_PROVIDED_EVIDENCE", "PARTIALLY_SUPPORTED", "UNSUPPORTED", "UNKNOWN_ACCEPTABLE"]
+          },
+          "material": { "type": "boolean" },
+          "rationale": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "correctionSeverity": {
+      "enum": ["NONE", "MINOR", "MAJOR", "CRITICAL"]
+    },
+    "usability": {
+      "enum": ["USABLE_AS_IS", "USABLE_WITH_MINOR_EDIT", "REQUIRES_MAJOR_EDIT", "REJECTED"]
+    },
+    "reviewNote": { "type": "string", "minLength": 1 },
+    "modelUsage": { "type": "null" }
+  }
+}

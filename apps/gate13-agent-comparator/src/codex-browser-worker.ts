@@ -3,7 +3,6 @@ import {
 } from "node:child_process";
 import {
   access,
-  chmod,
   constants,
   mkdir,
   readFile,
@@ -26,16 +25,17 @@ import {
 } from "@astra/agent-comparator";
 
 import {
-  BSK_FILE_CLIENT_SOURCE
-} from "./bsk-client-source.js";
-import {
   BskFileBroker
 } from "./bsk-file-broker.js";
+import {
+  createIsolatedCodexHome
+} from "./isolated-codex-home.js";
 
 interface WorkerOptions {
   storeRoot: string;
   frozenPrompt: string;
   resultSchemaPath: string;
+  mcpServerPath: string;
   realBskPath: string;
 }
 
@@ -78,19 +78,11 @@ function taskPrompt(
         .requiredBrowserLabel,
     "",
     "The runner already qualified BrowserSkill and the dedicated browser profile.",
-    "Do not run bsk help/version/status/browsers/doctor, installation commands, sed/cat/grep, or inspect runner/guard files.",
-    "Use only these BrowserSkill shapes:",
-    "  bsk session start --browser " +
-      input.protocol.browser
-        .requiredBrowserLabel +
-      " --json",
-    "  bsk navigate <url> --session <session-id>",
-    "  bsk observe --session <session-id>",
-    "  bsk snapshot --session <session-id> (optional)",
-    "  bsk screenshot --session <session-id> --out <run-local-path> (optional)",
-    "  bsk session stop <session-id>",
-    "If BrowserSkill is rejected or fails, do not inspect implementation files and do not invent alternate syntax.",
-    "Stop the owned session if one exists, preserve explicit unknowns, and report the blocker.",
+    "Shell/code execution is disabled. Use only the astra_browser MCP tools exposed for this run.",
+    "Start with browser_session_start, then use browser_navigate plus browser_observe/browser_snapshot; browser_wheel, browser_wait_ms, reload/back/forward, and run-local browser_screenshot are optional read-only helpers.",
+    "Always call browser_session_stop before returning the final JSON if a session was started.",
+    "If an MCP browser tool is rejected or fails, do not inspect implementation files and do not invent another execution path.",
+    "Preserve explicit unknowns and report the blocker.",
     "Final evidence must remain on approved official domains. Search pages are discovery only.",
     ""
   ].join(
@@ -267,104 +259,8 @@ async function spawnCodex(
   }
 }
 
-function collectCommandStrings(
-  value: unknown,
-  result:
-    string[]
-): void {
-  if (
-    Array.isArray(
-      value
-    )
-  ) {
-    for (
-      const item of
-      value
-    ) {
-      collectCommandStrings(
-        item,
-        result
-      );
-    }
-
-    return;
-  }
-
-  if (
-    typeof value !==
-      "object" ||
-    value === null
-  ) {
-    return;
-  }
-
-  for (
-    const [
-      key,
-      child
-    ] of Object.entries(
-      value
-    )
-  ) {
-    if (
-      key ===
-        "command" &&
-      typeof child ===
-        "string"
-    ) {
-      result.push(
-        child
-      );
-    }
-
-    collectCommandStrings(
-      child,
-      result
-    );
-  }
-}
-
-export function isComparatorBskCommandEventSafe(
-  command: string,
-  guardBin: string
-): boolean {
-  const trimmed =
-    command.trim();
-  const shellMatch =
-    trimmed.match(
-      /^\/(?:bin\/)?(?:zsh|bash|sh)\s+-lc\s+'([^']*)'$/
-    );
-  const candidate =
-    shellMatch?.[1] ??
-    trimmed;
-  const startsWithOwnedBsk =
-    candidate ===
-      "bsk" ||
-    candidate.startsWith(
-      "bsk "
-    ) ||
-    candidate ===
-      guardBin ||
-    candidate.startsWith(
-      guardBin +
-        " "
-    );
-
-  if (
-    !startsWithOwnedBsk
-  ) {
-    return false;
-  }
-
-  return !/[;&|<>\x60$()\n\r]/
-    .test(
-      candidate
-    );
-}
-
-function auditCodexEvents(
-  jsonl: string,
-  guardBin: string
+export function auditNoShellCommandEvents(
+  jsonl: string
 ): void {
   const commands:
     string[] = [];
@@ -383,33 +279,37 @@ function auditCodexEvents(
     }
 
     try {
-      collectCommandStrings(
+      const record =
         JSON.parse(
           line
-        ),
-        commands
-      );
+        ) as {
+          item?: {
+            type?: string;
+            command?: string;
+          };
+        };
+
+      if (
+        record.item?.type ===
+          "command_execution"
+      ) {
+        commands.push(
+          record.item.command ??
+          "<unknown>"
+        );
+      }
     } catch {
       continue;
     }
   }
 
-  const violations =
-    commands.filter(
-      (command) =>
-        !isComparatorBskCommandEventSafe(
-          command,
-          guardBin
-        )
-    );
-
   if (
-    violations.length >
+    commands.length >
       0
   ) {
     throw new Error(
-      "Comparator agent used shell commands outside the BrowserSkill broker: " +
-        violations
+      "Comparator agent emitted forbidden shell command events while shell_tool was disabled: " +
+        commands
           .slice(
             0,
             3
@@ -586,11 +486,6 @@ export class CodexBrowserSkillWorker
         runDir,
         "home"
       );
-    const binDir =
-      join(
-        runDir,
-        "bin"
-      );
     const brokerDir =
       join(
         runDir,
@@ -600,16 +495,6 @@ export class CodexBrowserSkillWorker
       join(
         runDir,
         "tmp"
-      );
-    const clientPath =
-      join(
-        binDir,
-        "bsk-client.mjs"
-      );
-    const guardBin =
-      join(
-        binDir,
-        "bsk"
       );
     const tracePath =
       join(
@@ -638,13 +523,6 @@ export class CodexBrowserSkillWorker
       );
 
     await Promise.all([
-      mkdir(
-        binDir,
-        {
-          recursive: true,
-          mode: 0o700
-        }
-      ),
       mkdir(
         agentHome,
         {
@@ -687,38 +565,6 @@ export class CodexBrowserSkillWorker
         mode: 0o600
       }
     );
-    await writeFile(
-      clientPath,
-      BSK_FILE_CLIENT_SOURCE,
-      {
-        mode: 0o600
-      }
-    );
-    await writeFile(
-      guardBin,
-      [
-        "#!/bin/sh",
-        "exec " +
-          JSON.stringify(
-            process.execPath
-          ) +
-          " " +
-          JSON.stringify(
-            clientPath
-          ) +
-          " \"$@\"" ,
-        ""
-      ].join(
-        "\n"
-      ),
-      {
-        mode: 0o700
-      }
-    );
-    await chmod(
-      guardBin,
-      0o700
-    );
 
     const broker =
       new BskFileBroker({
@@ -751,11 +597,36 @@ export class CodexBrowserSkillWorker
       });
     await broker.start();
 
+    const codexPath =
+      await resolveExecutable(
+        "codex",
+        process.env.PATH
+      );
+    const isolatedCodexHome =
+      await createIsolatedCodexHome({
+        name:
+          "astra_browser",
+        command:
+          process.execPath,
+        args: [
+          this.#options
+            .mcpServerPath
+        ],
+        env: {
+          ASTRA_COMPARATOR_BSK_BROKER_DIR:
+            brokerDir,
+          ASTRA_COMPARATOR_BROWSER_LABEL:
+            input.protocol
+              .browser
+              .requiredBrowserLabel,
+          ASTRA_COMPARATOR_RUN_DIR:
+            runDir
+        }
+      });
     const env:
       NodeJS.ProcessEnv = {
         PATH:
           [
-            binDir,
             dirname(
               process.execPath
             ),
@@ -769,24 +640,18 @@ export class CodexBrowserSkillWorker
         HOME:
           agentHome,
         CODEX_HOME:
-          process.env
-            .CODEX_HOME ??
-          join(
-            homedir(),
-            ".codex"
-          ),
+          isolatedCodexHome.path,
         TMPDIR:
-          tmpDir,
-        ASTRA_COMPARATOR_BSK_BROKER_DIR:
-          brokerDir
+          tmpDir
       };
     const args = [
       "exec",
       "--ephemeral",
-      "--ignore-user-config",
       "--ignore-rules",
       "--enable",
       "skip_host_skill_discovery",
+      "--disable",
+      "shell_tool",
       "--disable",
       "apps",
       "--disable",
@@ -799,15 +664,11 @@ export class CodexBrowserSkillWorker
       "computer_use",
       "--disable",
       "in_app_browser",
+      "--disable",
+      "multi_agent",
       "--skip-git-repo-check",
       "--sandbox",
-      "workspace-write",
-      "-c",
-      "shell_environment_policy.ignore_default_excludes=false",
-      "-c",
-      "shell_environment_policy.exclude=[\"CODEX_HOME\"]",
-      "-c",
-      "shell_environment_policy.include_only=[\"PATH\",\"HOME\",\"TMPDIR\",\"ASTRA_COMPARATOR_BSK_BROKER_DIR\"]",
+      "read-only",
       "--cd",
       runDir,
       "--model",
@@ -821,11 +682,6 @@ export class CodexBrowserSkillWorker
       "--json",
       "-"
     ] as const;
-    const codexPath =
-      await resolveExecutable(
-        "codex",
-        process.env.PATH
-      );
     let result:
       ProcessResult;
 
@@ -844,7 +700,10 @@ export class CodexBrowserSkillWorker
           input.signal
         );
     } finally {
-      await broker.close();
+      await Promise.allSettled([
+        broker.close(),
+        isolatedCodexHome.close()
+      ]);
     }
 
     await Promise.all([
@@ -889,9 +748,8 @@ export class CodexBrowserSkillWorker
       );
     }
 
-    auditCodexEvents(
-      result.stdout,
-      guardBin
+    auditNoShellCommandEvents(
+      result.stdout
     );
     auditBrokerTrace(
       await readFile(

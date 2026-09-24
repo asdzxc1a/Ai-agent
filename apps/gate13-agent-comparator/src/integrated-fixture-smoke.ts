@@ -220,6 +220,11 @@ try {
           process.cwd(),
           "docs/project/data/gate13-agent-comparator-v1-result.schema.json"
         ),
+      mcpServerPath:
+        resolve(
+          process.cwd(),
+          "apps/gate13-agent-comparator/dist/mcp-browser-server.js"
+        ),
       realBskPath:
         join(
           process.env.HOME ??

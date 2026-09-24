@@ -98,10 +98,40 @@ const protocol =
           "0.154.0",
         model:
           "gpt-5.6-sol",
+        promptSha256:
+          "b".repeat(64),
         freshContextPerTarget:
           true,
         serialExecution:
           true
+      },
+      review: {
+        version:
+          "gate13-agent-comparator-model-review-v1",
+        mode:
+          "BLINDED_MODEL_REVIEW",
+        blindInput:
+          "BRIEF_AND_EVIDENCE_ONLY",
+        harness:
+          "CODEX_CLI",
+        harnessVersion:
+          "0.154.0",
+        model:
+          "gpt-5.6-luna",
+        promptSha256:
+          "d".repeat(64),
+        humanReviewMinutes:
+          null
+      },
+      costAccounting: {
+        version:
+          "gate13-agent-comparator-reference-cost-v1",
+        accounting:
+          "REFERENCE_API_EQUIVALENT_NOT_ACTUAL_BILL",
+        file:
+          "fixture-cost-plan.json",
+        sha256:
+          "e".repeat(64)
       },
       execution: {
         maxElapsedMs: 25,

@@ -40,8 +40,25 @@
     "harness": "CODEX_CLI",
     "harnessVersion": "0.154.0",
     "model": "gpt-5.6-sol",
+    "promptSha256": "9ce37ce18eb0bb7d035e96d7c35abb9c327c44066cd425130a3dd4d0af47455f",
     "freshContextPerTarget": true,
     "serialExecution": true
+  },
+  "review": {
+    "version": "gate13-agent-comparator-model-review-v1",
+    "mode": "BLINDED_MODEL_REVIEW",
+    "blindInput": "BRIEF_AND_EVIDENCE_ONLY",
+    "harness": "CODEX_CLI",
+    "harnessVersion": "0.154.0",
+    "model": "gpt-5.6-luna",
+    "promptSha256": "5651042c2f687f40aad698992ea6b0cfc718ba7ee7f912982aebc9434ddf209e",
+    "humanReviewMinutes": null
+  },
+  "costAccounting": {
+    "version": "gate13-agent-comparator-reference-cost-v1",
+    "accounting": "REFERENCE_API_EQUIVALENT_NOT_ACTUAL_BILL",
+    "file": "docs/project/data/gate13-agent-comparator-reference-cost-v1.json",
+    "sha256": "6cedb1bf3db403766b5b8638e2c95491730d5283b81045e42aee457841529b4c"
   },
   "execution": {
     "maxElapsedMs": 1200000,
