@@ -10,7 +10,9 @@ import {
 
 import {
   ComparatorProtocolSchema,
+  ComparatorReferenceCostPlanSchema,
   type ComparatorProtocol,
+  type ComparatorReferenceCostPlan,
   type ComparatorTarget
 } from "@astra/agent-comparator";
 import {
@@ -59,6 +61,10 @@ export const COMPARATOR_PROMPT_PATH =
   "docs/project/data/gate13-agent-comparator-v1-prompt.md";
 export const COMPARATOR_RESULT_SCHEMA_PATH =
   "docs/project/data/gate13-agent-comparator-v1-result.schema.json";
+export const COMPARATOR_REVIEW_PROMPT_PATH =
+  "docs/project/data/gate13-agent-comparator-model-review-v1-prompt.md";
+export const COMPARATOR_REVIEW_SCHEMA_PATH =
+  "docs/project/data/gate13-agent-comparator-model-review-v1.schema.json";
 export const COMPARATOR_MANIFEST_PATH =
   "docs/project/data/gate13-us-transportation-approval-candidates-2026-09-20.json";
 
@@ -85,6 +91,13 @@ export interface FrozenComparatorInputs {
   promptText: string;
   promptSha256: string;
   resultSchemaPath: string;
+  reviewPromptText: string;
+  reviewPromptSha256: string;
+  reviewSchemaPath: string;
+  costPlan:
+    ComparatorReferenceCostPlan;
+  costPlanText: string;
+  costPlanSha256: string;
   manifestText: string;
   manifestSha256: string;
   targets:
@@ -99,6 +112,7 @@ export async function loadFrozenComparatorInputs(
   const [
     protocolText,
     promptText,
+    reviewPromptText,
     manifestText
   ] =
     await Promise.all([
@@ -119,6 +133,13 @@ export async function loadFrozenComparatorInputs(
       readFile(
         resolve(
           root,
+          COMPARATOR_REVIEW_PROMPT_PATH
+        ),
+        "utf8"
+      ),
+      readFile(
+        resolve(
+          root,
           COMPARATOR_MANIFEST_PATH
         ),
         "utf8"
@@ -131,6 +152,80 @@ export async function loadFrozenComparatorInputs(
           protocolText
         )
       );
+  const promptSha256 =
+    sha256(
+      promptText
+    );
+  const reviewPromptSha256 =
+    sha256(
+      reviewPromptText
+    );
+
+  if (
+    promptSha256 !==
+      protocol.agent
+        .promptSha256
+  ) {
+    throw new Error(
+      "Comparator generator prompt hash does not match the frozen protocol."
+    );
+  }
+
+  if (
+    reviewPromptSha256 !==
+      protocol.review
+        .promptSha256
+  ) {
+    throw new Error(
+      "Comparator review prompt hash does not match the frozen protocol."
+    );
+  }
+
+  const costPlanText =
+    await readFile(
+      resolve(
+        root,
+        protocol.costAccounting
+          .file
+      ),
+      "utf8"
+    );
+  const costPlanSha256 =
+    sha256(
+      costPlanText
+    );
+
+  if (
+    costPlanSha256 !==
+      protocol.costAccounting
+        .sha256
+  ) {
+    throw new Error(
+      "Comparator reference-cost plan hash does not match the frozen protocol."
+    );
+  }
+
+  const costPlan =
+    ComparatorReferenceCostPlanSchema
+      .parse(
+        JSON.parse(
+          costPlanText
+        )
+      );
+
+  if (
+    costPlan.version !==
+      protocol.costAccounting
+        .version ||
+    costPlan.accounting !==
+      protocol.costAccounting
+        .accounting
+  ) {
+    throw new Error(
+      "Comparator reference-cost plan identity does not match the frozen protocol."
+    );
+  }
+
   const manifest =
     ManifestSchema.parse(
       JSON.parse(
@@ -163,15 +258,22 @@ export async function loadFrozenComparatorInputs(
         protocolText
       ),
     promptText,
-    promptSha256:
-      sha256(
-        promptText
-      ),
+    promptSha256,
     resultSchemaPath:
       resolve(
         root,
         COMPARATOR_RESULT_SCHEMA_PATH
       ),
+    reviewPromptText,
+    reviewPromptSha256,
+    reviewSchemaPath:
+      resolve(
+        root,
+        COMPARATOR_REVIEW_SCHEMA_PATH
+      ),
+    costPlan,
+    costPlanText,
+    costPlanSha256,
     manifestText,
     manifestSha256,
     targets:

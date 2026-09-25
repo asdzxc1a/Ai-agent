@@ -9,7 +9,9 @@ import {
 
 import {
   ComparatorFileStore,
-  runComparatorFirstAttempt
+  runComparatorFirstAttempt,
+  summarizeComparatorCohort,
+  summarizeComparatorReferenceCosts
 } from "@astra/agent-comparator";
 
 import {
@@ -18,6 +20,9 @@ import {
 import {
   CodexBrowserSkillWorker
 } from "./codex-browser-worker.js";
+import {
+  CodexComparatorReviewer
+} from "./codex-reviewer.js";
 import {
   loadFrozenComparatorInputs
 } from "./protocol.js";
@@ -206,6 +211,24 @@ async function preflight():
       inputs.protocolSha256,
     promptSha256:
       inputs.promptSha256,
+    reviewPromptSha256:
+      inputs.reviewPromptSha256,
+    costPlanSha256:
+      inputs.costPlanSha256,
+    costAccounting:
+      inputs.costPlan
+        .accounting,
+    reviewer: {
+      version:
+        inputs.protocol
+          .review.version,
+      model:
+        inputs.protocol
+          .review.model,
+      blindInput:
+        inputs.protocol
+          .review.blindInput
+    },
     manifestId:
       inputs.protocol
         .sourceManifest.id,
@@ -333,13 +356,17 @@ async function status():
         ) => {
           const [
             reservation,
-            attempt
+            attempt,
+            review
           ] =
             await Promise.all([
               store.getReservation(
                 target.id
               ),
               store.getAttempt(
+                target.id
+              ),
+              store.getModelReview(
                 target.id
               )
             ]);
@@ -356,17 +383,25 @@ async function status():
             attempt:
               attempt ??
               null,
+            review:
+              review ??
+              null,
             nextTransition:
               authorization ===
                 undefined
                 ? "AUTHORIZE_COMPARATOR"
-                : attempt !==
+                : attempt ===
                     undefined
-                  ? "COMPLETE"
-                  : reservation !==
+                  ? reservation !==
                       undefined
                     ? "RECOVER_INTERRUPTED_FIRST_ATTEMPT"
                     : "RUN_FIRST_COMPARATOR_ATTEMPT"
+                  : attempt.status ===
+                      "COMPLETED" &&
+                    review ===
+                      undefined
+                    ? "MODEL_REVIEW_COMPLETED_ATTEMPT"
+                    : "COMPLETE"
           };
         }
       )
@@ -389,11 +424,29 @@ async function status():
             item.reservation !==
               null
         ).length,
-      completedAttemptCount:
+      terminalAttemptCount:
         items.filter(
           (item) =>
             item.attempt !==
               null
+        ).length,
+      completedAttemptCount:
+        items.filter(
+          (item) =>
+            item.attempt?.status ===
+              "COMPLETED"
+        ).length,
+      modelReviewedCount:
+        items.filter(
+          (item) =>
+            item.review !==
+              null
+        ).length,
+      reviewPendingCount:
+        items.filter(
+          (item) =>
+            item.nextTransition ===
+              "MODEL_REVIEW_COMPLETED_ATTEMPT"
         ).length
     },
     items
@@ -533,6 +586,11 @@ async function runTarget(
           inputs.promptText,
         resultSchemaPath:
           inputs.resultSchemaPath,
+        mcpServerPath:
+          resolve(
+            process.cwd(),
+            "apps/gate13-agent-comparator/dist/mcp-browser-server.js"
+          ),
         realBskPath:
           join(
             homedir(),
@@ -570,6 +628,212 @@ async function runTarget(
   }
 }
 
+async function reviewTarget(
+  args: string[]
+): Promise<void> {
+  const parsed =
+    parseArgs(
+      args
+    );
+  const targetId =
+    required(
+      parsed,
+      "--target-id"
+    );
+  const inputs =
+    await loadFrozenComparatorInputs();
+  const target =
+    inputs.targets.find(
+      (candidate) =>
+        candidate.id ===
+          targetId
+    );
+
+  if (
+    target ===
+      undefined
+  ) {
+    throw new Error(
+      "Target is not a member of the frozen comparator manifest: " +
+        targetId
+    );
+  }
+
+  const store =
+    new ComparatorFileStore(
+      storeRoot()
+    );
+  const attempt =
+    await store.getAttempt(
+      targetId
+    );
+
+  if (
+    attempt ===
+      undefined
+  ) {
+    throw new Error(
+      "Comparator model review requires the target's terminal first attempt."
+    );
+  }
+
+  if (
+    attempt.status !==
+      "COMPLETED" ||
+    attempt.workerResult ===
+      null
+  ) {
+    throw new Error(
+      "Only completed comparator attempts receive blinded model review."
+    );
+  }
+
+  if (
+    await store.getModelReview(
+      targetId
+    ) !==
+      undefined
+  ) {
+    throw new Error(
+      "Comparator target already has an immutable model review."
+    );
+  }
+
+  const reviewer =
+    new CodexComparatorReviewer({
+      storeRoot:
+        store.root,
+      promptText:
+        inputs.reviewPromptText,
+      resultSchemaPath:
+        inputs.reviewSchemaPath,
+      harnessVersion:
+        inputs.protocol
+          .review
+          .harnessVersion,
+      model:
+        inputs.protocol
+          .review.model
+    });
+  const result =
+    await reviewer.review(
+      attempt
+    );
+  const review =
+    await store.saveModelReview({
+      attemptId:
+        attempt.attemptId,
+      targetId:
+        attempt.targetId,
+      protocolSha256:
+        inputs.protocolSha256,
+      reviewPromptSha256:
+        inputs.reviewPromptSha256,
+      reviewerIdentity:
+        result.reviewerIdentity,
+      review:
+        result.draft,
+      modelUsage:
+        result.modelUsage
+    });
+
+  print({
+    action:
+      "AGENT_COMPARATOR_MODEL_REVIEW_RECORDED",
+    target: {
+      id:
+        target.id,
+      companyName:
+        target.companyName
+    },
+    review,
+    note:
+      "This is MODEL_REVIEWED evidence support, not human review and not independent source-page verification."
+  });
+}
+
+async function report():
+  Promise<void> {
+  const inputs =
+    await loadFrozenComparatorInputs();
+  const store =
+    new ComparatorFileStore(
+      storeRoot()
+    );
+  const rows =
+    await Promise.all(
+      inputs.targets.map(
+        async (
+          target
+        ) => ({
+          target,
+          attempt:
+            await store.getAttempt(
+              target.id
+            ),
+          review:
+            await store.getModelReview(
+              target.id
+            )
+        })
+      )
+    );
+  const attempts =
+    rows.flatMap(
+      (row) =>
+        row.attempt ===
+          undefined
+          ? []
+          : [
+              row.attempt
+            ]
+    );
+  const reviews =
+    rows.flatMap(
+      (row) =>
+        row.review ===
+          undefined
+          ? []
+          : [
+              row.review
+            ]
+    );
+
+  print({
+    action:
+      "AGENT_COMPARATOR_REPORT",
+    protocolSha256:
+      inputs.protocolSha256,
+    promptSha256:
+      inputs.promptSha256,
+    reviewPromptSha256:
+      inputs.reviewPromptSha256,
+    costPlanSha256:
+      inputs.costPlanSha256,
+    manifestSha256:
+      inputs.manifestSha256,
+    summary:
+      summarizeComparatorCohort({
+        targetIds:
+          inputs.targets.map(
+            (target) =>
+              target.id
+          ),
+        attempts,
+        reviews
+      }),
+    referenceCost:
+      summarizeComparatorReferenceCosts({
+        plan:
+          inputs.costPlan,
+        attempts,
+        reviews
+      }),
+    note:
+      "Descriptive comparator report only. It is not a Gate 13 human-baseline verdict and MODEL_REVIEWED is not HUMAN_REVIEWED."
+  });
+}
+
 function usage(): string {
   return [
     "Gate 13 independent agent comparator",
@@ -579,6 +843,8 @@ function usage(): string {
     "  status",
     "  authorize --operator <id> --confirm-protocol-sha <sha> --confirm-manifest-sha <sha> --authorize-all-43",
     "  run-target --target-id <id>",
+    "  review-target --target-id <id>",
+    "  report",
     "  recover-interrupted --target-id <id> --reason <text>",
     "",
     "This app has separate file storage and no dependency on the Gate 13 acceptance PostgreSQL repository."
@@ -622,6 +888,14 @@ async function main():
       await runTarget(
         args
       );
+      return;
+    case "review-target":
+      await reviewTarget(
+        args
+      );
+      return;
+    case "report":
+      await report();
       return;
     case "recover-interrupted":
       await recoverInterrupted(

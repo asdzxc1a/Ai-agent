@@ -22,8 +22,39 @@ export {
   ComparatorFileStore
 } from "./store.js";
 export type {
+  ComparatorModelReviewInput,
   ComparatorReservationInput
 } from "./store.js";
+export {
+  ComparatorReferenceCostPlanSchema,
+  calculateComparatorReferenceCost,
+  summarizeComparatorReferenceCosts
+} from "./cost.js";
+export type {
+  ComparatorReferenceCost,
+  ComparatorReferenceCostPlan,
+  ComparatorReferenceCostSummaryInput
+} from "./cost.js";
+export {
+  AGENT_COMPARATOR_MODEL_REVIEW_VERSION,
+  ComparatorCorrectionSeveritySchema,
+  ComparatorModelReviewDraftSchema,
+  ComparatorModelReviewSchema,
+  ComparatorModelReviewUsabilitySchema,
+  ComparatorReviewerIdentitySchema,
+  ComparatorReviewerModelUsageSchema,
+  ComparatorReviewFindingSchema,
+  ComparatorReviewVerdictSchema,
+  comparatorAttemptSha256,
+  summarizeComparatorCohort
+} from "./review.js";
+export type {
+  ComparatorCohortSummaryInput,
+  ComparatorModelReview,
+  ComparatorModelReviewDraft,
+  ComparatorReviewerIdentity,
+  ComparatorReviewerModelUsage
+} from "./review.js";
 export {
   runComparatorFirstAttempt,
   validateComparatorWorkerResult

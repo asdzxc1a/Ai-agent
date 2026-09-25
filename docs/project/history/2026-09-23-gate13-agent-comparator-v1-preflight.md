@@ -111,7 +111,7 @@ A real Codex `gpt-5.6-sol` run was first exercised against a fake BrowserSkill f
 
 The final integrated fixture completed in 76.636 seconds with eight retained evidence items, one local visited URL, human measurements `null`, review type `NOT_REVIEWED`, and runner-owned Codex JSONL usage of 73,638 input tokens (57,216 cached), 1,873 output tokens, and 138 reasoning-output tokens. The browser was launched with the frozen mock-keychain flags, so no macOS Keychain password/approval was required. The stricter shell-event audit also rejects chained commands such as `bsk ...; cat ...`, so a successful attempt cannot hide arbitrary shell work behind an allowed BrowserSkill prefix. No real company was opened and no non-BrowserSkill shell command passed the audit.
 
-## Current preflight
+## Pre-PR #108 preflight
 
 With the dedicated BrowserSkill profile connected, comparator preflight returned:
 
@@ -125,6 +125,8 @@ With the dedicated BrowserSkill profile connected, comparator preflight returned
 
 No comparator reservation or measured live-company attempt has been created. Repository qualification is green at `213/213` deterministic tests across 41 files, `25 gates / 52 decisions / 35 lessons`, zero lint/typecheck/build failures, and `pnpm audit --prod` reports no known vulnerabilities.
 
-## Next transition
+## Next transition at that time
 
 Merge the comparator implementation after CI. A live comparator cohort requires separate explicit authorization bound to the exact comparator protocol SHA and manifest SHA. Do not treat general instructions to continue engineering as that measured-cohort authorization.
+
+> **2026-09-24 continuation:** PR #108 subsequently merged, and the comparator protocol was intentionally extended before live authorization with frozen blinded-model-review and reference-cost semantics. The old protocol SHA above is historical and is superseded by `docs/project/history/2026-09-24-gate13-agent-comparator-review-reporting.md`. No live-company comparator attempt occurred under the old hash.

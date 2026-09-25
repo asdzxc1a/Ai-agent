@@ -4,57 +4,67 @@ import {
 } from "vitest";
 
 import {
-  isComparatorBskCommandEventSafe
+  auditNoShellCommandEvents
 } from "../src/codex-browser-worker.js";
 
-const guardBin =
-  "/tmp/comparator/run/bin/bsk";
-
 test(
-  "Codex command audit accepts only one exact BrowserSkill command",
+  "Codex worker audit accepts MCP-only event streams with no shell execution",
   () => {
     expect(
-      isComparatorBskCommandEventSafe(
-        "/bin/zsh -lc 'bsk session start --browser astra-agent-comparator --json'",
-        guardBin
-      )
-    ).toBe(true);
-
-    expect(
-      isComparatorBskCommandEventSafe(
-        "bsk observe --session s1",
-        guardBin
-      )
-    ).toBe(true);
-
-    expect(
-      isComparatorBskCommandEventSafe(
-        guardBin +
-          " observe --session s1",
-        guardBin
-      )
-    ).toBe(true);
+      () =>
+        auditNoShellCommandEvents(
+          [
+            JSON.stringify({
+              type:
+                "thread.started"
+            }),
+            JSON.stringify({
+              type:
+                "item.completed",
+              item: {
+                type:
+                  "mcp_tool_call",
+                name:
+                  "astra_browser.browser_observe"
+              }
+            }),
+            JSON.stringify({
+              type:
+                "turn.completed",
+              usage: {
+                input_tokens:
+                  100,
+                output_tokens:
+                  20
+              }
+            })
+          ].join(
+            "\n"
+          )
+        )
+    ).not.toThrow();
   }
 );
 
 test(
-  "Codex command audit rejects shell chaining and direct bypasses",
+  "Codex worker audit rejects any shell command event even if BrowserSkill appears in the command",
   () => {
-    for (
-      const command of [
-        "/bin/zsh -lc 'bsk observe --session s1; cat /etc/passwd'",
-        "/bin/zsh -lc 'bsk observe --session s1 | tee /tmp/leak'",
-        "/bin/zsh -lc 'bsk observe --session s1 && env'",
-        "/Users/example/.local/bin/bsk observe --session s1",
-        "/bin/zsh -lc 'cat /etc/passwd'"
-      ]
-    ) {
-      expect(
-        isComparatorBskCommandEventSafe(
-          command,
-          guardBin
+    expect(
+      () =>
+        auditNoShellCommandEvents(
+          JSON.stringify({
+            type:
+              "item.completed",
+            item: {
+              type:
+                "command_execution",
+              command:
+                "bsk observe --session s1"
+            }
+          })
         )
-      ).toBe(false);
-    }
+    ).toThrow(
+      "forbidden shell command events"
+    );
   }
 );

@@ -62,5 +62,46 @@ test(
     ).toBe(
       "FORBIDDEN"
     );
+    expect(
+      inputs.protocol
+        .review
+        .model
+    ).toBe(
+      "gpt-5.6-luna"
+    );
+    expect(
+      inputs.protocol
+        .review
+        .blindInput
+    ).toBe(
+      "BRIEF_AND_EVIDENCE_ONLY"
+    );
+    expect(
+      inputs.promptSha256
+    ).toBe(
+      inputs.protocol
+        .agent
+        .promptSha256
+    );
+    expect(
+      inputs.reviewPromptSha256
+    ).toBe(
+      inputs.protocol
+        .review
+        .promptSha256
+    );
+    expect(
+      inputs.costPlanSha256
+    ).toBe(
+      inputs.protocol
+        .costAccounting
+        .sha256
+    );
+    expect(
+      inputs.costPlan
+        .accounting
+    ).toBe(
+      "REFERENCE_API_EQUIVALENT_NOT_ACTUAL_BILL"
+    );
   }
 );

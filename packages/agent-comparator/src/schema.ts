@@ -250,10 +250,60 @@ export const ComparatorProtocolSchema =
           z.string().min(1),
         model:
           z.string().min(1),
+        promptSha256:
+          z.string().regex(
+            /^[a-f0-9]{64}$/
+          ),
         freshContextPerTarget:
           z.literal(true),
         serialExecution:
           z.literal(true)
+      }).strict(),
+    review:
+      z.object({
+        version:
+          z.literal(
+            "gate13-agent-comparator-model-review-v1"
+          ),
+        mode:
+          z.literal(
+            "BLINDED_MODEL_REVIEW"
+          ),
+        blindInput:
+          z.literal(
+            "BRIEF_AND_EVIDENCE_ONLY"
+          ),
+        harness:
+          z.literal(
+            "CODEX_CLI"
+          ),
+        harnessVersion:
+          z.string().min(1),
+        model:
+          z.string().min(1),
+        promptSha256:
+          z.string().regex(
+            /^[a-f0-9]{64}$/
+          ),
+        humanReviewMinutes:
+          z.null()
+      }).strict(),
+    costAccounting:
+      z.object({
+        version:
+          z.literal(
+            "gate13-agent-comparator-reference-cost-v1"
+          ),
+        accounting:
+          z.literal(
+            "REFERENCE_API_EQUIVALENT_NOT_ACTUAL_BILL"
+          ),
+        file:
+          z.string().min(1),
+        sha256:
+          z.string().regex(
+            /^[a-f0-9]{64}$/
+          )
       }).strict(),
     execution:
       z.object({
